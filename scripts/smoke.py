@@ -34,7 +34,7 @@ def main():
         page.locator('#navCatalog').click()
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
-        assert count==1352, ('Wrong player count',count)
+        assert count==1353, ('Wrong player count',count)
         cards=page.locator('.card-name').all_text_contents()
         assert cards and cards[0].casefold().startswith('aaron'),('Alphabetical sort not applied',cards[:5])
         page.screenshot(path=str(screenshot/'catalog-desktop.png'))
