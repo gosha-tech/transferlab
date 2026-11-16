@@ -15,7 +15,23 @@ def replace_between(s,start,end,new):
 with ZipFile(archive) as z:s=z.read('index.html').decode('utf-8')
 m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',s,re.S)
 if not m:raise RuntimeError('Embedded registry missing')
-d=json.loads(m.group(1));p=d['players']
+d=json.loads(m.group(1))
+# Prepare archival seed players once in the build instead of injecting them on page load.
+# This fixes the old 1352/1353 discrepancy and prevents a late-changing catalog count.
+import unicodedata,hashlib
+def canonical_name(v):
+    return ''.join(c for c in unicodedata.normalize('NFKD',str(v).casefold()) if not unicodedata.combining(c)).strip()
+p=[v for v in d['players'] if str(v.get('id'))!='seed-0217']
+existing={canonical_name(v['name']) for v in p}
+for row in d.get('sampleStats25_26',[]):
+    name=str(row.get('name') or '')
+    if not name or canonical_name(name) in existing:continue
+    code=hashlib.sha1((str(row.get('league'))+'|'+str(row.get('team'))+'|'+name).encode()).hexdigest()[:14]
+    p.append({'id':'archive-'+code,'name':name,'web':name.split()[-1],'team':row.get('team') or '—',
+      'pos':'Unknown','league':row.get('league'),'season':'2025/26',
+      'origin':'2025/26 historical seed; current club unverified'})
+    existing.add(canonical_name(name))
+d['players']=p
 if len(p)<1300 or len({str(v['id']) for v in p})!=len(p):raise RuntimeError('Player registry malformed')
 d['leagueCatalog']=[l for l in ['Premier League','La Liga','Bundesliga','Serie A','Ligue 1','Primeira Liga','Belgian Pro League','Süper Lig','Saudi Pro League','MLS','Brasileirão'] if any(x.get('league')==l for x in p)]
 d['site_build']='TransferLab 5.0 — архивная версия'
