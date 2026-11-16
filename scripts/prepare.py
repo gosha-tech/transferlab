@@ -39,8 +39,12 @@ s=s[:m.start(1)]+json.dumps(d,ensure_ascii=False,separators=(',',':')).replace('
 s=re.sub(r'<title>.*?</title>','<title>TransferLab — футбол и аналитика</title>',s,count=1)
 s=change(s,'</head>','<link rel="stylesheet" href="assets/site.css">\n<meta name="theme-color" content="#071321">\n</head>')
 s=change(s,'</body>','<script src="assets/site.js" defer></script>\n</body>')
-s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog" class="hidden"><div class="quality-note">Архивный каталог TransferLab: составы и статистика могут быть устаревшими. Пустые показатели не заменяются выдуманными значениями. Клубы и контракты требуют проверки.</div>')
+s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog" class="hidden"><div class="quality-note">Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.</div>')
 s=change(s,'<span class="pill" id="visibleCount">0</span>','<select id="sortBy" class="filter" aria-label="Сортировка"><option value="name">По алфавиту</option><option value="position">По позиции</option><option value="minutes">По минутам</option></select><span class="pill" id="visibleCount">0</span>')
+# Describe the actual number of leagues instead of the older five-league scope.
+s=change(s,"directoryDesc:'Пять лиг: поиск, позиции, контракты и статистика по сезонам.'","directoryDesc:'11 лиг: поиск, позиции, контракты и статистика по доступным сезонам.'")
+s=change(s,"sideFoot:'Статистика пяти ведущих лиг. Без выдуманных оценок.'","sideFoot:'Архивные данные 11 лиг. Недостающие показатели не придуманы.'")
+s=change(s,"sideFoot:'Statistics from five major leagues. No invented valuations.'","sideFoot:'Historical data from 11 leagues. Missing data is not fabricated.'")
 s=change(s,"$('dataState').textContent=players.length+' · '+(masterReady?'Top 5':'offline');","$('dataState').textContent=players.length+' профилей · архив';")
 s=change(s,"$('valueMain').textContent=euroM(model.estimate);","$('valueMain').textContent=model.index.proxy?(ru?'Нет данных':'No data'):euroM(model.estimate);")
 tick=chr(96); dollar=chr(36)
@@ -64,6 +68,24 @@ s=replace_between(s,'  function filterAll(){','  function showView(',r"""  const
       return sortNames.compare(a.name,b.name)||String(a.id).localeCompare(String(b.id));
     });return list;
   }
+""")
+# Render sourced advanced metrics in four readable groups.
+s=replace_between(s,'  function renderAdvanced(s){','  const FORMULA_DRAFT=',r"""  function renderAdvanced(s){
+    const ru=state.language==='ru';
+    const per90=k=>s?.minutes>0&&s[k]!=null?Number(s[k])*90/Number(s.minutes):null;
+    const groups=[
+      [ru?'Атака и xG':'Attack and xG',[[ru?'Голы / 90':'Goals / 90',per90('goals')],['xG',s?.xg],['xG / 90',per90('xg')],['npxG',s?.npxg],[ru?'Удары':'Shots',s?.shots],[ru?'Удары в створ':'Shots on target',s?.shots_on_target]]],
+      [ru?'Передачи и создание моментов':'Passing and creation',[[ru?'Ассисты / 90':'Assists / 90',per90('assists')],['xA',s?.xa],['xA / 90',per90('xa')],[ru?'Ключевые передачи':'Key passes',s?.key_passes],['xGChain',s?.xg_chain],['xGBuildup',s?.xg_buildup]]],
+      [ru?'Оборона':'Defense',[[ru?'Отборы':'Tackles',s?.tackles],[ru?'Перехваты':'Interceptions',s?.interceptions],[ru?'Возвраты':'Recoveries',s?.recoveries],[ru?'Выносы':'Clearances',s?.clearances],[ru?'Блоки':'Blocks',s?.blocks]]],
+      [ru?'Участие и дисциплина':'Minutes and discipline',[[ru?'Матчи':'Matches',s?.matches],[ru?'Минуты':'Minutes',s?.minutes],[ru?'Старты':'Starts',s?.starts],[ru?'Сухие матчи':'Clean sheets',s?.clean_sheets],[ru?'Жёлтые':'Yellow cards',s?.yellow_cards],[ru?'Красные':'Red cards',s?.red_cards]]]
+    ];
+    const fmt=v=>v==null||!Number.isFinite(Number(v))?'—':nf(Number(v),Number(v)%1===0?0:2);
+    $('advancedRows').className='advanced-sections';
+    $('advancedRows').innerHTML=groups.map(g=>'<section class="advanced-group"><h3>'+esc(g[0])+'</h3>'+g[1].map(m=>'<div class="metric-row"><span>'+esc(m[0])+'</span><strong>'+fmt(m[1])+'</strong></div>').join('')+'</section>').join('');
+    $('advancedWrap').hidden=!state.statsExpanded;
+    $('detailsButton').textContent=state.statsExpanded?(ru?'Свернуть ↑':'Less ↑'):(ru?'Подробнее ↗':'Details ↗');
+  }
+
 """)
 s=replace_between(s,'  function setupCards(host){','  function renderCoverage(){',r"""  const cardObserver=window.IntersectionObserver?new IntersectionObserver(entries=>{
     for(const x of entries){if(!x.isIntersecting)continue;const avatar=x.target;cardObserver.unobserve(avatar);
