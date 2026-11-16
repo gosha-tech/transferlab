@@ -27,6 +27,10 @@ s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog
 s=change(s,'<span class="pill" id="visibleCount">0</span>','<select id="sortBy" class="filter" aria-label="Сортировка"><option value="name">По алфавиту</option><option value="position">По позиции</option><option value="minutes">По минутам</option></select><span class="pill" id="visibleCount">0</span>')
 s=change(s,"$('dataState').textContent=players.length+' · '+(masterReady?'Top 5':'offline');","$('dataState').textContent=players.length+' профилей · архив';")
 s=change(s,"$('valueMain').textContent=euroM(model.estimate);","$('valueMain').textContent=model.index.proxy?(ru?'Нет данных':'No data'):euroM(model.estimate);")
+tick=chr(96); dollar=chr(36)
+price_expression=tick+dollar+'{euroM(model.lo)} – '+dollar+'{euroM(model.hi)}'+tick
+s=change(s,"$('valueRange').textContent="+price_expression+";","$('valueRange').textContent=model.index.proxy?'—':"+price_expression+";")
+
 s=change(s,"$('playerIndexBadge').textContent=(ru?'Индекс ':'Index ')+(model.index.proxy?'—':((model.rolling.approximate?'≈':'')+model.index.score))+'/100';","$('playerIndexBadge').textContent=model.index.proxy?(ru?'Индекс: нет данных':'Index: no data'):(ru?'Индекс ':'Index ')+(model.rolling.approximate?'≈':'')+model.index.score+'/100';")
 s=change(s,"$('filterLeague').onchange=e=>{setLeague(e.target.value)};","$('sortBy').onchange=e=>{state.filters.sort=e.target.value;state.shown=30;renderCatalog()};$('filterLeague').onchange=e=>{setLeague(e.target.value)};")
 s=replace_between(s,'  function filterAll(){','  function showView(',r"""  const sortNames=new Intl.Collator('ru',{sensitivity:'base',numeric:true});
