@@ -45,6 +45,9 @@ def main():
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Messi' in page.locator('#pName').inner_text(),'Search did not navigate to Messi'
+        page.locator('#detailsButton').click()
+        page.locator('#advancedWrap').wait_for(state='visible',timeout=5000)
+        assert page.locator('.advanced-group').count()==4,'Advanced stats grouping missing'
         page.screenshot(path=str(screenshot/'profile-desktop.png'))
         page.set_viewport_size({'width':390,'height':844})
         page.locator('#navCatalog').click()
@@ -53,6 +56,6 @@ def main():
         browser.close()
     server.shutdown()
     assert not errors,'Browser runtime errors: '+str(errors[:4])
-    print('Browser smoke PASS: profiles, sorting, Portugal, search, responsive view; players='+str(count))
+    print('Browser smoke PASS: profiles, sorting, Portugal, search, four advanced stat panels, mobile; players='+str(count))
 
 if __name__=='__main__':main()
