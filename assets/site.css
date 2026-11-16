@@ -1,0 +1,29 @@
+:root{--bg:#071321;--panel:#0b243b;--line:#24455e;--teal:#22dbb9;--white:#f3f8ff;--muted:#9eb8c9}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.shell{background:radial-gradient(ellipse 900px 460px at 85% -12%,#12426185,transparent 75%),#071321}
+.sidebar{background:linear-gradient(180deg,#09253c,#071827);border-color:#24455e;box-shadow:12px 0 44px #010d1828}
+.nav button{transition:background .15s,transform .15s}.nav button:hover{transform:translateX(2px)}
+.nav button.active{background:linear-gradient(120deg,#14516e,#123653);box-shadow:inset 3px 0 #26e2bd}
+.main{max-width:1620px;padding-top:25px}
+.searchbox input{height:52px;border-radius:14px;background:#0e2943;border-color:#2d5674;box-shadow:0 6px 25px #010c1728}
+.searchbox input:focus{box-shadow:0 0 0 3px #24e4be22}.search-ico{top:14px}
+.panel{background:linear-gradient(140deg,#0b243b,#081b2d);border-color:#234862;box-shadow:0 10px 35px #010a1620}
+.hero-band{border-radius:16px;background:linear-gradient(110deg,#102f48,#0b2236);border-color:#2d536c}
+.hero-kpi strong,.stat-grid strong{font-variant-numeric:tabular-nums}.hero-kpi strong{font-size:28px}
+.catalog-tools{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px;padding:15px}
+.filter{min-height:46px;background:#0e2d48}
+#filterData,.catalog-tools .pill{display:none!important}
+.league-chip{border-radius:100px;padding:10px 13px}.league-chip.active{border-color:#28e2c0;background:#0c4b50}
+.directory{gap:14px}
+.player-card{min-height:118px;border-radius:14px;background:linear-gradient(145deg,#0d2c46,#0a2138);box-shadow:0 8px 25px #010a161e}
+.player-card:hover{border-color:#26d9b8;box-shadow:0 10px 35px #010a1636}
+.player-card-open{padding:15px;min-height:118px;padding-right:38px}
+.avatar{width:64px;height:76px;border-radius:11px}.card-name{font-size:14px}.card-meta{font-size:12px}
+.quality-note{padding:13px 16px;margin-bottom:16px;background:#0d2b42;border:1px solid #236075;border-left:3px solid #27daba;border-radius:10px;color:#b7d0e0;font-size:12px;line-height:1.6}
+#loginButton,#refreshButton,#globalNotice,#threeSeasonCatalogNotice,#profileProvenance,.import-row,#multiSeason,.data-freshness,#modelQuality,#rollingWindow{display:none!important}
+#dataState{border-color:#236959;background:#0a3837;color:#8dedd4}
+.player-name{font-size:clamp(22px,2.7vw,31px)}
+@media(max-width:1100px){.catalog-tools{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:720px){.main{padding:13px 12px 30px}.hero-band{grid-template-columns:repeat(2,1fr);padding:11px;gap:10px}.hero-kpi{border:0;background:#092941;border-radius:10px;padding:8px}.hero-kpi strong{font-size:23px}.catalog-tools{padding:10px;gap:9px}.catalog-tools select{min-width:0;font-size:12px}.quality-note{font-size:11px}}
+@media(max-width:440px){.nav button{padding:9px 7px;font-size:11px}.catalog-tools{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
