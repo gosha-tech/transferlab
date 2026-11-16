@@ -1,13 +1,13 @@
-name: Publish TransferLab to GitHub Pages
+name: Build and publish TransferLab
 
 on:
   push:
     branches: [main]
     paths:
-      - index.html
-      - assets/**
-      - data/**
       - .github/workflows/pages.yml
+      - scripts/**
+      - assets/**
+      - TransferLab_RESTORED_2026-11-16.zip
   workflow_dispatch:
 
 permissions:
@@ -20,25 +20,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build TransferLab from uploaded ZIP
+        run: |
+          python scripts/prepare.py
+          mkdir -p _site/assets
+          cp assets/site.css assets/site.js _site/assets/
+      - name: Validate player registry and JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, json
+          html=Path('_site/index.html').read_text(encoding='utf-8')
+          data=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>', html, re.S)
+          assert data, 'No database'
+          root=json.loads(data.group(1))
+          ids=[str(p['id']) for p in root['players']]
+          assert len(ids)>=1300 and len(ids)==len(set(ids))
+          assert 'sortBy' in html and 'assets/site.css' in html
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)
+          Path('/tmp/transferlab.js').write_text(scripts[-1],encoding='utf-8')
+          print('Verified:',len(ids),'unique players')
+          PY
+          node --check /tmp/transferlab.js
+          node --check _site/assets/site.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify website exists
-        run: test -s index.html
       - uses: actions/configure-pages@v5
-      - name: Prepare site
-        run: |
-          mkdir -p _site
-          cp index.html _site/index.html
-          if [ -d assets ]; then cp -R assets _site/assets; fi
-          if [ -d data ]; then cp -R data _site/data; fi
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - name: Deploy
+      - name: Publish site
         id: deployment
         uses: actions/deploy-pages@v4
