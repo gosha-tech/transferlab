@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -47,6 +47,17 @@ jobs:
           PY
           node --check /tmp/transferlab.js
           node --check _site/assets/site.js
+      - name: Save generated index.html in repository
+        continue-on-error: true
+        run: |
+          cp _site/index.html index.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Build TransferLab 5.0 from source archive [skip ci]"
+            git push
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
