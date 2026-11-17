@@ -27,6 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Validate API-Football data parser
         run: |
           python scripts/sync_api.py --self-test
@@ -47,7 +49,7 @@ jobs:
           python scripts/sync_api.py
       - name: Fetch free up-to-date matches and available player profiles
         # Only daily / manual to avoid consuming free API rate limits during code releases.
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-free]')
         # Does not require API-Football key. On upstream outages keep last saved data.
         continue-on-error: true
         env:
@@ -96,18 +98,30 @@ jobs:
           name: transferlab-screenshots
           path: smoke_screenshots/
           if-no-files-found: ignore
-      - name: Save generated index.html in repository
-        continue-on-error: true
+      - name: Persist refreshed source data in GitHub
+        # Published HTML comes from the Pages artifact. Commit source snapshots
+        # without generated HTML to avoid losing data during concurrent edits.
         run: |
-          cp _site/index.html index.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html data/live.json data/free_sources.json
+          git add data/live.json data/free_sources.json
           if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
           if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
           if ! git diff --cached --quiet; then
-            git commit -m "Build TransferLab with latest confirmed stats [skip ci]"
-            git push
+            git commit -m "Cache verified football source snapshots [skip ci]"
+            for attempt in 1 2 3; do
+              git fetch origin main
+              git rebase origin/main || { git rebase --abort; exit 1; }
+              if git push origin HEAD:main; then
+                echo "Updated player and match snapshots persisted"
+                break
+              fi
+              if [ "$attempt" = 3 ]; then
+                echo "Failed to persist source data after retries"
+                exit 1
+              fi
+              sleep 4
+            done
           fi
       - uses: actions/upload-pages-artifact@v3
         with:
