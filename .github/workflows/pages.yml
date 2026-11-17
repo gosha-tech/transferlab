@@ -37,11 +37,11 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-          # Free API-Football plans cannot serve the current 2026/27 season.
-          # Set repository Actions variables on a supported paid plan.
-          API_REQUEST_BUDGET: ${{ vars.API_REQUEST_BUDGET || '85' }}
-          API_MAX_PAGES: ${{ vars.API_MAX_PAGES || '3' }}
-          API_REQUEST_INTERVAL_SECONDS: ${{ vars.API_REQUEST_INTERVAL_SECONDS || '6.5' }}
+          # For a paid API-Football plan with current-season access; adjust in Actions vars.
+          # Free API-Football does NOT provide 2026/27 historical stats.
+          API_REQUEST_BUDGET: ${{ vars.API_REQUEST_BUDGET || '1400' }}
+          API_MAX_PAGES: ${{ vars.API_MAX_PAGES || '100' }}
+          API_REQUEST_INTERVAL_SECONDS: ${{ vars.API_REQUEST_INTERVAL_SECONDS || '0.6' }}
         run: |
           python scripts/sync_api.py
       - name: Build TransferLab from uploaded ZIP
