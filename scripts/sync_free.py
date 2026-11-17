@@ -171,7 +171,7 @@ def collect(today=None,batch=48):
     now=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
     result={'schema_version':1,'last_attempt_at':now,'last_success_at':previous.get('last_success_at'),
       'free_sources':{'OpenFootball':'fixtures and scores only',
-                      'TheSportsDB':'partial community player stats; some copyright-cleared photos',
+                      'TheSportsDB':'partial player stats; photos require image-specific license verification',
                       'football-data.org':'fixtures/standings with optional free token'},
       'matches':dict(previous.get('matches') or {}),
       'players':dict(previous.get('players') or {}),
