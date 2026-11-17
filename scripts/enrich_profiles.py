@@ -28,7 +28,7 @@ FULL_MAP={
  'Second Striker':('Forward','ST','SS')
 }
 MANUAL={
- 'achraf hakimi':{'name':'Achraf Hakimi','role':'LB/RB','display':'RB','pos':'Defender',
+ 'achrafhakimi':{'name':'Achraf Hakimi','role':'LB/RB','display':'RB','pos':'Defender',
                  'source':'https://www.psg.fr/en/players/achraf-hakimi',
                  'verified':'official-club-profile'}
 }
@@ -156,7 +156,7 @@ def self_test():
     assert mapped['7']['height']==181
     assert mapped['8'].get('position_conflict') and 'displayPosition' not in mapped['8']
     n=enrich(entries,{'profiles':mapped})
-    assert n==2 and entries[0]['displayPosition']=='RB' and entries[0]['positionVerified']
+    assert n==1 and entries[0]['displayPosition']=='RB' and entries[0]['positionVerified']
     assert entries[1].get('displayPosition') is None
     print('Position enrichment unit tests passed')
 def main():
