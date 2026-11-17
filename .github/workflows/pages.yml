@@ -36,9 +36,10 @@ jobs:
           python scripts/player_competitions.py
           python scripts/sync_pl.py --self-test
           python scripts/commons_photos.py --self-test
+          python scripts/sync_pitchapi.py --self-test
           python scripts/enrich_profiles.py --self-test
           python scripts/import_historical_appearances.py --self-test
-          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py
+          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
@@ -67,6 +68,12 @@ jobs:
         env:
           WIKIMEDIA_BATCH: '75'
         run: python scripts/commons_photos.py
+      - name: Refresh free PitchAPI player match analytics
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
+          PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '95' }}
+        run: python scripts/sync_pitchapi.py
       - name: Build TransferLab from uploaded ZIP
         run: |
           python scripts/prepare.py
@@ -78,6 +85,7 @@ jobs:
           cp data/live.json data/free_sources.json _site/data/
           if [ -f data/pl_current.json ]; then cp data/pl_current.json _site/data/; fi
           if [ -f data/commons_photos.json ]; then cp data/commons_photos.json _site/data/; fi
+          if [ -f data/pitchapi.json ]; then cp data/pitchapi.json _site/data/; fi
       - name: Validate player registry and JavaScript
         run: |
           python - <<'PY'
@@ -120,6 +128,7 @@ jobs:
           git add data/live.json data/free_sources.json
           if [ -f data/pl_current.json ]; then git add data/pl_current.json; fi
           if [ -f data/commons_photos.json ]; then git add data/commons_photos.json; fi
+          if [ -f data/pitchapi.json ]; then git add data/pitchapi.json; fi
           if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
           if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
           if ! git diff --cached --quiet; then
@@ -131,7 +140,7 @@ jobs:
                 # Resolve only machine-generated JSON cache conflicts, never code.
                 for p in $(git diff --name-only --diff-filter=U); do
                   case "$p" in
-                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/profile_enrichment.json|data/historical_stats.json)
+                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/pitchapi.json|data/profile_enrichment.json|data/historical_stats.json)
                       git checkout --theirs -- "$p"
                       git add "$p"
                       ;;
