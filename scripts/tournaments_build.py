@@ -40,6 +40,8 @@ def embed(html):
     pl=json.loads(pl_path.read_text(encoding='utf-8')) if pl_path.exists() else {}
     commons_path=ROOT/'data'/'commons_photos.json'
     commons=json.loads(commons_path.read_text(encoding='utf-8')) if commons_path.exists() else {}
+    pitch_path=ROOT/'data'/'pitchapi.json'
+    pitch=json.loads(pitch_path.read_text(encoding='utf-8')) if pitch_path.exists() else {}
     original=root['players']
     for p in original:
         photo=(commons.get('photos') or {}).get(str(p.get('id')))
@@ -127,6 +129,40 @@ def embed(html):
             cur.append({'id':39,'name':'Premier League','source':'pl_catalogue',
                         'as_of':entry.get('as_of'),'is_complete':True,
                         'stats':games})
+    # Optional free PitchAPI per-match source. An API key is required but free;
+    # no new rows are assumed until a real successful provider fetch exists.
+    # Full EPL data from pl-catalogue takes priority over partial match imports.
+    pitch_groups=defaultdict(list)
+    for match in (pitch.get('matches') or {}).values():
+        if not isinstance(match,dict):continue
+        season=match.get('season')
+        mid=str(match.get('id') or '')
+        cid=match.get('competition_id')
+        if season not in ('2026/27','2026') or not mid.startswith('m_'):continue
+        ident=str(cid) if cid else 'pitch-'+str(match.get('league_id') or '')
+        for row in match.get('players') or []:
+            pid=str(row.get('player_id') or '')
+            if not pid or not isinstance(row.get('stats'),dict):continue
+            if cid==39 and pid in pl_rows:continue
+            if not any(str(p.get('id'))==pid for p in original):continue
+            pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats']))
+    for (season,pid,ident,name),data in pitch_groups.items():
+        cur=by_season.setdefault(season,{}).setdefault(pid,[])
+        if any(str(row.get('id'))==ident and row.get('source') not in ('pitchapi_partial',) for row in cur):
+            continue
+        totals={}
+        valid=set()
+        for mid,stats in data:
+            if mid in valid:continue
+            valid.add(mid)
+            for k,v in stats.items():
+                if isinstance(v,(float,int)) and not isinstance(v,bool):
+                    totals[k]=round(totals.get(k,0)+v,3)
+        if not totals:continue
+        totals['matches']=sum(1 for mid,stats in data if stats.get('minutes',0)>0)
+        cur.append({'id':int(cid) if cid else ident,'name':name,
+                    'source':'pitchapi_partial','is_complete':False,'stats':totals,
+                    'matches_loaded':len(valid),'as_of':pitch.get('updated_at')})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
     # Avoid counting the same competition twice when a current API snapshot
@@ -191,10 +227,11 @@ def embed(html):
             archival=all(x.get('source')=='historical_appearances' for x in events)
             community=all(x.get('source')=='thesportsdb_sample' for x in events)
             premier=all(x.get('source')=='pl_catalogue' for x in events)
-            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else 'api_football_partial')),
+            pitchonly=all(x.get('source')=='pitchapi_partial' for x in events)
+            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else ('pitchapi_partial' if pitchonly else 'api_football_partial'))),
                               'partial':True,
-                              'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else (pl.get('published_at') if premier else snapshot.get('updated_at'))),
-                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else 'https://www.api-football.com/documentation-v3'))})
+                              'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else (pl.get('published_at') if premier else (pitch.get('updated_at') if pitchonly else snapshot.get('updated_at')))),
+                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else ('https://pitchapi.dev/' if pitchonly else 'https://www.api-football.com/documentation-v3')))})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
     root['liveTournamentStats']=by_season
@@ -207,6 +244,9 @@ def embed(html):
     root['plCurrentAsOf']=pl.get('published_at')
     root['plCurrentSource']=pl.get('source')
     root['commonsPhotoCount']=len(commons.get('photos') or {})
+    root['pitchAPIStatsCoverage']=len({row.get('player_id') for m in (pitch.get('matches') or {}).values() for row in m.get('players',[])})
+    root['pitchAPILastSync']=pitch.get('updated_at')
+    root['pitchAPIKeyConfigured']=pitch.get('key_configured',False)
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
@@ -274,8 +314,9 @@ def embed(html):
     const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
     const premier=rows.length>0&&rows.every(r=>r.source==='pl_catalogue');
-    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':'api_football_partial',
-      partial:!premier,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:ROOT.liveUpdatedAt};
+    const pitched=rows.length>0&&rows.every(r=>r.source==='pitchapi_partial');
+    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'api_football_partial',
+      partial:!premier,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:pitched?ROOT.pitchAPILastSync:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
@@ -333,6 +374,12 @@ def embed(html):
     const date=ROOT.liveUpdatedAt?new Date(ROOT.liveUpdatedAt).toLocaleDateString(ru?'ru-RU':'en-GB'):'';
     let message='';
     if(items.length){
+      const pitched=items.every(x=>x.source==='pitchapi_partial');
+      if(pitched){
+        $('competitionStatus').textContent=title+' · '+(ru?'PitchAPI: данные по '+items.reduce((n,x)=>n+(x.matches_loaded||0),0)+' матчам, покрытие ещё неполное':
+          'PitchAPI: '+items.reduce((n,x)=>n+(x.matches_loaded||0),0)+' matched games; coverage still partial');
+        return;
+      }
       const premier=items.every(x=>x.source==='pl_catalogue');
       if(premier){
         $('competitionStatus').textContent=title+' · '+(ru?'АПЛ: актуальный опубликованный срез от ':'PL: published weekly snapshot ')+(ROOT.plCurrentAsOf||'—').slice(0,10);
@@ -397,7 +444,9 @@ def embed(html):
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
-    if(s?.source==='pl_catalogue'){
+    if(s?.source==='pitchapi_partial'){
+      $('statsSourceCaption').textContent=state.language==='ru'?'PitchAPI · проверенные матчи, частичная статистика':'PitchAPI · verified games, partial season';
+    }else if(s?.source==='pl_catalogue'){
       $('statsSourceCaption').textContent='pl-catalogue · '+(ROOT.plCurrentAsOf||'').slice(0,10)+' · некоммерческое использование';
     }else if(s?.source==='thesportsdb_partial'){
       $('statsSourceCaption').textContent=state.language==='ru'?'TheSportsDB · неполные показатели, не сезонный итог':'TheSportsDB · incomplete records, not a season total';
