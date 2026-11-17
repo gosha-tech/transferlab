@@ -31,6 +31,8 @@ def embed(html):
     if not m:raise RuntimeError('No embedded data')
     root=json.loads(m.group(2))
     snapshot=json.loads(DATA_PATH.read_text(encoding='utf-8')) if DATA_PATH.exists() else {}
+    hist_path=ROOT/'data'/'historical_stats.json'
+    historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
     original=root['players']
     match_by_name_club=defaultdict(list)
     for player in original:
@@ -80,6 +82,14 @@ def embed(html):
     by_season={}
     for (season,pid,_),entry in records.items():
         by_season.setdefault(season,{}).setdefault(pid,[]).append(entry)
+    # Archive up to June 2026: authentic minutes/goals/assists, separately
+    # labeled as old data, never presented as current 2026/27 statistics.
+    for season,player_map in (historical.get('by_season') or {}).items():
+        for pid,history in player_map.items():
+            recent=by_season.setdefault(season,{}).setdefault(pid,[])
+            for record in history:
+                if not any(str(q['id'])==str(record['id']) for q in recent):
+                    recent.append(record)
     # Feed competition totals into the existing 36-month index only when actual
     # minutes are available; never supply zeroes for unknown metrics.
     index_stats={}
@@ -91,15 +101,19 @@ def embed(html):
                 valid=[item['stats'][field] for item in events if item.get('stats',{}).get(field) is not None]
                 if valid:collected[field]=sum(valid)
             if collected.get('minutes',0)<180:continue
-            collected.update({'source':'api_football_partial','partial':True,
-                              'as_of':snapshot.get('updated_at'),
-                              'source_url':'https://www.api-football.com/documentation-v3'})
+            archival=all(x.get('source')=='historical_appearances' for x in events)
+            collected.update({'source':'transfermarkt_historical' if archival else 'api_football_partial',
+                              'partial':True,
+                              'as_of':historical.get('as_of') if archival else snapshot.get('updated_at'),
+                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else 'https://www.api-football.com/documentation-v3'})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
     root['liveTournamentStats']=by_season
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
+    root['historicalThrough']=historical.get('as_of')
+    root['historicalCoveragePlayers']=historical.get('covered_players',0)
     root['liveCompetitionCatalog']=[{'id':cid,'name':name} for cid,name in COMPETITIONS]
     root['leagueCatalog']=list(dict.fromkeys(root.get('leagueCatalog',[])+[p.get('league') for p in original if p.get('league')]))
     # Write embedded JSON before modifying the runtime script.
@@ -124,7 +138,9 @@ def embed(html):
   const tournamentMetricKeys=['matches','starts','minutes','goals','assists','shots','shots_on_target',
     'passes','key_passes','tackles','interceptions','dribbles','yellow_cards','red_cards'];
   function tournamentSum(rows){
-    const result={source:'api_football_partial',partial:true,updated_at:ROOT.liveUpdatedAt};
+    const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
+    const result={source:archived?'transfermarkt_historical':'api_football_partial',
+      partial:true,updated_at:archived?ROOT.historicalThrough:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
@@ -160,6 +176,12 @@ def embed(html):
     const date=ROOT.liveUpdatedAt?new Date(ROOT.liveUpdatedAt).toLocaleDateString(ru?'ru-RU':'en-GB'):'';
     let message='';
     if(items.length){
+      const onlyArchive=items.every(x=>x.source==='historical_appearances');
+      if(onlyArchive){
+        $('competitionStatus').textContent=title+' · '+(ru?'Архив до ':'Archive through ')+(ROOT.historicalThrough||'2026-06-28')+
+          ' · '+(ru?'матчи из источника Transfermarkt, не текущий сезон':'Transfermarkt match data, not live');
+        return;
+      }
       message=(ru?'Загружено: ':'Available: ')+items.length+' '+(ru?'турн.':'comp.')+
         (date?' · '+(ru?'обновлено ':'updated ')+date:'')+' · '+(ru?'покрытие неполное':'partial coverage');
     }else if(ROOT.liveStatus==='awaiting_api_key'||!ROOT.liveUpdatedAt){
@@ -191,7 +213,9 @@ def embed(html):
     if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
     }else if(s){
-      $('statsSourceCaption').textContent=state.language==='ru'?'Архивные данные · не обновлялись сегодня':'Archived statistics · not a current update';
+      $('statsSourceCaption').textContent=s.source==='transfermarkt_historical'
+        ?(state.language==='ru'?'Архив матчей до июня 2026 · все доступные турниры':'Match archive through June 2026 · available competitions')
+        :(state.language==='ru'?'Архивные данные · не обновлялись сегодня':'Archived statistics · not a current update');
     }""")
     html=patch(html,"const meta=PLAYER_META[p.id]||{},a=derivedAge(p),ru=state.language==='ru';",
                "const meta=PLAYER_META[p.id]||{},a=derivedAge(p)??(p.birth?(()=>{const d=new Date(p.birth),now=new Date();return Number.isNaN(d.getTime())?null:now.getUTCFullYear()-d.getUTCFullYear()-(now.getUTCMonth()<d.getUTCMonth()||(now.getUTCMonth()===d.getUTCMonth()&&now.getUTCDate()<d.getUTCDate())?1:0)})():null),ru=state.language==='ru';")
