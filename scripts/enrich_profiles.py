@@ -54,7 +54,8 @@ def rank(row):
     return year
 def convert(row):
     sub=(row.get('sub_position') or '').strip()
-    out={'source':'https://github.com/dcaribou/transfermarkt-datasets',
+    out={'tm_player_id':str(row.get('player_id') or '').strip(),
+         'source':'https://github.com/dcaribou/transfermarkt-datasets',
          'source_url':row.get('url') or '',
          'archive_as_of':'2026-07',
          'last_season':rank(row)}
