@@ -28,11 +28,29 @@ def main():
         sample.write_text(json.dumps({'updated_at':'2026-11-17T00:00:00+00:00',
             'status':'partial','coverage':[{'id':39,'year':2026,'loaded_pages':1,'total_pages':30}],
             'records':[comp1,comp2,other,{**other,'competition_id':39,'competition':'Premier League'}]}),encoding='utf-8')
+        # Free-feed synthetic test data are never written to the published site.
+        seed=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',page,re.S)
+        original=json.loads(seed.group(1))
+        foden_id=next(str(p['id']) for p in original['players'] if p['name']=='Phil Foden' and p['team']=='Manchester City')
+        (root/'data').mkdir(exist_ok=True)
+        (root/'data'/'free_sources.json').write_text(json.dumps({
+            'last_success_at':'2026-11-17T00:00:00Z','profiles_verified':1,
+            'players_with_current_stats':1,'matches':{
+                'Premier League':[{'date':'2026-11-16','home':'Arsenal','away':'Chelsea',
+                    'home_goals':2,'away_goals':1,'provider':'OpenFootball','is_player_stat':False}]
+            },'players':{foden_id:{'sportsdb_id':'34500',
+                'stats':[{'id':'tsdb-5999','name':'Other Competition','season':'2026/27',
+                          'source':'thesportsdb_sample','stats':{'goals':2,'minutes':90}}]}}}),
+          encoding='utf-8')
         old=tournaments_build.DATA_PATH
+        old_root=tournaments_build.ROOT
         try:
             tournaments_build.DATA_PATH=sample
+            tournaments_build.ROOT=root
             result=tournaments_build.embed(page)
-        finally:tournaments_build.DATA_PATH=old
+        finally:
+            tournaments_build.DATA_PATH=old
+            tournaments_build.ROOT=old_root
         item=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',
                        result,re.S)
         assert item
@@ -41,9 +59,12 @@ def main():
         assert len(foden)==1,'Must match a single existing player'
         pid=foden[0]['id']
         loaded=d['liveTournamentStats']['2026/27'][pid]
-        assert {t['id'] for t in loaded}=={2,39},loaded
+        assert {t['id'] for t in loaded}=={2,39,'tsdb-5999'},loaded
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
+        assert 'freeMatchesPanel' in result
+        assert d['freeMatchResults']['Premier League'][0]['home_goals']==2
+        assert d['freeSourcePlayerStats']==1
         assert len([p for p in d['players'] if p['id']=='api-football-99999999'])==1
         assert len(d['liveTournamentStats']['2026/27']['api-football-99999999'])==2
         assert len({p['id'] for p in d['players']})==len(d['players'])
