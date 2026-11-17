@@ -60,3 +60,5 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .free-match-score{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:#41e5bf}
 #competitionStatus{line-height:1.6;font-size:11px;color:#acc7d4}
 @media(max-width:520px){.free-match-row{grid-template-columns:66px 1fr 45px;gap:7px;font-size:11px}.free-scoreboard{padding:10px}}
+
+.pl-source-credit{font-size:11px;color:#94b2c3;margin:10px 0 12px;line-height:1.55}.pl-source-credit a{color:#57e7cb;text-decoration:underline;text-underline-offset:2px}
