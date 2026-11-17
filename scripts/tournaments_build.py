@@ -6,6 +6,7 @@ Only documented API-Football player-season entries become current-season data.
 """
 import json, pathlib, re, unicodedata
 from collections import defaultdict
+from player_competitions import add_choices
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -165,6 +166,7 @@ def embed(html):
     root['historicalThrough']=historical.get('as_of')
     root['historicalCoveragePlayers']=historical.get('covered_players',0)
     root['liveCompetitionCatalog']=[{'id':cid,'name':name} for cid,name in COMPETITIONS]
+    add_choices(root)
     root['leagueCatalog']=list(dict.fromkeys(root.get('leagueCatalog',[])+[p.get('league') for p in original if p.get('league')]))
     # Write embedded JSON before modifying the runtime script.
     content=json.dumps(root,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')
@@ -239,7 +241,14 @@ def embed(html):
     const all=tournamentRows[season]?.[p.id]||[];
     const rows=state.competition==='all'?all:all.filter(x=>String(x.id)===state.competition);
     if(rows.length)return tournamentSum(rows);
-    if(state.competition!=='all')return null;
+    if(state.competition!=='all'){
+      const home={'Premier League':'39','La Liga':'140','Bundesliga':'78',
+        'Serie A':'135','Ligue 1':'61','Primeira Liga':'94','Belgian Pro League':'144',
+        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253'}[p.league];
+      if(home===state.competition && season!=='2026/27' && season!=='2026')
+        return statsBySeason[season]?.[p.id]||null;
+      return null;
+    }
     return statsBySeason[season]?.[p.id]||null;
   }""")
     html=patch(html,"const urls=[];\n    const custom=storedPhoto(code);",
@@ -248,15 +257,30 @@ def embed(html):
     const ru=state.language==='ru';
     const select=$('competitionSelect');
     const rows=tournamentRows[state.season]?.[p.id]||[];
-    const allNames=new Map(tournamentCatalogue.map(x=>[String(x.id),x.name]));
-    for(const x of rows)if(!allNames.has(String(x.id)))allNames.set(String(x.id),x.name);
-    const previously=select.value;
+    const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
+    const current=state.season===currentSeason;
+    const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
+    const allNames=new Map(choices.map(x=>[String(x.id),x.name]));
+    // Older season: show only recorded competitions. Current season: domestic
+    // competitions and verified UEFA clubs, never unrelated countries' cups.
+    for(const x of rows){
+      const key=String(x.id);
+      if(!allNames.has(key) && (!current || x.source!=='historical_appearances'))allNames.set(key,x.name);
+    }
+    if(!current && !allNames.size && statsBySeason[state.season]?.[p.id]){
+      const leagues={'Premier League':'39','La Liga':'140','Bundesliga':'78',
+        'Serie A':'135','Ligue 1':'61','Primeira Liga':'94','Belgian Pro League':'144',
+        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253'};
+      if(leagues[p.league])allNames.set(leagues[p.league],p.league);
+    }
     select.innerHTML='<option value="all">'+(ru?'Все загруженные турниры':'All available competitions')+'</option>'+
       [...allNames].map(([id,name])=>'<option value="'+esc(id)+'">'+esc(name)+'</option>').join('');
     select.value=state.competition;
-    if(select.value!==state.competition){state.competition='all';select.value='all';}
+    if(select.value!==state.competition){state.competition='all';select.value='all';return renderProfile();}
     select.onchange=()=>{state.competition=select.value;renderProfile()};
     const items=state.competition==='all'?rows:rows.filter(x=>String(x.id)===state.competition);
+    const missingCurrent=state.competition!=='all'&&!items.length&&current &&
+      choices.some(x=>String(x.id)===state.competition);
     const title=state.competition==='all'?(ru?'Все турниры':'All competitions'):(allNames.get(state.competition)||state.competition);
     const date=ROOT.liveUpdatedAt?new Date(ROOT.liveUpdatedAt).toLocaleDateString(ru?'ru-RU':'en-GB'):'';
     let message='';
@@ -274,8 +298,11 @@ def embed(html):
       }
       message=(ru?'Загружено: ':'Available: ')+items.length+' '+(ru?'турн.':'comp.')+
         (date?' · '+(ru?'обновлено ':'updated ')+date:'')+' · '+(ru?'покрытие неполное':'partial coverage');
+    }else if(missingCurrent){
+      message=ru?'Клуб участвует в турнире, но статистика игрока ещё не получена; это не означает 0 матчей.':
+        'The club enters this competition, but player stats are missing (not 0).';
     }else if(ROOT.liveStatus==='awaiting_api_key'||!ROOT.liveUpdatedAt){
-      message=ru?'API ещё не подключён · доступны только архивные данные':'API not connected · archive only';
+      message=ru?'Статистика игрока ещё не получена':'Verified player statistics not available';
     }else{
       message=(ru?'Нет подтверждённой статистики по выбору':'No verified data for this selection')+
         (date?' · '+date:'');
@@ -300,6 +327,8 @@ def embed(html):
     html=patch(html,"${esc(position[state.language][p.pos]||p.pos)}</div>${sub}","${esc(p.displayPosition?(p.displayPosition+' · '+(position[state.language][p.pos]||p.pos)):(position[state.language][p.pos]||p.pos))}</div>${sub}")
     html=patch(html,"function cardMarkup(p){const c=contract(p),s=stat(p);const sub=","function cardMarkup(p){const c=contract(p),s=stat(p),idx=projectedIndex(p);const indexTag=idx.proxy?'<small class=\"player-index unavailable\">'+(state.language==='ru'?'Индекс: нет данных':'Index: no data')+'</small>':'<small class=\"player-index\">'+(state.language==='ru'?'Индекс ':'Index ')+idx.score+'/100'+(idx.exact?'':' ≈')+'</small>';const sub=")
     html=patch(html,"${esc(p.season||'2026/27')}</span></span></button>","${esc(p.season||'2026/27')}</span>${indexTag}</span></button>")
+    html=patch(html,"function choosePlayer(id){state.player=String(id);",
+       "function choosePlayer(id){state.player=String(id);state.competition='all';")
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
