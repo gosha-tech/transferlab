@@ -20,6 +20,13 @@ SEASONS={'Premier League':'2026-27/en.1.json','Bundesliga':'2026-27/de.1.json',
          'La Liga':'2026-27/es.1.json','Serie A':'2026-27/it.1.json',
          'Ligue 1':'2026-27/fr.1.json','Primeira Liga':'2026-27/pt.1.json',
          'Eredivisie':'2026-27/nl.1.json','Brazilian Serie A':'2026/br.1.json'}
+SPORTSDB_RECENT_LEAGUES={
+ 'Premier League':4328,'Bundesliga':4331,'Serie A':4332,
+ 'Ligue 1':4334,'La Liga':4335,'Eredivisie':4337,
+ 'Belgian Pro League':4338,'Süper Lig':4339,
+ 'Primeira Liga':4344,'MLS':4346,'Saudi Pro League':4668,
+ 'Champions League':4480
+}
 FD_COMP={'PL':'Premier League','BL1':'Bundesliga','SA':'Serie A','PD':'La Liga',
          'FL1':'Ligue 1','PPL':'Primeira Liga','CL':'Champions League',
          'BSA':'Brazilian Serie A'}
@@ -98,6 +105,27 @@ def parse_football_data(rows,league,today):
                        'away_goals':score['away'],'provider':'football-data.org',
                        'source':'https://www.football-data.org/','is_player_stat':False})
     return sorted(result,key=lambda r:(r['date'],r['home']),reverse=True)[:450]
+def parse_sportsdb_latest(payload,league,expected_id,today):
+    events=payload.get('events') if isinstance(payload,dict) else []
+    if not isinstance(events,list):return []
+    out=[]
+    for e in events:
+        if not isinstance(e,dict) or str(e.get('idLeague'))!=str(expected_id):continue
+        if e.get('strSport') not in ('Soccer','Football'):continue
+        date=dated(e.get('dateEvent') or e.get('strTimestamp'))
+        if not date or date>today:continue
+        if str(e.get('strStatus') or '').lower() in ('ns','postponed','cancelled'):continue
+        home=str(e.get('strHomeTeam') or '').strip()
+        away=str(e.get('strAwayTeam') or '').strip()
+        score1=numeric(e.get('intHomeScore'))
+        score2=numeric(e.get('intAwayScore'))
+        if not home or not away or score1 is None or score2 is None:continue
+        out.append({'id':'tsdb-event-'+str(e.get('idEvent') or ''),'league':league,
+                    'date':str(date),'home':home,'away':away,
+                    'home_goals':score1,'away_goals':score2,'provider':'TheSportsDB',
+                    'source':'https://www.thesportsdb.com/','is_player_stat':False,
+                    'data_scope':'last free event only'})
+    return out
 def season(v):
     raw=str(v or '').strip()
     if re.fullmatch(r'20\d\d',raw):return raw
@@ -199,6 +227,28 @@ def collect(today=None,batch=48):
                 time.sleep(6.2)  # football-data.org free: at most 10 calls per minute
             except (OSError,ValueError,RuntimeError) as exc:
                 result['issues'].append('football-data.org '+code+': '+type(exc).__name__)
+    # TheSportsDB recent event endpoint returns only one event per league to free
+    # callers. It can improve freshness, but NEVER fills a whole competition.
+    # Respect provider limits: abort on 429 and preserve existing match history.
+    sports_blocked=False
+    for league,lid in SPORTSDB_RECENT_LEAGUES.items():
+        try:
+            payload=json_get(SPORTSDB+'eventspastleague.php?id='+str(lid))
+            for e in parse_sportsdb_latest(payload,league,lid,today):
+                previous_matches=result['matches'].get(league) or []
+                if any(str(z.get('id'))==e['id'] for z in previous_matches):continue
+                if not any(z.get('date')==e['date'] and
+                     norm(z.get('home'))==norm(e['home']) and
+                     norm(z.get('away'))==norm(e['away']) for z in previous_matches):
+                    result['matches'][league]=sorted(previous_matches+[e],
+                        key=lambda r:(r['date'],r['home']),reverse=True)[:450]
+            successes+=1
+        except SportsDBAccessLimited as exc:
+            result['issues'].append('TheSportsDB match scores: '+str(exc))
+            sports_blocked=True
+            break
+        except (OSError,ValueError,RuntimeError) as exc:
+            result['issues'].append('TheSportsDB match scores '+league+': '+type(exc).__name__)
     # TheSportsDB: resolve a rotating subset of 1,353 IDs each day.
     players=source_profiles()
     playerids=history_ids()
@@ -207,7 +257,7 @@ def collect(today=None,batch=48):
     cursor=int(result['rotation_cursor'])%max(1,len(players))
     batch=max(0,min(int(batch),100))
     done=0;matched=0;fresh_stats=0
-    for delta in range(min(batch,len(players))):
+    for delta in range(0 if sports_blocked else min(batch,len(players))):
         p=players[(cursor+delta)%len(players)]
         pid=str(p['id'])
         cached=result['players'].get(pid,{})
@@ -290,6 +340,15 @@ def selftest():
     parsed=parse_sportsdb_stats(stats,'123')
     assert len(parsed)==1 and parsed[0]['stats']['goals']==3 and not parsed[0]['is_complete']
     assert not licensed_photo({'strCreativeCommons':'No','strCutout':'https://r2.thesportsdb.com/images/media/player/cutout/test.png'})
+    newer=parse_sportsdb_latest({'events':[{
+        'idEvent':'123','idLeague':'4328','strSport':'Soccer','strStatus':'FT',
+        'dateEvent':'2026-11-08','strHomeTeam':'Team A','strAwayTeam':'Team B',
+        'intHomeScore':'2','intAwayScore':'1'}]},'Premier League',4328,today)
+    assert len(newer)==1 and newer[0]['provider']=='TheSportsDB'
+    assert not parse_sportsdb_latest({'events':[{
+        'idEvent':'123','idLeague':'4331','strSport':'Soccer','strStatus':'FT',
+        'dateEvent':'2026-11-08','strHomeTeam':'Team A','strAwayTeam':'Team B',
+        'intHomeScore':'2','intAwayScore':'1'}]},'Premier League',4328,today)
     print('Free-source parsers, identity constraints, future fixture and photo licence tests PASS')
 def main():
     parser=argparse.ArgumentParser()
