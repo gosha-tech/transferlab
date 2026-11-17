@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch what public football feeds REALLY provide, without fabricating player stats.
 
-OpenFootball: current fixtures/results by league (NO individual footballer stats).
+OpenFootball: entire available current-season fixture/result list (NO individual footballer stats).
 TheSportsDB v1: community player details and at most 10 returned stats records
 per lookup. Verified identity is mandatory and free stats are always flagged
 as partial. football-data.org token is optional for delayed fixtures/results.
