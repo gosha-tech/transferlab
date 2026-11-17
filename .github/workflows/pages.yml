@@ -10,7 +10,7 @@ on:
       - TransferLab_RESTORED_2026-11-16.zip
       - data/**
   schedule:
-    - cron: '23 4 * * *'
+    - cron: '17 7 * * *'
   workflow_dispatch:
 
 permissions:
