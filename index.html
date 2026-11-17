@@ -1195,7 +1195,7 @@ h1{font-size:30px;letter-spacing:-1px;margin:5px 0 7px;} .muted{color:#a1bbd3;}
     const p=getP(),s=stat(p);if(!p)return;renderDraftIndex(p,null);renderMonetaryModel(p,null);
     $('pName').textContent=p.name;$('pClub').textContent=p.team;$('clubBadge').textContent=(p.team.match(/\b\p{L}/gu)||['F'])[0].toUpperCase();
     $('pPosFull').textContent=(position[state.language][p.pos]||p.pos)+' · '+(p.league||'Premier League');$('pPosition').textContent=roleFor(p).exact?roleFor(p).role:({'Forward':'FWD','Midfielder':'MID','Defender':'DEF','Goalkeeper':'GK'}[p.pos]||p.pos);
-    const meta=PLAYER_META[p.id]||{},a=derivedAge(p)??(p.birth?Math.max(0,new Date().getUTCFullYear()-Number(p.birth.slice(0,4))):null),ru=state.language==='ru';
+    const meta=PLAYER_META[p.id]||{},a=derivedAge(p)??(p.birth?(()=>{const d=new Date(p.birth),now=new Date();return Number.isNaN(d.getTime())?null:now.getUTCFullYear()-d.getUTCFullYear()-(now.getUTCMonth()<d.getUTCMonth()||(now.getUTCMonth()===d.getUTCMonth()&&now.getUTCDate()<d.getUTCDate())?1:0)})():null),ru=state.language==='ru';
     $('pAgeLabel').textContent=ru?'Возраст':'Age';$('pHeightLabel').textContent=ru?'Рост':'Height';$('pFootLabel').textContent=ru?'Нога':'Foot';
     $('pAge').textContent=a!=null?String(a):'—';$('pHeight').textContent=(meta.height||p.height)?String(meta.height||p.height).replace(/[^0-9]/g,'')+' '+(ru?'см':'cm'):'—';
     $('pFoot').textContent=meta.foot?(ru?(meta.foot==='left'?'Левая':'Правая'):(meta.foot==='left'?'Left':'Right')):'—';
@@ -1218,6 +1218,8 @@ h1{font-size:30px;letter-spacing:-1px;margin:5px 0 7px;} .muted{color:#a1bbd3;}
     renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
     if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
+    }else if(s){
+      $('statsSourceCaption').textContent=state.language==='ru'?'Архивные данные · не обновлялись сегодня':'Archived statistics · not a current update';
     }
   }
   function cardMarkup(p){const c=contract(p),s=stat(p);const sub=s?`<div class="card-stat">${nf(s.goals)} ${state.language==='ru'?'гол.':'goals'} · ${nf(s.assists)} ${state.language==='ru'?'асс.':'assists'}</div>`:c?`<div class="card-stat">${state.language==='ru'?'Контракт до':'Contract until'} ${c.year}</div>`:'';
