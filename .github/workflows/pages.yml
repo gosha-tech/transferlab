@@ -46,6 +46,8 @@ jobs:
         run: |
           python scripts/sync_api.py
       - name: Fetch free up-to-date matches and available player profiles
+        # Only daily / manual to avoid consuming free API rate limits during code releases.
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         # Does not require API-Football key. On upstream outages keep last saved data.
         continue-on-error: true
         env:
