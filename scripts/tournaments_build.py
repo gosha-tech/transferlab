@@ -80,6 +80,22 @@ def embed(html):
     by_season={}
     for (season,pid,_),entry in records.items():
         by_season.setdefault(season,{}).setdefault(pid,[]).append(entry)
+    # Feed competition totals into the existing 36-month index only when actual
+    # minutes are available; never supply zeroes for unknown metrics.
+    index_stats={}
+    for season,players_map in by_season.items():
+        for pid,events in players_map.items():
+            collected={}
+            for field in ('matches','starts','minutes','goals','assists','shots','shots_on_target',
+                          'key_passes','tackles','interceptions','yellow_cards','red_cards'):
+                valid=[item['stats'][field] for item in events if item.get('stats',{}).get(field) is not None]
+                if valid:collected[field]=sum(valid)
+            if collected.get('minutes',0)<180:continue
+            collected.update({'source':'api_football_partial','partial':True,
+                              'as_of':snapshot.get('updated_at'),
+                              'source_url':'https://www.api-football.com/documentation-v3'})
+            index_stats.setdefault(season,{})[pid]=collected
+    root['liveIndexStats']=index_stats
     root['liveTournamentStats']=by_season
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
@@ -94,6 +110,15 @@ def embed(html):
     html=patch(html,anchor,toolbar+anchor)
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
+  // Sourced tournament totals may also improve the rolling index. Existing
+  // league-only data are retained when the provider snapshot is less complete.
+  for(const [season,map] of Object.entries(ROOT.liveIndexStats||{})){
+    const target=statsBySeason[season]??={};
+    for(const [id,v] of Object.entries(map)){
+      const previous=target[id];
+      if(!previous||Number(v.minutes)>=Number(previous.minutes||0))target[id]=v;
+    }
+  }
   const tournamentCatalogue=ROOT.liveCompetitionCatalog||[];
   const tournamentCoverage=ROOT.liveCoverage||[];
   const tournamentMetricKeys=['matches','starts','minutes','goals','assists','shots','shots_on_target',
