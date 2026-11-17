@@ -292,6 +292,12 @@ def embed(html):
       '<div id="freeMatchRows" class="free-match-rows"></div>'
       '<p class="free-scoreboard-note">Это результаты команд, а не статистика конкретного игрока. Источники: OpenFootball / football-data.org.</p></details>'
       '<div class="quality-note">')
+    # Required non-commercial attribution of the EPL compilation and source date.
+    note=('<div class="pl-source-credit">Статистика АПЛ 2026/27: '
+          '<a href="https://github.com/oladeeayo/pl-catalogue" target="_blank" rel="noopener noreferrer">pl-catalogue</a>'
+          ' · срез '+str(pl.get('published_at') or 'ещё не загружен')[:10]+
+          ' · некоммерческое использование · источник обновляется еженедельно.</div>')
+    html=html.replace('<details class="free-scoreboard"',note+'<details class="free-scoreboard"',1)
     anchor='<div class="stat-grid">'
     toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div>'
     html=patch(html,anchor,toolbar+anchor)
