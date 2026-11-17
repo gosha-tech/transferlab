@@ -59,6 +59,15 @@ def main():
         picker.select_option('39')
         assert page.locator('#competitionStatus').inner_text(),'Premier League status not rendered'
         picker.select_option('all')
+        # Verify exact right-back classification from PSG, not generic CB.
+        page.locator('#search').fill('Achraf Hakimi')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert 'Hakimi' in page.locator('#pName').inner_text()
+        assert page.locator('#pPosition').inner_text()=='RB','Achraf Hakimi must be right-back'
+        page.locator('#search').fill('Messi')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
         page.locator('#detailsButton').click()
         page.locator('#advancedWrap').wait_for(state='visible',timeout=5000)
         assert page.locator('.advanced-group').count()==4,'Advanced stats grouping missing'
