@@ -82,7 +82,7 @@ def parse_openfootball(payload,league,today):
                       'home_goals':score[0],'away_goals':score[1],
                       'provider':'OpenFootball','source':'https://github.com/openfootball/football.json',
                       'is_player_stat':False}
-    return sorted(matches.values(),key=lambda r:(r['date'],r['home']),reverse=True)[:45]
+    return sorted(matches.values(),key=lambda r:(r['date'],r['home']),reverse=True)[:450]
 def parse_football_data(rows,league,today):
     result=[]
     for row in rows:
@@ -97,7 +97,7 @@ def parse_football_data(rows,league,today):
                        'home':home,'away':away,'home_goals':score['home'],
                        'away_goals':score['away'],'provider':'football-data.org',
                        'source':'https://www.football-data.org/','is_player_stat':False})
-    return sorted(result,key=lambda r:(r['date'],r['home']),reverse=True)[:45]
+    return sorted(result,key=lambda r:(r['date'],r['home']),reverse=True)[:450]
 def season(v):
     raw=str(v or '').strip()
     if re.fullmatch(r'20\d\d',raw):return raw
