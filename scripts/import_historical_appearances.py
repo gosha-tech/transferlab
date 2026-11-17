@@ -90,6 +90,9 @@ def index_ids():
         if tm.isdigit():out[tm].append(pid)
     return out
 def run_download():
+    if CACHE.exists():
+        print('Historical appearances already cached; source is frozen as of June 2026')
+        return
     ids=index_ids()
     if not ids:
         print('Historical appearances import: no safely identified Transfermarkt IDs yet')
