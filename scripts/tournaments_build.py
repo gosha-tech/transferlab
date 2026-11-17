@@ -146,6 +146,20 @@ def embed(html):
     $('competitionStatus').textContent=title+' · '+message;
   }
 """
+    # Accurate role display: never assert that all broad defenders are centre-backs.
+    html=patch(html,
+      "function roleFor(p){const override=roleOverrides[p.id]||rolesByName[normalize(p.name)];",
+      "function roleFor(p){const override=p.scoutRole||roleOverrides[p.id]||rolesByName[normalize(p.name)];")
+    html=patch(html,"$('pPosition').textContent=roleFor(p).role;",
+      "$('pPosition').textContent=p.displayPosition||(roleFor(p).exact?roleFor(p).role:({'Defender':'DEF','Midfielder':'MID','Forward':'FWD','Goalkeeper':'GK'}[p.pos]||'—'));")
+    html=patch(html,
+      "$('pFoot').textContent=meta.foot?(ru?(meta.foot==='left'?'Левая':'Правая'):(meta.foot==='left'?'Left':'Right')):'—';",
+      "const playerFoot=meta.foot||p.foot;$('pFoot').textContent=playerFoot?(ru?(playerFoot==='left'?'Левая':playerFoot==='both'?'Обе':'Правая'):(playerFoot==='left'?'Left':playerFoot==='both'?'Both':'Right')):'—';")
+    html=patch(html,"function derivedAge(player){if(player?.age!=null",
+      "function derivedAge(player){if(player?.birth){const born=new Date(player.birth),today=new Date();if(!Number.isNaN(born.getTime()))return today.getUTCFullYear()-born.getUTCFullYear()-(today.getUTCMonth()<born.getUTCMonth()||(today.getUTCMonth()===born.getUTCMonth()&&today.getUTCDate()<born.getUTCDate())?1:0);}if(player?.age!=null")
+    # No automatic Wikipedia thumbnails: name search often returns the wrong person.
+    html=patch(html,"if(profile||firstCards){lookupWikipedia(p).then(found=>",
+      "if(false && (profile||firstCards)){lookupWikipedia(p).then(found=>")
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
