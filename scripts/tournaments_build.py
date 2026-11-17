@@ -207,6 +207,7 @@ def embed(html):
     # No automatic Wikipedia thumbnails: name search often returns the wrong person.
     html=patch(html,"if(profile||firstCards){lookupWikipedia(p).then(found=>",
       "if(false && (profile||firstCards)){lookupWikipedia(p).then(found=>")
+    html=patch(html,"${esc(position[state.language][p.pos]||p.pos)}</div>${sub}","${esc(p.displayPosition?(p.displayPosition+' · '+(position[state.language][p.pos]||p.pos)):(position[state.language][p.pos]||p.pos))}</div>${sub}")
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
