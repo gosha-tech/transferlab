@@ -129,6 +129,9 @@ def get_or_update(players,download=False):
     if CACHE.exists():
         try:cache=json.loads(CACHE.read_text(encoding='utf-8'))
         except (OSError,ValueError):pass
+    if download and cache.get('profiles'):
+        # The snapshot is historical, not live; never redownload on every build.
+        return enrich(players,cache)
     if download:
         try:
             rows=load_rows(SOURCE)
