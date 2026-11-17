@@ -38,7 +38,17 @@ def embed(html):
     free=json.loads(free_path.read_text(encoding='utf-8')) if free_path.exists() else {}
     pl_path=ROOT/'data'/'pl_current.json'
     pl=json.loads(pl_path.read_text(encoding='utf-8')) if pl_path.exists() else {}
+    commons_path=ROOT/'data'/'commons_photos.json'
+    commons=json.loads(commons_path.read_text(encoding='utf-8')) if commons_path.exists() else {}
     original=root['players']
+    for p in original:
+        photo=(commons.get('photos') or {}).get(str(p.get('id')))
+        if not isinstance(photo,dict) or not photo.get('url'):continue
+        p['commonsPhoto']=photo['url']
+        p['commonsArtist']=photo.get('artist')
+        p['commonsLicense']=photo.get('licence')
+        p['commonsLicenseUrl']=photo.get('licence_url')
+        p['commonsSourcePage']=photo.get('file_page')
     # Current-season EPL IDs are matched by the upstream fetcher on unique official
     # Premier League code AND player name. Never fuzzy-join across clubs here.
     pl_rows=pl.get('players') or {}
@@ -196,6 +206,7 @@ def embed(html):
     root['plCurrentCoverage']=len(pl_rows)
     root['plCurrentAsOf']=pl.get('published_at')
     root['plCurrentSource']=pl.get('source')
+    root['commonsPhotoCount']=len(commons.get('photos') or {})
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
@@ -289,7 +300,7 @@ def embed(html):
     return statsBySeason[season]?.[p.id]||null;
   }""")
     html=patch(html,"const urls=[];\n    const custom=storedPhoto(code);",
-               "const urls=[];\n    if(p.apiPhoto)urls.push({url:p.apiPhoto,source:'API-Football / ID'});\n    const custom=storedPhoto(code);")
+               "const urls=[];\n    if(p.apiPhoto)urls.push({url:p.apiPhoto,source:'API-Football / ID'});\n    if(p.commonsPhoto)urls.push({url:p.commonsPhoto,source:'Wikimedia Commons',artist:p.commonsArtist,licence:p.commonsLicense,licence_url:p.commonsLicenseUrl,file_page:p.commonsSourcePage});\n    const custom=storedPhoto(code);")
     controls=r"""  function renderTournamentSelector(p){
     const ru=state.language==='ru';
     const select=$('competitionSelect');
@@ -371,6 +382,18 @@ def embed(html):
     html=patch(html,"${esc(p.season||'2026/27')}</span></span></button>","${esc(p.season||'2026/27')}</span>${indexTag}</span></button>")
     html=patch(html,"function choosePlayer(id){state.player=String(id);",
        "function choosePlayer(id){state.player=String(id);state.competition='all';")
+    html=patch(html,"    const apply=o=>{",
+      """    const showCredit=o=>{
+      if(!label)return;label.textContent='Фото: '+o.source;
+      if(o.artist)label.append(document.createTextNode(' · '+o.artist));
+      for(const [url,txt] of [[o.file_page,'файл'],[o.licence_url,o.licence||'лицензия']]){
+        if(!url||!/^https:\/\//.test(url))continue;
+        const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';
+        a.textContent=' · '+txt;label.append(a);
+      }
+    };
+    const apply=o=>{""")
+    html=html.replace("if(label)label.textContent='Фото: '+o.source","showCredit(o)")
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
