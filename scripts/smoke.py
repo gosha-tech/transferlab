@@ -43,6 +43,11 @@ def main():
           const cmp=new Intl.Collator('ru',{sensitivity:'base',numeric:true});
           return names.every((n,i)=>i===0 || cmp.compare(names[i-1],n)<=0);
         }"""),('Alphabetical sort not applied',cards[:5])
+        board=page.locator('#freeMatchesPanel')
+        assert board.count()==1,'Missing free match-results panel'
+        board.locator('summary').click()
+        if page.locator('#freeMatchLeague option').count()>0:
+            assert page.locator('.free-match-row').count()>0,'Match results missing in visible scoreboard'
         page.screenshot(path=str(screenshot/'catalog-desktop.png'))
         page.locator('#filterLeague').select_option('Primeira Liga')
         assert page.locator('.player-card').count()>0,'Portugal filter returned no cards'
