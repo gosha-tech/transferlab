@@ -151,9 +151,11 @@ def embed(html):
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
     if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
+    }else if(s){
+      $('statsSourceCaption').textContent=state.language==='ru'?'Архивные данные · не обновлялись сегодня':'Archived statistics · not a current update';
     }""")
     html=patch(html,"const meta=PLAYER_META[p.id]||{},a=derivedAge(p),ru=state.language==='ru';",
-               "const meta=PLAYER_META[p.id]||{},a=derivedAge(p)??(p.birth?Math.max(0,new Date().getUTCFullYear()-Number(p.birth.slice(0,4))):null),ru=state.language==='ru';")
+               "const meta=PLAYER_META[p.id]||{},a=derivedAge(p)??(p.birth?(()=>{const d=new Date(p.birth),now=new Date();return Number.isNaN(d.getTime())?null:now.getUTCFullYear()-d.getUTCFullYear()-(now.getUTCMonth()<d.getUTCMonth()||(now.getUTCMonth()===d.getUTCMonth()&&now.getUTCDate()<d.getUTCDate())?1:0)})():null),ru=state.language==='ru';")
     html=patch(html,"$('pHeight').textContent=meta.height?meta.height+' '+(ru?'см':'cm'):'—';",
                "$('pHeight').textContent=(meta.height||p.height)?String(meta.height||p.height).replace(/[^0-9]/g,'')+' '+(ru?'см':'cm'):'—';")
     return html
