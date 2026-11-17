@@ -84,11 +84,21 @@ def embed(html):
         by_season.setdefault(season,{}).setdefault(pid,[]).append(entry)
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
+    # Avoid counting the same competition twice when a current API snapshot
+    # overlaps with the older Transfermarkt archive (notably MLS 2026).
+    api_to_tm={39:'GB1',140:'ES1',78:'L1',135:'IT1',61:'FR1',
+               94:'PO1',144:'BE1',203:'TR1',307:'SA1',253:'MLS1',
+               2:'CL',3:'EL',848:'ECL',45:'FAC',48:'CGB'}
     for season,player_map in (historical.get('by_season') or {}).items():
         for pid,history in player_map.items():
             recent=by_season.setdefault(season,{}).setdefault(pid,[])
             for record in history:
-                if not any(str(q['id'])==str(record['id']) for q in recent):
+                archive_id=str(record['id'])
+                def overlaps(q):
+                    api_id=q.get('id')
+                    return str(api_id)==archive_id or (
+                        isinstance(api_id,int) and archive_id=='tm-'+api_to_tm.get(api_id,'-'))
+                if not any(overlaps(q) for q in recent):
                     recent.append(record)
     # Feed competition totals into the existing 36-month index only when actual
     # minutes are available; never supply zeroes for unknown metrics.
