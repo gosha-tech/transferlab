@@ -111,7 +111,24 @@ jobs:
             git commit -m "Cache verified football source snapshots [skip ci]"
             for attempt in 1 2 3; do
               git fetch origin main
-              git rebase origin/main || { git rebase --abort; exit 1; }
+              if ! git rebase origin/main; then
+                # Rebase "theirs" means this job's newly checked snapshot.
+                # Resolve only machine-generated JSON cache conflicts, never code.
+                for p in $(git diff --name-only --diff-filter=U); do
+                  case "$p" in
+                    data/live.json|data/free_sources.json|data/profile_enrichment.json|data/historical_stats.json)
+                      git checkout --theirs -- "$p"
+                      git add "$p"
+                      ;;
+                    *)
+                      echo "Unexpected conflict in source code: $p"
+                      git rebase --abort
+                      exit 1
+                      ;;
+                  esac
+                done
+                GIT_EDITOR=true git rebase --continue || { git rebase --abort; exit 1; }
+              fi
               if git push origin HEAD:main; then
                 echo "Updated player and match snapshots persisted"
                 break
