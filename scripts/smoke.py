@@ -36,7 +36,12 @@ def main():
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=1353, ('Unexpected shrinkage of player registry',count)
         cards=page.locator('.card-name').all_text_contents()
-        assert cards and cards[0].casefold().startswith('aaron'),('Alphabetical sort not applied',cards[:5])
+        assert cards,'Catalog has no cards'
+        assert page.evaluate("""() => {
+          const names=[...document.querySelectorAll('#catalogGrid .card-name')].map(n=>n.textContent.trim());
+          const cmp=new Intl.Collator('ru',{sensitivity:'base',numeric:true});
+          return names.every((n,i)=>i===0 || cmp.compare(names[i-1],n)<=0);
+        }"""),('Alphabetical sort not applied',cards[:5])
         page.screenshot(path=str(screenshot/'catalog-desktop.png'))
         page.locator('#filterLeague').select_option('Primeira Liga')
         assert page.locator('.player-card').count()>0,'Portugal filter returned no cards'
