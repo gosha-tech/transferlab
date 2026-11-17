@@ -36,7 +36,27 @@ def embed(html):
     historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
     free_path=ROOT/'data'/'free_sources.json'
     free=json.loads(free_path.read_text(encoding='utf-8')) if free_path.exists() else {}
+    pl_path=ROOT/'data'/'pl_current.json'
+    pl=json.loads(pl_path.read_text(encoding='utf-8')) if pl_path.exists() else {}
     original=root['players']
+    # Current-season EPL IDs are matched by the upstream fetcher on unique official
+    # Premier League code AND player name. Never fuzzy-join across clubs here.
+    pl_rows=pl.get('players') or {}
+    for p in original:
+        live=pl_rows.get(str(p['id']))
+        if not live or p.get('league')!='Premier League':continue
+        if live.get('team'):p['team']=live['team']
+        if live.get('height_cm') and not p.get('height'):p['height']=live['height_cm']
+        if live.get('foot') and not p.get('foot'):p['foot']=live['foot']
+        if live.get('dob') and not p.get('birth'):p['birth']=live['dob']
+        role=str(live.get('position_detail') or '')
+        roles={'Right-Back':'RB','Left-Back':'LB','Centre-Back':'CB',
+               'Right Winger':'RW','Left Winger':'LW','Defensive Midfield':'DM',
+               'Central Midfield':'CM','Attacking Midfield':'AM',
+               'Centre-Forward':'ST','Goalkeeper':'GK'}
+        if role in roles:
+            p['displayPosition']=roles[role]
+            p['position_source']=live['source']
     match_by_name_club=defaultdict(list)
     for player in original:
         match_by_name_club[(norm(player.get('name')),norm(player.get('team')))].append(player)
@@ -85,6 +105,18 @@ def embed(html):
     by_season={}
     for (season,pid,_),entry in records.items():
         by_season.setdefault(season,{}).setdefault(pid,[]).append(entry)
+    # Current 2026/27 EPL stats. Never override the same season and competition
+    # from an authenticated API. The pl-catalogue export timestamp is visible.
+    for pid,entry in pl_rows.items():
+        if not isinstance(entry,dict):continue
+        if not any(str(p.get('id'))==str(pid) for p in original):continue
+        games=entry.get('stats') or {}
+        if not games or games.get('minutes') is None:continue
+        cur=by_season.setdefault('2026/27',{}).setdefault(str(pid),[])
+        if not any(str(x.get('id'))=='39' for x in cur):
+            cur.append({'id':39,'name':'Premier League','source':'pl_catalogue',
+                        'as_of':entry.get('as_of'),'is_complete':True,
+                        'stats':games})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
     # Avoid counting the same competition twice when a current API snapshot
@@ -148,10 +180,11 @@ def embed(html):
             if collected.get('minutes',0)<180:continue
             archival=all(x.get('source')=='historical_appearances' for x in events)
             community=all(x.get('source')=='thesportsdb_sample' for x in events)
-            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else 'api_football_partial'),
+            premier=all(x.get('source')=='pl_catalogue' for x in events)
+            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else 'api_football_partial')),
                               'partial':True,
-                              'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else snapshot.get('updated_at')),
-                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else 'https://www.api-football.com/documentation-v3')})
+                              'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else (pl.get('published_at') if premier else snapshot.get('updated_at'))),
+                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else 'https://www.api-football.com/documentation-v3'))})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
     root['liveTournamentStats']=by_season
@@ -160,6 +193,9 @@ def embed(html):
     root['freeSourceIssues']=len(free.get('issues') or [])
     root['freeSourcePlayerProfiles']=free.get('profiles_verified',0)
     root['freeSourcePlayerStats']=free.get('players_with_current_stats',0)
+    root['plCurrentCoverage']=len(pl_rows)
+    root['plCurrentAsOf']=pl.get('published_at')
+    root['plCurrentSource']=pl.get('source')
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
@@ -226,8 +262,9 @@ def embed(html):
   function tournamentSum(rows){
     const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
-    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':'api_football_partial',
-      partial:true,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:ROOT.liveUpdatedAt};
+    const premier=rows.length>0&&rows.every(r=>r.source==='pl_catalogue');
+    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':'api_football_partial',
+      partial:!premier,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
@@ -285,6 +322,11 @@ def embed(html):
     const date=ROOT.liveUpdatedAt?new Date(ROOT.liveUpdatedAt).toLocaleDateString(ru?'ru-RU':'en-GB'):'';
     let message='';
     if(items.length){
+      const premier=items.every(x=>x.source==='pl_catalogue');
+      if(premier){
+        $('competitionStatus').textContent=title+' · '+(ru?'АПЛ: актуальный опубликованный срез от ':'PL: published weekly snapshot ')+(ROOT.plCurrentAsOf||'—').slice(0,10);
+        return;
+      }
       const community=items.every(x=>x.source==='thesportsdb_sample');
       if(community){
         $('competitionStatus').textContent=title+' · '+(ru?'TheSportsDB: неполная выборка (не все матчи/показатели)':'TheSportsDB: partial sample (not all matches/stats)');
@@ -332,7 +374,9 @@ def embed(html):
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
-    if(s?.source==='thesportsdb_partial'){
+    if(s?.source==='pl_catalogue'){
+      $('statsSourceCaption').textContent='pl-catalogue · '+(ROOT.plCurrentAsOf||'').slice(0,10)+' · некоммерческое использование';
+    }else if(s?.source==='thesportsdb_partial'){
       $('statsSourceCaption').textContent=state.language==='ru'?'TheSportsDB · неполные показатели, не сезонный итог':'TheSportsDB · incomplete records, not a season total';
     }else if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
