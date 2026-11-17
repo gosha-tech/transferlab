@@ -47,3 +47,16 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 
 .player-index{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums;font-size:11px;margin-top:7px;padding:3px 8px;border-radius:6px;color:#70f0d2;background:#064e4b;border:1px solid #1d736b}
 .player-index.unavailable{background:#102a3d;border-color:#284254;color:#8faec0}
+
+/* Daily free feeds: match scoreboard is distinct from individual statistics. */
+.free-scoreboard{background:#09273d;border:1px solid #2b5369;border-radius:13px;margin:0 0 14px;padding:12px 14px}
+.free-scoreboard summary{cursor:pointer;list-style:revert;color:#c8f1e5;font-weight:750;font-size:13px}
+.free-scoreboard-controls{display:flex;gap:12px;align-items:center;margin:14px 0 8px;flex-wrap:wrap;font-size:12px;color:#9cbdc9}
+.free-scoreboard select{background:#11324a;border:1px solid #35566a;border-radius:8px;color:#f1faff;padding:8px 10px;min-width:160px}
+.free-scoreboard-note{font-size:11px;color:#9db7c8;margin:12px 0 1px}
+.free-match-row{display:grid;grid-template-columns:76px 1fr 70px;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #24475e;font-size:12px}
+.free-match-date{color:#92acbb;font-variant-numeric:tabular-nums}
+.free-match-teams{min-width:0;overflow-wrap:anywhere}
+.free-match-score{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:#41e5bf}
+#competitionStatus{line-height:1.6;font-size:11px;color:#acc7d4}
+@media(max-width:520px){.free-match-row{grid-template-columns:66px 1fr 45px;gap:7px;font-size:11px}.free-scoreboard{padding:10px}}
