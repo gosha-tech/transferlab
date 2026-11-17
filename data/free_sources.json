@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "awaiting_first_free_sync",
+  "last_attempt_at": null,
+  "last_success_at": null,
+  "free_sources": {
+    "OpenFootball": "fixtures and scores only",
+    "TheSportsDB": "community player profiles and partial player statistics",
+    "football-data.org": "delayed fixtures with optional free API token"
+  },
+  "matches": {},
+  "players": {},
+  "issues": [],
+  "rotation_cursor": 0,
+  "profiles_verified": 0,
+  "players_with_current_stats": 0,
+  "recent_matches": 0
+}
