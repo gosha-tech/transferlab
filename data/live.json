@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "updated_at": null,
+  "provider": "API-Football",
+  "status": "awaiting_api_key",
+  "records": [],
+  "coverage": [],
+  "note": "Daily updates begin after API_FOOTBALL_KEY is configured in GitHub Actions secrets."
+}
