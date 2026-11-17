@@ -110,7 +110,7 @@ def embed(html):
         p=next((p for p in original if str(p.get('id'))==str(pid)),None)
         if p is None:continue
         picture=str(profile.get('photo') or '')
-        if re.fullmatch(r'https://r2\.thesportsdb\.com/images/media/player/(?:cutout|thumb)/[a-zA-Z0-9._-]+\.(?:png|jpg|webp)',picture):
+        if profile.get('photo_rights_checked') is True and re.fullmatch(r'https://r2\.thesportsdb\.com/images/media/player/(?:cutout|thumb)/[a-zA-Z0-9._-]+\.(?:png|jpg|webp)',picture):
             if not p.get('apiPhoto'):
                 p['apiPhoto']=picture
                 p['photoAttribution']='TheSportsDB.com'+(': '+str(profile['photo_attribution']) if profile.get('photo_attribution') else '')
