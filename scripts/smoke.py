@@ -56,14 +56,21 @@ def main():
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Messi' in page.locator('#pName').inner_text(),'Search did not navigate to Messi'
+        # A Miami player must not show England's EPL / French Ligue 1.
         picker=page.locator('#competitionSelect')
-        assert picker.count()==1,'Tournament picker missing'
-        assert picker.locator('option[value="2"]').count()==1,'Champions League missing'
-        assert picker.locator('option[value="39"]').count()==1,'Premier League missing'
+        assert picker.count()==1
+        assert picker.locator('option[value="39"]').count()==0,'MLS player shows English league'
+        assert picker.locator('option[value="61"]').count()==0,'MLS player shows Ligue 1'
+        page.locator('#search').fill('Phil Foden')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        available=picker.locator('option').evaluate_all('(nodes)=>nodes.map(x=>x.value)')
+        assert available==['all','39','45','48','2'],('Foden competition list is incorrect',available)
+        assert not any(x in available for x in ['61','66','3','140','135'])
+        picker.select_option('45')
+        assert 'нет' in page.locator('#competitionStatus').inner_text().lower() or 'получена' in page.locator('#competitionStatus').inner_text().lower()
         picker.select_option('2')
-        assert page.locator('#competitionStatus').inner_text(),'Tournament status not rendered'
-        picker.select_option('39')
-        assert page.locator('#competitionStatus').inner_text(),'Premier League status not rendered'
+        assert 'Фоден' not in page.locator('#competitionStatus').inner_text() # does not claim unverified match scores
         picker.select_option('all')
         # Verify exact right-back classification from PSG, not generic CB.
         page.locator('#search').fill('Achraf Hakimi')
