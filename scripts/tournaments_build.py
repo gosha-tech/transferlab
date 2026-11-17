@@ -33,6 +33,8 @@ def embed(html):
     snapshot=json.loads(DATA_PATH.read_text(encoding='utf-8')) if DATA_PATH.exists() else {}
     hist_path=ROOT/'data'/'historical_stats.json'
     historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
+    free_path=ROOT/'data'/'free_sources.json'
+    free=json.loads(free_path.read_text(encoding='utf-8')) if free_path.exists() else {}
     original=root['players']
     match_by_name_club=defaultdict(list)
     for player in original:
@@ -100,6 +102,38 @@ def embed(html):
                         isinstance(api_id,int) and archive_id=='tm-'+api_to_tm.get(api_id,'-'))
                 if not any(overlaps(q) for q in recent):
                     recent.append(record)
+    # TheSportsDB free API only exposes a SMALL SAMPLE of player-stat records.
+    # Do not override API-Football current-season rows or older more complete
+    # Transfermarkt appearance totals.
+    for pid,profile in (free.get('players') or {}).items():
+        if not isinstance(profile,dict):continue
+        p=next((p for p in original if str(p.get('id'))==str(pid)),None)
+        if p is None:continue
+        picture=str(profile.get('photo') or '')
+        if re.fullmatch(r'https://r2\.thesportsdb\.com/images/media/player/(?:cutout|thumb)/[a-zA-Z0-9._-]+\.(?:png|jpg|webp)',picture):
+            if not p.get('apiPhoto'):
+                p['apiPhoto']=picture
+                p['photoAttribution']='TheSportsDB.com'+(': '+str(profile['photo_attribution']) if profile.get('photo_attribution') else '')
+                p['photoSource']='TheSportsDB Creative Commons'
+        for record in profile.get('stats') or []:
+            if not isinstance(record,dict):continue
+            season=str(record.get('season') or '')
+            # Historic archive is more complete: use TheSportsDB for current season only.
+            if season not in ('2026/27','2026'):continue
+            cur=by_season.setdefault(season,{}).setdefault(str(pid),[])
+            label=norm(record.get('name'))
+            # Only supplement when there is no provider-backed total for the same
+            # footballer/competition. Free fragments are ALWAYS partial.
+            aliases={'englishpremierleague':'premierleague','uefachampionsleague':'championsleague',
+                     'uefaeuropaleague':'europaleague','frenchligue1':'ligue1',
+                     'spanishlaliga':'laliga','italianseriea':'seriea'}
+            def normalized_comp(row):
+                code=norm(row.get('name'))
+                return aliases.get(code,code)
+            if not any(normalized_comp(q)==aliases.get(label,label) for q in cur):
+                cur.append({'id':str(record['id']),'name':str(record.get('name') or 'Турнир'),
+                            'source':'thesportsdb_sample','is_complete':False,
+                            'stats':record.get('stats') or {}})
     # Feed competition totals into the existing 36-month index only when actual
     # minutes are available; never supply zeroes for unknown metrics.
     index_stats={}
@@ -112,13 +146,19 @@ def embed(html):
                 if valid:collected[field]=sum(valid)
             if collected.get('minutes',0)<180:continue
             archival=all(x.get('source')=='historical_appearances' for x in events)
-            collected.update({'source':'transfermarkt_historical' if archival else 'api_football_partial',
+            community=all(x.get('source')=='thesportsdb_sample' for x in events)
+            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else 'api_football_partial'),
                               'partial':True,
-                              'as_of':historical.get('as_of') if archival else snapshot.get('updated_at'),
-                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else 'https://www.api-football.com/documentation-v3'})
+                              'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else snapshot.get('updated_at')),
+                              'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else 'https://www.api-football.com/documentation-v3')})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
     root['liveTournamentStats']=by_season
+    root['freeMatchResults']=free.get('matches') or {}
+    root['freeSourceSyncAt']=free.get('last_success_at')
+    root['freeSourceIssues']=len(free.get('issues') or [])
+    root['freeSourcePlayerProfiles']=free.get('profiles_verified',0)
+    root['freeSourcePlayerStats']=free.get('players_with_current_stats',0)
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
@@ -134,17 +174,35 @@ def embed(html):
     current_ids=set((root['liveTournamentStats'].get('2026/27') or {}).keys())
     current_ids.update((root['liveTournamentStats'].get('2026') or {}).keys())
     current_count=len(current_ids)
+    official_count=len({pid for season in ('2026/27','2026') for pid,entries in (by_season.get(season) or {}).items()
+                         if any(x.get('source')!='thesportsdb_sample' and x.get('source')!='historical_appearances'
+                                for x in entries)})
+    free_count=len({pid for season in ('2026/27','2026') for pid,entries in (by_season.get(season) or {}).items()
+                     if any(x.get('source')=='thesportsdb_sample' for x in entries)})
     if current_count:
         timestamp=snapshot.get('updated_at') or 'дата неизвестна'
-        msg=('Статистика 2026/27: '+str(current_count)+' из '+str(len(original))+
-             ' игроков имеют данные API · последнее получение '+timestamp[:10]+
-             ' · по турнирам покрытие может быть неполным.')
+        msg=('2026/27: '+str(official_count)+' игроков с данными футбольного API, '+str(free_count)+
+             ' с частичной статистикой TheSportsDB; результаты матчей обновляются отдельно.'+
+             (' · API '+timestamp[:10] if official_count else ''))
     else:
-        msg=('Статистика 2026/27 ещё не загружена: 0 из '+str(len(original))+
-             ' игроков. Все показатели прошлых сезонов — архивные. '
-             'Для свежих данных нужен подключённый API с доступом к сезону 2026/27.')
+        msg=('Личные показатели 2026/27: пока нет проверенных записей. '
+             'Результаты матчей обновляются из бесплатных источников отдельно. '
+             'Прошлые сезоны обозначены как архивные.')
     html=html.replace('Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.',
                       msg,1)
+    # This panel shows competition match SCORES, never claims individual goals/assists.
+    html=patch(html,
+      '<div class="quality-note">',
+      '<div class="quality-note">',)
+    html=patch(html,
+      '</div><select id="sortBy" class="filter"',
+      '</div><select id="sortBy" class="filter"') if False else html
+    html=patch(html,'<div class="quality-note">',
+      '<details class="free-scoreboard" id="freeMatchesPanel"><summary>Последние результаты матчей 2026/27 · бесплатные источники</summary>'
+      '<div class="free-scoreboard-controls"><label for="freeMatchLeague">Лига</label><select id="freeMatchLeague"></select><span id="freeMatchSource"></span></div>'
+      '<div id="freeMatchRows" class="free-match-rows"></div>'
+      '<p class="free-scoreboard-note">Это результаты команд, а не статистика конкретного игрока. Источники: OpenFootball / football-data.org.</p></details>'
+      '<div class="quality-note">')
     anchor='<div class="stat-grid">'
     toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div>'
     html=patch(html,anchor,toolbar+anchor)
@@ -165,8 +223,9 @@ def embed(html):
     'passes','key_passes','tackles','interceptions','dribbles','yellow_cards','red_cards'];
   function tournamentSum(rows){
     const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
-    const result={source:archived?'transfermarkt_historical':'api_football_partial',
-      partial:true,updated_at:archived?ROOT.historicalThrough:ROOT.liveUpdatedAt};
+    const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
+    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':'api_football_partial',
+      partial:true,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
@@ -202,6 +261,11 @@ def embed(html):
     const date=ROOT.liveUpdatedAt?new Date(ROOT.liveUpdatedAt).toLocaleDateString(ru?'ru-RU':'en-GB'):'';
     let message='';
     if(items.length){
+      const community=items.every(x=>x.source==='thesportsdb_sample');
+      if(community){
+        $('competitionStatus').textContent=title+' · '+(ru?'TheSportsDB: неполная выборка (не все матчи/показатели)':'TheSportsDB: partial sample (not all matches/stats)');
+        return;
+      }
       const onlyArchive=items.every(x=>x.source==='historical_appearances');
       if(onlyArchive){
         $('competitionStatus').textContent=title+' · '+(ru?'Архив до ':'Archive through ')+(ROOT.historicalThrough||'2026-06-28')+
@@ -239,7 +303,9 @@ def embed(html):
     html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
-    if(s?.source==='api_football_partial'){
+    if(s?.source==='thesportsdb_partial'){
+      $('statsSourceCaption').textContent=state.language==='ru'?'TheSportsDB · неполные показатели, не сезонный итог':'TheSportsDB · incomplete records, not a season total';
+    }else if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
     }else if(s){
       $('statsSourceCaption').textContent=s.source==='transfermarkt_historical'
