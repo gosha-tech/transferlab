@@ -35,6 +35,7 @@ def main():
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=1353, ('Unexpected shrinkage of player registry',count)
+        assert page.locator('.player-index').count()>0,'Catalog indices must be shown'
         cards=page.locator('.card-name').all_text_contents()
         assert cards,'Catalog has no cards'
         assert page.evaluate("""() => {
