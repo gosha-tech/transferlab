@@ -45,6 +45,15 @@ def main():
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Messi' in page.locator('#pName').inner_text(),'Search did not navigate to Messi'
+        picker=page.locator('#competitionSelect')
+        assert picker.count()==1,'Tournament picker missing'
+        assert picker.locator('option[value="2"]').count()==1,'Champions League missing'
+        assert picker.locator('option[value="39"]').count()==1,'Premier League missing'
+        picker.select_option('2')
+        assert page.locator('#competitionStatus').inner_text(),'Tournament status not rendered'
+        picker.select_option('39')
+        assert page.locator('#competitionStatus').inner_text(),'Premier League status not rendered'
+        picker.select_option('all')
         page.locator('#detailsButton').click()
         page.locator('#advancedWrap').wait_for(state='visible',timeout=5000)
         assert page.locator('.advanced-group').count()==4,'Advanced stats grouping missing'
@@ -56,6 +65,6 @@ def main():
         browser.close()
     server.shutdown()
     assert not errors,'Browser runtime errors: '+str(errors[:4])
-    print('Browser smoke PASS: profiles, sorting, Portugal, search, four advanced stat panels, mobile; players='+str(count))
+    print('Browser smoke PASS: profiles, sorting, Portugal, search, Champions League & EPL selections, four advanced panels, mobile; players='+str(count))
 
 if __name__=='__main__':main()
