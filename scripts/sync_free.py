@@ -29,14 +29,29 @@ METRICS={'appearances':'matches','mins played':'minutes','minutes played':'minut
          'key passes':'key_passes','tackles':'tackles','interceptions':'interceptions'}
 CURRENT_SEASONS={'2026/27','2026'}
 UA='TransferLab/6.0 (public-data integration; daily cache; contact via GitHub repo)'
+LAST_SPORTSDB_REQUEST=0.0
+class SportsDBAccessLimited(Exception):pass
 def norm(v):
     text=unicodedata.normalize('NFKD',str(v or '').casefold())
     return re.sub('[^a-z0-9а-я]','', ''.join(c for c in text if not unicodedata.combining(c)))
 def json_get(url,headers=None,timeout=22):
+    global LAST_SPORTSDB_REQUEST
+    sports=url.startswith(SPORTSDB)
+    if sports:
+        # The public endpoint rate-limits heavy concurrent use.
+        minimum=float(os.getenv('SPORTSDB_REQUEST_INTERVAL_SEC','2.2'))
+        gap=minimum-(time.monotonic()-LAST_SPORTSDB_REQUEST)
+        if LAST_SPORTSDB_REQUEST and gap>0:time.sleep(gap)
+        LAST_SPORTSDB_REQUEST=time.monotonic()
     req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/json',**(headers or {})})
-    with urllib.request.urlopen(req,timeout=timeout) as resp:
-        if resp.status!=200:raise RuntimeError('HTTP '+str(resp.status))
-        result=json.load(resp)
+    try:
+        with urllib.request.urlopen(req,timeout=timeout) as resp:
+            if resp.status!=200:raise RuntimeError('HTTP '+str(resp.status))
+            result=json.load(resp)
+    except urllib.error.HTTPError as exc:
+        if sports and exc.code in (403,429,503):
+            raise SportsDBAccessLimited('HTTP '+str(exc.code)+' rate/access restriction') from exc
+        raise
     if not isinstance(result,(list,dict)):raise ValueError('Unexpected source JSON root')
     return result
 def dated(v):
@@ -230,8 +245,14 @@ def collect(today=None,batch=48):
             result['players'][pid]=info
             fresh_stats+=len(infos)
             successes+=1
+        except SportsDBAccessLimited as exc:
+            result['issues'].append('TheSportsDB rate/access restriction: '+str(exc))
+            result['sportsdb_blocked']=str(exc)
+            # Avoid 40 further calls while a free-service limit is active.
+            break
         except (OSError,ValueError,RuntimeError) as exc:
-            result['issues'].append('TheSportsDB player '+pid+': '+type(exc).__name__)
+            result['issues'].append('TheSportsDB player '+pid+': '+type(exc).__name__+
+                                     (' HTTP '+str(exc.code) if isinstance(exc,urllib.error.HTTPError) else ''))
         finally:
             done+=1
             time.sleep(float(os.getenv('SPORTSDB_PAUSE_SEC','0.25')))
