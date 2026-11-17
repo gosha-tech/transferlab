@@ -31,7 +31,8 @@ jobs:
         run: |
           python scripts/sync_api.py --self-test
           python scripts/enrich_profiles.py --self-test
-          python -m py_compile scripts/sync_api.py scripts/tournaments_build.py scripts/enrich_profiles.py
+          python scripts/import_historical_appearances.py --self-test
+          python -m py_compile scripts/sync_api.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
@@ -44,6 +45,7 @@ jobs:
         run: |
           python scripts/prepare.py
           python scripts/enrich_profiles.py --download
+          python scripts/import_historical_appearances.py --download
           python scripts/tournaments_build.py _site/index.html
           mkdir -p _site/assets _site/data
           cp assets/site.css assets/site.js _site/assets/
@@ -86,7 +88,9 @@ jobs:
           cp _site/index.html index.html
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html data/live.json data/profile_enrichment.json
+          git add index.html data/live.json
+          if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
+          if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
           if ! git diff --cached --quiet; then
             git commit -m "Build TransferLab with latest confirmed stats [skip ci]"
             git push
