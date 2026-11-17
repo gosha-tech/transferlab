@@ -129,6 +129,22 @@ def embed(html):
     # Write embedded JSON before modifying the runtime script.
     content=json.dumps(root,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')
     html=html[:m.start(2)]+content+html[m.end(2):]
+    # The public UI must never conflate a successful site deployment with
+    # a successful current-season statistics sync.
+    current_ids=set((root['liveTournamentStats'].get('2026/27') or {}).keys())
+    current_ids.update((root['liveTournamentStats'].get('2026') or {}).keys())
+    current_count=len(current_ids)
+    if current_count:
+        timestamp=snapshot.get('updated_at') or 'дата неизвестна'
+        msg=('Статистика 2026/27: '+str(current_count)+' из '+str(len(original))+
+             ' игроков имеют данные API · последнее получение '+timestamp[:10]+
+             ' · по турнирам покрытие может быть неполным.')
+    else:
+        msg=('Статистика 2026/27 ещё не загружена: 0 из '+str(len(original))+
+             ' игроков. Все показатели прошлых сезонов — архивные. '
+             'Для свежих данных нужен подключённый API с доступом к сезону 2026/27.')
+    html=html.replace('Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.',
+                      msg,1)
     anchor='<div class="stat-grid">'
     toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div>'
     html=patch(html,anchor,toolbar+anchor)
