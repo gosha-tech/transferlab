@@ -141,8 +141,12 @@ def verify_identity(profile,player,tmid=None):
     if birth and str(profile.get('dateBorn') or '').strip()==birth:return True
     return False
 def licensed_photo(profile):
-    # TheSportsDB owns some imagery but third-party photos have separate rights.
+    # A Creative Commons "Yes" flag applies to a record and is NOT proof
+    # that a particular cutout or thumb is cleared for redistribution.
+    # Do not publish unverified portraits; use the existing verified ID-based
+    # provider photos or a later per-image rights allowlist instead.
     if str(profile.get('strCreativeCommons') or '').strip().lower()!='yes':return None
+    if not profile.get('verified_image_rights'):return None
     for field in ('strCutout','strThumb'):
         uri=str(profile.get(field) or '')
         if re.fullmatch(r'https://r2\.thesportsdb\.com/images/media/player/(?:cutout|thumb)/[a-zA-Z0-9._-]+\.(?:png|jpg|webp)',uri):
