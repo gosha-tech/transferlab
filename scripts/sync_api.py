@@ -84,7 +84,14 @@ def extract_record(item,cid,year):
                      'red_cards':number(cards.get('red'))}
         })
     return output
+LAST_REQUEST_TIME=0.0
 def get_api(path,params,key):
+    global LAST_REQUEST_TIME
+    # Free API-Football has a 10 requests/minute limit. Avoid bursts and 429s.
+    interval=float(os.getenv('API_REQUEST_INTERVAL_SECONDS','6.5'))
+    remaining=interval-(time.monotonic()-LAST_REQUEST_TIME)
+    if LAST_REQUEST_TIME and remaining>0:time.sleep(remaining)
+    LAST_REQUEST_TIME=time.monotonic()
     url=API+path+'?'+urllib.parse.urlencode(params)
     req=urllib.request.Request(url,headers={'x-apisports-key':key,'Accept':'application/json','User-Agent':'TransferLab/5.1'})
     with urllib.request.urlopen(req,timeout=35) as resp:
