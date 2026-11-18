@@ -63,6 +63,16 @@ def main():
                   'competition_id':39,
                   'players':[{'player_id':other_pid,'pitch_id':'p_Xy1abc','team':pl_other['team'],
                               'stats':{'minutes':75,'goals':3,'assists':1}}]},
+                'm_D1eF2g':{'id':'m_D1eF2g','date':'2026-11-16',
+                  'season':'2026/27','league':'Bundesliga','league_id':'l_BUND',
+                  'competition_id':78,
+                  'players':[{'player_id':foden_id,'pitch_id':'p_BAD123',
+                              'team':'Bayern Munich','stats':{'minutes':90,'goals':8}}]},
+                'm_E1fG2h':{'id':'m_E1fG2h','date':'2026-11-16',
+                  'season':'2026/27','league':'Bundesliga','league_id':'l_BUND',
+                  'competition_id':78,
+                  'players':[{'player_id':foden_id,'pitch_id':'p_BAD234',
+                              'team':'Manchester City','stats':{'minutes':90,'goals':8}}]},
                 'm_A1b2C3':{
                 'id':'m_A1b2C3','date':'2026-11-16','season':'2026/27','league':'FA Cup',
                 'league_id':'l_aB32dq','competition_id':45,'source':'PitchAPI',
@@ -89,6 +99,7 @@ def main():
         assert {t['id'] for t in loaded}=={2,39,45,'tsdb-5999'},loaded
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
+        assert not any(str(x['id'])=='78' for x in loaded), 'Foden must not show Bundesliga'
         pl_after=next(x for x in d['liveTournamentStats']['2026/27'][other_pid] if x['id']==39)
         assert pl_after['source']=='pl_catalogue_plus_pitch'
         assert pl_after['stats']['minutes']==290,pl_after
