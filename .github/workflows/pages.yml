@@ -29,6 +29,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # A scheduled import may have committed a fresher data snapshot while
+          # this build was queued. Always build the latest main, not stale event SHA.
+          ref: main
       - name: Validate API-Football data parser
         run: |
           python scripts/sync_api.py --self-test
