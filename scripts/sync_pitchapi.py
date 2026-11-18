@@ -30,6 +30,7 @@ TARGETS={
  'Bundesliga':['bundesliga'],
  'Serie A':['serie a'],
  'Ligue 1':['ligue 1'],
+ 'Brasileirão':['brasileirao serie a','brasileirão série a','brazilian serie a','brasileirao','brasileirão'],
  'Primeira Liga':['primeira liga','liga portugal'],
  'Belgian Pro League':['belgian pro league','jupiler pro league'],
  'Süper Lig':['super lig','süper lig'],
@@ -67,6 +68,13 @@ def norm(v):
     return re.sub(r'[^a-z0-9а-я]','', ''.join(c for c in text if not unicodedata.combining(c)))
 def team_norm(v):
     v=norm(v)
+    # Known official/short-name variants, not arbitrary fuzzy team matching.
+    v={'mancity':'manchestercity','manutd':'manchesterunited',
+       'psg':'parissaintgermain','parissg':'parissaintgermain',
+       'atleticomadrid':'atleticodemadrid','intermilan':'internazionale',
+       'inter':'internazionale','bayernmunchen':'bayernmunich',
+       'barca':'barcelona','fcbarcelona':'barcelona',
+       'borussiadortmund':'dortmund','bvb':'dortmund'}.get(v,v)
     for prefix in ('fc','cf','ac','sc'):
         if v.startswith(prefix) and len(v)>6:v=v[len(prefix):]
     for suffix in ('fc','cf','afc','sc'):
@@ -79,6 +87,9 @@ def aliases(name):
     if len(words)>=2:
         out.add(words[-1]+words[0][:1])
         out.add(words[0][:1]+words[-1])
+        # Compound surnames: Kevin De Bruyne -> K. De Bruyne.
+        out.add(words[0][:1]+''.join(words[1:]))
+        # Initial-only matches still require the exact verified team.
     return out
 def roster_match(name,team,roster):
     candidates=[p for p in roster if team_norm(p.get('team'))==team_norm(team) and
@@ -114,10 +125,11 @@ def discover(catalogue):
         for canonical,variants in TARGETS.items():
             if name in {norm(x) for x in variants} and league.get('id'):
                 seasons=league.get('seasons') or []
-                eligible=('2026/2027' in seasons or '2026' in seasons)
+                is_calendar=canonical in ('MLS','Brasileirão')
+                eligible=('2026' in seasons) if is_calendar else ('2026/2027' in seasons)
                 if eligible:
                     selected.append((canonical,str(league['id']),
-                                     '2026' if canonical in ('MLS','Brasileirão') else '2026/2027'))
+                                     '2026' if is_calendar else '2026/2027'))
                 break
     return selected
 def read_roster():
@@ -219,10 +231,16 @@ def test():
     assert roster_match('E. Haaland','Paris Saint-Germain',roster)['id']=='99'
     assert roster_match('P. Foden','Manchester City',roster)['id']=='10'
     assert roster_match('E. Haaland','Unknown Club',roster) is None
+    assert roster_match('K. De Bruyne','Manchester City',
+        roster+[{'id':'77','name':'Kevin De Bruyne','team':'Manchester City'}])['id']=='77'
+    assert team_norm('Man City')==team_norm('Manchester City')
+    assert roster_match('P. Foden','Man City',roster)['id']=='10'
     assert discover({'leagues':[{'id':'l_ABC123','name':'Premier League',
                                  'seasons':['2025/2026','2026/2027']},
                                 {'id':'l_DEF456','name':'Serie A',
                                  'seasons':['2023/2024']}]})==[('Premier League','l_ABC123','2026/2027')]
+    assert discover({'leagues':[{'id':'l_Zy12Ab','name':'Brasileirão',
+                                  'seasons':['2026']}]})==[('Brasileirão','l_Zy12Ab','2026')]
     print('PitchAPI unique club/player matches, typed metrics, season discovery PASS')
 if __name__=='__main__':
     import argparse
