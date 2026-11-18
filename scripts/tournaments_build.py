@@ -399,7 +399,7 @@ def embed(html):
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
     const premier=rows.length>0&&rows.every(r=>r.source==='pl_catalogue');
     const pitched=rows.length>0&&rows.every(r=>r.source==='pitchapi_partial');
-    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'verified_multi_source_partial',
+    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'verified_multi_source_partial',sourceNames:[...new Set(rows.map(x=>x.source).filter(Boolean))],
       partial:!premier,advancedPartial:rows.some(x=>x.advanced_partial_source),updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:pitched?ROOT.pitchAPILastSync:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
@@ -586,8 +586,10 @@ def embed(html):
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
     }else if(s?.source==='verified_multi_source_partial'){
       $('statsSourceCaption').textContent=state.language==='ru'?
-        'PitchAPI / pl-catalogue / архив · неполное покрытие':
-        'PitchAPI / pl-catalogue / archive · partial coverage';
+        (s.sourceNames||[]).map(x=>({historical_appearances:'Transfermarkt',pl_catalogue:'pl-catalogue',pitchapi_partial:'PitchAPI',thesportsdb_sample:'TheSportsDB'}[x]||x)).join(' + ')+
+           ' · неполное покрытие':
+        (s.sourceNames||[]).map(x=>({historical_appearances:'Transfermarkt',pl_catalogue:'pl-catalogue',pitchapi_partial:'PitchAPI',thesportsdb_sample:'TheSportsDB'}[x]||x)).join(' + ')+
+           ' · partial coverage';
     }else if(s){
       $('statsSourceCaption').textContent=s.source==='transfermarkt_historical'
         ?(state.language==='ru'?'Архив матчей до июня 2026 · все доступные турниры':'Match archive through June 2026 · available competitions')
