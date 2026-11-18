@@ -39,7 +39,7 @@ jobs:
           python scripts/sync_pitchapi.py --self-test
           python scripts/enrich_profiles.py --self-test
           python scripts/import_historical_appearances.py --self-test
-          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py
+          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py scripts/audit_coverage.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
@@ -88,6 +88,8 @@ jobs:
           if [ -f data/pl_current.json ]; then cp data/pl_current.json _site/data/; fi
           if [ -f data/commons_photos.json ]; then cp data/commons_photos.json _site/data/; fi
           if [ -f data/pitchapi.json ]; then cp data/pitchapi.json _site/data/; fi
+      - name: Audit every league and three-season data coverage
+        run: python scripts/audit_coverage.py
       - name: Validate player registry and JavaScript
         run: |
           python - <<'PY'
