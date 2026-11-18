@@ -26,16 +26,21 @@ def norm(v):
     return re.sub(r'[^a-z0-9а-я]','', ''.join(c for c in t if not unicodedata.combining(c)))
 def get(url,params):
     global LAST_REQUEST
-    wait=float(os.getenv('WIKIMEDIA_REQUEST_INTERVAL','0.65'))-(time.monotonic()-LAST_REQUEST)
+    wait=float(os.getenv('WIKIMEDIA_REQUEST_INTERVAL','2.0'))-(time.monotonic()-LAST_REQUEST)
     if LAST_REQUEST and wait>0:time.sleep(wait)
     LAST_REQUEST=time.monotonic()
     uri=url+'?'+urllib.parse.urlencode(params)
     req=urllib.request.Request(uri,headers={'User-Agent':UA,'Accept':'application/json'})
-    try:
-        with urllib.request.urlopen(req,timeout=22) as resp:return json.load(resp)
-    except urllib.error.HTTPError as e:
-        if e.code in (429,503):raise Quota('Wikimedia rate limit or service unavailability') from e
-        raise
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req,timeout=22) as resp:return json.load(resp)
+        except urllib.error.HTTPError as e:
+            if e.code not in (429,503):raise
+            if attempt==2:raise Quota('Wikimedia rate limit or service unavailability') from e
+            # Respect Retry-After when provided; avoid hammering the API.
+            header=e.headers.get('Retry-After') or ''
+            seconds=float(header) if re.fullmatch(r'\d{1,2}',header) else 6.0*(attempt+1)
+            time.sleep(min(20,max(3,seconds)))
 def claim_value(item,prop):
     for snak in item.get('claims',{}).get(prop,[]) or []:
         try:
