@@ -267,14 +267,17 @@ def embed(html):
                           'shots','shots_on_target','key_passes','passes','tackles',
                           'interceptions','dribbles','recoveries','clearances','blocks',
                           'progressive_passes','progressive_carries','yellow_cards','red_cards'):
-                valid=[item['stats'][field] for item in events if item.get('stats',{}).get(field) is not None]
+                valid=[item['stats'][field] for item in events
+                       if item.get('stats',{}).get(field) is not None
+                       and not (field in ('xg','xa','npxg')
+                                and item.get('advanced_partial_source'))]
                 if valid:collected[field]=sum(valid)
             if collected.get('minutes',0)<180:continue
             archival=all(x.get('source')=='historical_appearances' for x in events)
             community=all(x.get('source')=='thesportsdb_sample' for x in events)
             premier=all(x.get('source')=='pl_catalogue' for x in events)
             pitchonly=all(x.get('source')=='pitchapi_partial' for x in events)
-            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else ('pitchapi_partial' if pitchonly else 'verified_multi_source_partial'))),
+            collected.update({'advancedPartial':any(x.get('advanced_partial_source') for x in events),'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else ('pitchapi_partial' if pitchonly else 'verified_multi_source_partial'))),
                               'partial':True,
                               'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else (pl.get('published_at') if premier else (pitch.get('updated_at') if pitchonly else snapshot.get('updated_at')))),
                               'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else ('https://pitchapi.dev/' if pitchonly else 'https://www.api-football.com/documentation-v3')))})
@@ -397,7 +400,7 @@ def embed(html):
     const premier=rows.length>0&&rows.every(r=>r.source==='pl_catalogue');
     const pitched=rows.length>0&&rows.every(r=>r.source==='pitchapi_partial');
     const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'verified_multi_source_partial',
-      partial:!premier,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:pitched?ROOT.pitchAPILastSync:ROOT.liveUpdatedAt};
+      partial:!premier,advancedPartial:rows.some(x=>x.advanced_partial_source),updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:pitched?ROOT.pitchAPILastSync:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
