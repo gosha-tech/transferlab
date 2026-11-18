@@ -70,6 +70,12 @@ def main():
         assert {t['id'] for t in loaded}=={2,39,45,'tsdb-5999'},loaded
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
+        # Advanced match metrics survive the Python aggregation and JS
+        # tournamentSum conversion rather than disappearing from indices.
+        assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
+        assert 'eligibleRows(p,state.season)' in result
+        assert 'verifiedProfileMeta' in result
+        assert d['profileCoverage']['with_current_player_stats']>=1
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
         assert 'freeMatchesPanel' in result
         assert d['freeMatchResults']['Premier League'][0]['home_goals']==2
