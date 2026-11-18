@@ -80,6 +80,15 @@ def team_norm(v):
         if v.startswith(prefix) and len(v)>6:v=v[len(prefix):]
     for suffix in ('fc','cf','afc','sc'):
         if v.endswith(suffix) and len(v)>6:v=v[:-len(suffix)]
+    v={'bayernmunchen':'bayernmunich','bayernmunchen1900':'bayernmunich',
+       'internazionalemilano':'internazionale',
+       'rbleipzig':'leipzig','rasenballsportleipzig':'leipzig',
+       'sportinglisbon':'sportingcp',
+       'realbetisbalompie':'realbetis',
+       'acmilan':'milan','milanac':'milan',
+       'athleticclub':'athleticbilbao','athleticdebilbao':'athleticbilbao',
+       'tottenhamhotspur':'tottenham',
+       'borussiadortmund':'dortmund'}.get(v,v)
     return v
 def aliases(name):
     name=str(name or '').replace('.',' ').replace('-',' ')
@@ -352,6 +361,7 @@ def test():
     assert roster_match('K. De Bruyne','Manchester City',
         roster+[{'id':'77','name':'Kevin De Bruyne','team':'Manchester City'}])['id']=='77'
     assert team_norm('Man City')==team_norm('Manchester City')
+    assert team_norm('Bayern München')==team_norm('FC Bayern Munich')
     assert roster_match('P. Foden','Man City',roster)['id']=='10'
     assert discover({'leagues':[{'id':'l_ABC123','name':'Premier League',
                                  'seasons':['2024/2025','2025/2026','2026/2027']},
