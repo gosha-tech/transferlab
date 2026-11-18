@@ -6,7 +6,8 @@ Only documented API-Football player-season entries become current-season data.
 """
 import json, pathlib, re, unicodedata
 from collections import defaultdict
-from player_competitions import add_choices
+from player_competitions import add_choices,choices_for
+from sync_pitchapi import team_norm
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -145,6 +146,7 @@ def embed(html):
     # no new rows are assumed until a real successful provider fetch exists.
     # Full EPL data from pl-catalogue takes priority over partial match imports.
     pitch_groups=defaultdict(list)
+    verified_players={str(p.get('id')):p for p in original}
     for match in (pitch.get('matches') or {}).values():
         if not isinstance(match,dict):continue
         season=match.get('season')
@@ -161,7 +163,15 @@ def embed(html):
                 cutoff=str(pl_rows[pid].get('as_of') or pl.get('published_at') or '')[:10]
                 played=str(match.get('date') or '')[:10]
                 if not cutoff or not played or played<=cutoff:continue
-            if not any(str(p.get('id'))==pid for p in original):continue
+            athlete=verified_players.get(pid)
+            if athlete is None:continue
+            current_season='2026' if athlete.get('league') in ('MLS','Brasileirão') else '2026/27'
+            if season==current_season:
+                # Never let a name-only cross-club match put Foden in
+                # Bundesliga/Ligue 1. The current club is authoritative.
+                allowed={str(x['id']) for x in choices_for(athlete)}
+                if ident not in allowed or team_norm(row.get('team'))!=team_norm(athlete.get('team')):
+                    continue
             pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats']))
     for (season,pid,ident,name),data in pitch_groups.items():
         cur=by_season.setdefault(season,{}).setdefault(pid,[])
@@ -410,7 +420,6 @@ def embed(html):
     // An unverified current competition from a community sample must not
     // add unrelated leagues/cups. Allow authenticated match appearances.
     return pool.filter(x=>permitted.has(String(x.id))||
-      (x.source==='pitchapi_partial'&&Number(x.matches_loaded)>0)||
       (x.source==='api_football_authenticated'&&x.team_verified===true));
   }
   function tournamentSum(rows){
