@@ -72,7 +72,14 @@ def embed(html):
                'Central Midfield':'CM','Attacking Midfield':'AM',
                'Centre-Forward':'ST','Goalkeeper':'GK'}
         if role in roles:
-            p['displayPosition']=roles[role]
+            precise=roles[role]
+            p['displayPosition']=precise
+            p['scoutRole']={'RB':'LB/RB','LB':'LB/RB',
+                            'RW':'LW/RW','LW':'LW/RW',
+                            'GK':'GK'}.get(precise,precise)
+            p['pos']=('Goalkeeper' if precise=='GK' else
+                      'Defender' if precise in ('RB','LB','CB') else
+                      'Forward' if precise in ('RW','LW','ST') else 'Midfielder')
             p['position_source']=live['source']
     match_by_name_club=defaultdict(list)
     for player in original:
