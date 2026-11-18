@@ -67,6 +67,19 @@ def convert(row):
     if birth:out['birth']=birth
     if height:out['height']=height
     if foot in ('left','right','both'):out['foot']=foot
+    # The underlying July-2026 archive contains contract_expiration_date.
+    # This date is a historical observation, not proof of a live contract.
+    expiry=valid_date(row.get('contract_expiration_date'))
+    if expiry:
+        out['contract_until_archive']=expiry
+        out['contract_source_as_of']='2026-07'
+    value=row.get('market_value_in_eur')
+    try:
+        euros=int(float(value)) if value not in ('',None) else None
+        if euros is not None and 0<=euros<=500_000_000:
+            out['market_value_archive_eur']=euros
+    except (TypeError,ValueError,OverflowError):
+        pass
     return out
 def map_profiles(players,rows):
     candidates=defaultdict(list)
@@ -91,10 +104,11 @@ def map_profiles(players,rows):
             skipped+=1;continue
         info=convert(row)
         info['match_confidence']=confidence
-        # If the historical position conflicts with a broad position, preserve
-        # current roster broad position and do not overwrite the specific role.
+        # A unique name across the entire historical archive is not sufficient
+        # to reverse a conflicting broad role. Name + same club is stronger
+        # identity evidence and may correct a wrong archive seed position.
         broad=normalized_broad(p.get('pos'))
-        if info.get('pos') and broad and broad!=info['pos']:
+        if info.get('pos') and broad and broad!=info['pos'] and confidence!='name+club':
             for key in ('pos','scoutRole','displayPosition'):info.pop(key,None)
             info['position_conflict']=True
         result[str(p['id'])]=info
@@ -111,10 +125,22 @@ def enrich(players,cache):
     for p in players:
         fields=mapped.get(str(p.get('id'))) or {}
         if fields:
-            for k in ('scoutRole','displayPosition','birth','height','foot','source_url','archive_as_of','match_confidence'):
+            for k in ('birth','height','foot','source_url','archive_as_of','match_confidence'):
                 if fields.get(k) is not None and not p.get(k):p[k]=fields[k]
-            if fields.get('pos') and p.get('pos') in ('Unknown','Не указана','Other',None):
-                p['pos']=fields['pos']
+            if fields.get('contract_until_archive'):
+                p['contractUntilArchive']=fields['contract_until_archive']
+                p['contractArchiveAsOf']=fields.get('contract_source_as_of','2026-07')
+            if fields.get('market_value_archive_eur') is not None:
+                p['marketValueArchiveEUR']=fields['market_value_archive_eur']
+            trusted_role=fields.get('match_confidence')=='name+club'
+            if not p.get('positionVerified') and (trusted_role or not p.get('displayPosition')):
+                for k in ('scoutRole','displayPosition'):
+                    if fields.get(k):p[k]=fields[k]
+                if fields.get('pos') and (trusted_role or p.get('pos') in ('Unknown','Не указана','Other',None)):
+                    p['pos']=fields['pos']
+                if fields.get('displayPosition'):
+                    p['position_source']=fields.get('source_url') or fields.get('source')
+                    p['positionAsOf']=fields.get('archive_as_of')
             if any(fields.get(k) for k in ('birth','height','foot','scoutRole')):count+=1
         override=MANUAL.get(normalize(p.get('name')))
         if override:
@@ -129,15 +155,15 @@ def get_or_update(players,download=False):
     if CACHE.exists():
         try:cache=json.loads(CACHE.read_text(encoding='utf-8'))
         except (OSError,ValueError):pass
-    if download and cache.get('profiles'):
-        # The snapshot is historical, not live; never redownload on every build.
+    if download and cache.get('profiles') and int(cache.get('schema_version') or 0)>=2:
+        # The snapshot is historical, not live; no need to redownload daily.
         return enrich(players,cache)
     if download:
         try:
             rows=load_rows(SOURCE)
             mapped,skipped=map_profiles(players,rows)
             if not mapped:raise RuntimeError('No safely matched profiles; refusing to clear cache')
-            cache={'provider':'Transfermarkt datasets — archive, not current rosters',
+            cache={'schema_version':2,'provider':'Transfermarkt datasets — archive, not current rosters',
                    'refreshed_at':dt.datetime.now(dt.timezone.utc).isoformat(),
                    'archive_as_of':'2026-07','source':SOURCE,
                    'ambiguous_skipped':skipped,'profiles':mapped}
@@ -158,10 +184,17 @@ def self_test():
     mapped,skipped=map_profiles(entries,rows)
     assert mapped['7']['displayPosition']=='RB'
     assert mapped['7']['height']==181
-    assert mapped['8'].get('position_conflict') and 'displayPosition' not in mapped['8']
+    assert mapped['8']['displayPosition']=='ST' and not mapped['8'].get('position_conflict')
     n=enrich(entries,{'profiles':mapped})
     assert n==1 and entries[0]['displayPosition']=='RB' and entries[0]['positionVerified']
-    assert entries[1].get('displayPosition') is None
+    assert entries[1]['displayPosition']=='ST' and entries[1]['pos']=='Forward'
+    test=convert({'player_id':'42','sub_position':'Right-Back','foot':'left',
+                  'contract_expiration_date':'2028-06-30',
+                  'market_value_in_eur':'17000000'})
+    assert test['displayPosition']=='RB' and test['foot']=='left'
+    assert test['contract_until_archive']=='2028-06-30'
+    assert test['market_value_archive_eur']==17000000
+    assert valid_date('not-a-date') is None
     print('Position enrichment unit tests passed')
 def main():
     p=argparse.ArgumentParser();p.add_argument('--download',action='store_true')
