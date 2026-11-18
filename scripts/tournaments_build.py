@@ -516,7 +516,21 @@ def embed(html):
     html=patch(html,"function cardMarkup(p){const c=contract(p),s=stat(p);const sub=","function cardMarkup(p){const c=contract(p),s=stat(p),idx=projectedIndex(p);const indexTag=idx.proxy?'<small class=\"player-index unavailable\">'+(state.language==='ru'?'Индекс: нет данных':'Index: no data')+'</small>':'<small class=\"player-index\">'+(state.language==='ru'?'Индекс ':'Index ')+idx.score+'/100'+(idx.exact?'':' ≈')+'</small>';const sub=")
     html=patch(html,"${esc(p.season||'2026/27')}</span></span></button>","${esc(p.season||'2026/27')}</span>${indexTag}</span></button>")
     html=patch(html,"function choosePlayer(id){state.player=String(id);",
-       "function choosePlayer(id){state.player=String(id);state.competition='all';")
+       """function choosePlayer(id){state.player=String(id);state.competition='all';
+      // For a footballer with no verified stats in the selected season,
+      // open the most recent supported season with measured minutes.
+      const athlete=players.find(x=>String(x.id)===String(id));
+      const calendar=athlete&&['MLS','Brasileirão'].includes(athlete.league);
+      const years=calendar?['2026','2025','2024']:['2026/27','2025/26','2024/25'];
+      const hasMinutes=y=>{
+        const rows=ROOT.liveTournamentStats?.[y]?.[String(id)]||[];
+        const mins=rows.reduce((n,r)=>n+Number(r.stats?.minutes||0),0);
+        return mins>0||Number(statsBySeason[y]?.[String(id)]?.minutes||0)>0;
+      };
+      if(!hasMinutes(state.season)){
+        const latest=years.find(hasMinutes);
+        if(latest)state.season=latest;
+      }""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
