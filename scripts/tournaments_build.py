@@ -333,7 +333,7 @@ def embed(html):
           ' · некоммерческое использование · источник обновляется еженедельно.</div>')
     html=html.replace('<details class="free-scoreboard"',note+'<details class="free-scoreboard"',1)
     anchor='<div class="stat-grid">'
-    toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div>'
+    toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
     html=patch(html,anchor,toolbar+anchor)
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
@@ -352,6 +352,17 @@ def embed(html):
     'passes','key_passes','tackles','interceptions','dribbles','xg','xa','npxg',
     'recoveries','clearances','blocks','progressive_passes','progressive_carries',
     'yellow_cards','red_cards'];
+  function eligibleRows(p,season){
+    const pool=tournamentRows[season]?.[p.id]||[];
+    const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
+    if(season!==currentSeason)return pool;
+    const permitted=new Set((ROOT.currentCompetitionByPlayer?.[p.id]||[]).map(c=>String(c.id)));
+    // An unverified current competition from a community sample must not
+    // add unrelated leagues/cups. Allow authenticated match appearances.
+    return pool.filter(x=>permitted.has(String(x.id))||
+      (x.source==='pitchapi_partial'&&Number(x.matches_loaded)>0)||
+      (x.source==='api_football_authenticated'&&x.team_verified===true));
+  }
   function tournamentSum(rows){
     const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
@@ -369,7 +380,7 @@ def embed(html):
                "favorites:[], timeline:{}, seasonLoading:{}, photoDisabled:false,competition:'all'};")
     html=patch(html,"function stat(p,season=state.season){return statsBySeason[season]?.[p.id]||null};",
                r"""function stat(p,season=state.season){
-    const all=tournamentRows[season]?.[p.id]||[];
+    const all=eligibleRows(p,season);
     const rows=state.competition==='all'?all:all.filter(x=>String(x.id)===state.competition);
     if(rows.length)return tournamentSum(rows);
     if(state.competition!=='all'){
@@ -380,6 +391,8 @@ def embed(html):
         return statsBySeason[season]?.[p.id]||null;
       return null;
     }
+    // Do not fall back to an unverified current-season seed.
+    if(season==='2026/27'||season==='2026')return null;
     return statsBySeason[season]?.[p.id]||null;
   }""")
     html=patch(html,"const urls=[];\n    const custom=storedPhoto(code);",
@@ -387,7 +400,7 @@ def embed(html):
     controls=r"""  function renderTournamentSelector(p){
     const ru=state.language==='ru';
     const select=$('competitionSelect');
-    const rows=tournamentRows[state.season]?.[p.id]||[];
+    const rows=eligibleRows(p,state.season);
     const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
     const current=state.season===currentSeason;
     const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
@@ -460,7 +473,7 @@ def embed(html):
       "$('pPosition').textContent=p.displayPosition||(roleFor(p).exact?roleFor(p).role:({'Defender':'DEF','Midfielder':'MID','Forward':'FWD','Goalkeeper':'GK'}[p.pos]||'—'));")
     html=patch(html,
       "$('pFoot').textContent=meta.foot?(ru?(meta.foot==='left'?'Левая':'Правая'):(meta.foot==='left'?'Left':'Right')):'—';",
-      "const playerFoot=meta.foot||p.foot;$('pFoot').textContent=playerFoot?(ru?(playerFoot==='left'?'Левая':playerFoot==='both'?'Обе':'Правая'):(playerFoot==='left'?'Left':playerFoot==='both'?'Both':'Right')):'—';")
+      "const playerFoot=p.foot||meta.foot;$('pFoot').textContent=playerFoot?(ru?(playerFoot==='left'?'Левая':playerFoot==='both'?'Обе':'Правая'):(playerFoot==='left'?'Left':playerFoot==='both'?'Both':'Right')):'—';")
     html=patch(html,"function derivedAge(player){if(player?.age!=null",
       "function derivedAge(player){if(player?.birth){const born=new Date(player.birth),today=new Date();if(!Number.isNaN(born.getTime()))return today.getUTCFullYear()-born.getUTCFullYear()-(today.getUTCMonth()<born.getUTCMonth()||(today.getUTCMonth()===born.getUTCMonth()&&today.getUTCDate()<born.getUTCDate())?1:0);}if(player?.age!=null")
     # No automatic Wikipedia thumbnails: name search often returns the wrong person.
@@ -483,9 +496,36 @@ def embed(html):
     };
     const apply=o=>{""")
     html=html.replace("if(label)label.textContent='Фото: '+o.source","showCredit(o)")
-    html=patch(html,"  function renderProfile(){",controls+"  function renderProfile(){")
+    profile_meta=r"""  function renderVerifiedProfileMeta(p){
+    const el=$('verifiedProfileMeta');
+    if(!el)return;
+    const ru=state.language==='ru';
+    const label=(r,e)=>ru?r:e;
+    const facts=[];
+    if(p.displayPosition)facts.push(label('Амплуа: ','Role: ')+p.displayPosition+
+      (p.positionAsOf?' ('+p.positionAsOf+')':''));
+    if(p.foot)facts.push(label('Рабочая нога: ','Foot: ')+
+      ({left:label('левая','left'),right:label('правая','right'),
+        both:label('обе','both')}[p.foot]||p.foot));
+    if(p.contractUntilCurrent){
+      facts.push(label('Контракт по опубликованному срезу: ','Contract (published snapshot): ')+
+        p.contractUntilCurrent+' · '+(p.contractSourceAsOf||''));
+    }else if(p.contractUntilArchive){
+      facts.push(label('Контракт по архиву: ','Contract (archived): ')+
+        p.contractUntilArchive+' · '+(p.contractArchiveAsOf||'2026-07'));
+    }
+    if(p.marketValueArchiveEUR!=null){
+      facts.push(label('Архивная стоимость: €','Archived value: €')+
+        Number(p.marketValueArchiveEUR).toLocaleString(ru?'ru-RU':'en-GB'));
+    }
+    el.textContent=facts.length?facts.join(' · '):
+      label('Дополнительные данные профиля пока не подтверждены',
+            'Additional profile attributes not yet verified');
+  }
+"""
+    html=patch(html,"  function renderProfile(){",controls+profile_meta+"  function renderProfile(){")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
-               """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);
+               """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);renderVerifiedProfileMeta(p);
     if(s?.source==='pitchapi_partial'){
       $('statsSourceCaption').textContent=state.language==='ru'?'PitchAPI · проверенные матчи, частичная статистика':'PitchAPI · verified games, partial season';
     }else if(s?.source==='pl_catalogue'){
