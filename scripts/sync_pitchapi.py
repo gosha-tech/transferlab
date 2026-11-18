@@ -25,28 +25,29 @@ OUT=ROOT/'data'/'pitchapi.json'
 API='https://api.pitchapi.dev/v1'
 # Include league and UEFA names; actual league IDs always come from /leagues.
 TARGETS={
- 'Premier League':['premier league'],
+ 'Premier League':['premier league','english premier league'],
  'La Liga':['la liga','primera division'],
  'Bundesliga':['bundesliga'],
- 'Serie A':['serie a'],
- 'Ligue 1':['ligue 1'],
- 'Brasileirão':['brasileirao serie a','brasileirão série a','brazilian serie a','brasileirao','brasileirão'],
+ 'Serie A':['serie a','italian serie a'],
+ 'Ligue 1':['ligue 1','french ligue 1'],
  'Primeira Liga':['primeira liga','liga portugal'],
  'Belgian Pro League':['belgian pro league','jupiler pro league'],
- 'Süper Lig':['super lig','süper lig'],
+ 'Süper Lig':['super lig','süper lig','turkish super lig'],
  'Saudi Pro League':['saudi pro league','saudi professional league'],
  'MLS':['mls','major league soccer'],
- 'Brasileirão':['brasileirao','brasileirão','brazilian serie a'],
+ 'Brasileirão':['brasileirao','brasileirão','brasileirao serie a','brasileirão série a','brazilian serie a'],
  'UEFA Champions League':['champions league','uefa champions league'],
  'UEFA Europa League':['europa league','uefa europa league'],
  'UEFA Conference League':['conference league','uefa conference league'],
- 'FA Cup':['fa cup'],
- 'EFL Cup':['efl cup','carabao cup','league cup'],
+ 'FA Cup':['fa cup','english fa cup'],
+ 'EFL Cup':['efl cup','carabao cup','league cup','efl carabao cup'],
  'Copa del Rey':['copa del rey'],
  'Coppa Italia':['coppa italia'],
  'DFB Pokal':['dfb pokal','dfb-pokal'],
  'Coupe de France':['coupe de france'],
- 'Taça de Portugal':['taca de portugal','taça de portugal']
+ 'Taça de Portugal':['taca de portugal','taça de portugal'],
+ 'KNVB Cup':['knvb beker','knvb cup'],
+ 'Eredivisie':['eredivisie']
 }
 # Directly mapped internal competition ids, no cross-league conflation.
 LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
@@ -119,19 +120,80 @@ def get(path,key,params=None):
     if not isinstance(obj,dict) or obj.get('error'):raise RuntimeError('Unexpected PitchAPI response')
     return obj.get('data')
 def discover(catalogue):
+    """All actually available seasons, not only the current one."""
     selected=[]
+    seen=set()
     for league in (catalogue or {}).get('leagues',[]):
         name=norm(league.get('name'))
         for canonical,variants in TARGETS.items():
-            if name in {norm(x) for x in variants} and league.get('id'):
-                seasons=league.get('seasons') or []
-                is_calendar=canonical in ('MLS','Brasileirão')
-                eligible=('2026' in seasons) if is_calendar else ('2026/2027' in seasons)
-                if eligible:
-                    selected.append((canonical,str(league['id']),
-                                     '2026' if is_calendar else '2026/2027'))
-                break
+            if name not in {norm(x) for x in variants} or not league.get('id'):
+                continue
+            calendar=canonical in ('MLS','Brasileirão')
+            requested=('2026','2025','2024') if calendar else (
+                '2026/2027','2025/2026','2024/2025')
+            seasons=set(str(x) for x in (league.get('seasons') or []))
+            for season in requested:
+                key=(canonical,str(league['id']),season)
+                if season in seasons and key not in seen:
+                    seen.add(key)
+                    selected.append(key)
+            break
     return selected
+
+def canonical_season(provider_season):
+    return provider_season if len(provider_season)==4 else (
+        provider_season[:4]+'/'+provider_season[-2:])
+
+def safe_fullname_match(fullname,roster):
+    """A verified PitchAPI full name can bridge a historical transfer.
+    Abbreviated names and duplicated names are deliberately rejected.
+    """
+    name=str(fullname or '').strip()
+    if len(name.split())<2 or re.search(r'(^|\\s)[A-Za-zÀ-ÿ]\\.',name):
+        return None
+    matches=[p for p in roster if norm(p.get('name'))==norm(name)]
+    return matches[0] if len(matches)==1 else None
+
+def aggregate_match_rows(match_rows,teams,roster,known,detail_cache,api_key,
+                         can_request_details):
+    """Only confirmed team + unique person; never infer missing stats."""
+    processed=[]
+    details_called=0
+    for entry in match_rows:
+        if not isinstance(entry,dict):
+            continue
+        player=entry.get('player') or {}
+        pid=str(player.get('id') or '')
+        team=teams.get(str(entry.get('team_id')))
+        if not re.fullmatch(r'p_[A-Za-z0-9]{6}',pid) or not team:
+            continue
+        current=next((p for p in roster if str(p.get('id'))==str(known.get(pid))),None) if known.get(pid) else None
+        if current is None:
+            current=roster_match(player.get('name'),team,roster)
+        # Exact verified full name is sufficient across a historical transfer,
+        # unlike an initial+surname match (which is not identity proof).
+        if current is None:
+            full=detail_cache.get(pid)
+            if full is None and can_request_details():
+                try:
+                    full=get('/players/'+pid,api_key)
+                    details_called+=1
+                except (OSError,ValueError,RuntimeError):
+                    full={}
+                detail_cache[pid]=full if isinstance(full,dict) else {}
+            if isinstance(full,dict):
+                current=safe_fullname_match(full.get('name'),roster)
+        if current is None:
+            continue
+        sid=str(current['id'])
+        metrics=parse_groups(entry.get('stats'))
+        if not metrics:
+            continue
+        known[pid]=sid
+        processed.append({'player_id':sid,'pitch_id':pid,'team':team,
+                          'stats':metrics})
+    return processed,details_called
+
 def read_roster():
     from zipfile import ZipFile
     with ZipFile(ROOT/'TransferLab_RESTORED_2026-11-16.zip') as archive:
@@ -142,83 +204,139 @@ def read_roster():
 def sync():
     key=os.getenv('PITCHAPI_KEY','').strip()
     if not key:
-        print('PITCHAPI_KEY absent: free match-player importer not activated')
+        print('PITCHAPI_KEY absent: match-player importer not activated')
         return
-    try:prior=json.loads(OUT.read_text(encoding='utf-8'))
-    except (OSError,ValueError):prior={}
+    try:
+        prior=json.loads(OUT.read_text(encoding='utf-8'))
+    except (OSError,ValueError):
+        prior={}
     cached=dict(prior.get('matches') or {})
-    known=prior.get('pitch_id_matches') or {}
+    known=dict(prior.get('pitch_id_matches') or {})
+    details=dict(prior.get('player_details') or {})
     roster=read_roster()
     leagues=discover(get('/leagues',key))
+    if not leagues:
+        raise RuntimeError('No provider-supported target seasons found; keeping cache')
+    # Fair-use guard, not a billed API quota. Incrementally backfill all 3
+    # seasons across every league while revisiting newer games daily.
+    budget=max(50,min(int(os.getenv('PITCHAPI_REQUEST_BUDGET','1600')),5000))
+    detail_budget=max(0,min(int(os.getenv('PITCHAPI_DETAIL_BUDGET','160')),1000))
+    max_report_size=max(50,min(int(os.getenv('PITCHAPI_MAX_CACHE_MATCHES','50000')),100000))
     requests=1
-    # Rotate to balance different leagues across days.
-    cursor=int(prior.get('league_cursor') or 0)
-    leagues=leagues[cursor%len(leagues):]+leagues[:cursor%len(leagues)] if leagues else []
-    budget=max(1,min(int(os.getenv('PITCHAPI_REQUEST_BUDGET','95')),500))
+    detail_requests=0
     fetched=0
     checked=0
     errors=[]
-    for canonical,league_id,season in leagues:
-        if requests>=budget:break
+    # Fetch every league-season match index; one API call per supported season.
+    tasks=[]
+    initial_cursor=int(prior.get('league_cursor') or 0)
+    order=leagues[initial_cursor%len(leagues):]+leagues[:initial_cursor%len(leagues)]
+    for canonical,league_id,season in order:
+        if requests>=budget:
+            break
         try:
-            rows=(get('/leagues/'+urllib.parse.quote(league_id)+'/matches',key,
-                      {'season':season}) or {}).get('matches') or []
+            data=get('/leagues/'+urllib.parse.quote(league_id)+'/matches',key,
+                     {'season':season})
             requests+=1
+            if not isinstance(data,dict):
+                errors.append(canonical+' '+season+': unexpected league response')
+                continue
+            matches=data.get('matches')
+            if not isinstance(matches,list):
+                errors.append(canonical+' '+season+': match list missing')
+                continue
+            pending=[m for m in matches if isinstance(m,dict)
+                     and m.get('status')=='finished'
+                     and re.fullmatch(r'm_[A-Za-z0-9]{6}',str(m.get('id') or ''))
+                     and str(m['id']) not in cached]
+            # Newer games before older: today's stats first, backfill follows.
+            pending.sort(key=lambda m:(str(m.get('date') or ''),str(m.get('id'))),reverse=True)
+            tasks.append({'canonical':canonical,'league_id':league_id,
+                          'season':season,'pending':pending,'cursor':0,
+                          'indexed_matches':len(matches)})
+        except urllib.error.HTTPError as exc:
+            errors.append(canonical+' '+season+': HTTP '+str(exc.code))
+            if exc.code in (401,403):
+                raise RuntimeError('PitchAPI key rejected (HTTP '+str(exc.code)+')') from exc
         except (OSError,ValueError,RuntimeError) as exc:
-            errors.append(canonical+': '+type(exc).__name__)
-            continue
-        for match in rows:
-            mid=match.get('id')
-            if not re.fullmatch(r'm_[A-Za-z0-9]{6}',str(mid or '')):continue
-            if match.get('status')!='finished':continue
-            if mid in cached:continue
-            if requests>=budget:break
+            errors.append(canonical+' '+season+': '+type(exc).__name__)
+    # Interleave leagues and seasons. One long-running league must not use the
+    # entire run while other countries receive no data.
+    active=[t for t in tasks if t['pending']]
+    denied=False
+    pause=max(.08,min(2.0,float(os.getenv('PITCHAPI_PAUSE','0.18'))))
+    while active and requests<budget and len(cached)<max_report_size and not denied:
+        next_active=[]
+        for task in active:
+            if requests>=budget or denied:
+                break
+            if task['cursor']>=len(task['pending']):
+                continue
+            match=task['pending'][task['cursor']]
+            task['cursor']+=1
+            mid=str(match['id'])
             home=match.get('home_team') or {}
             away=match.get('away_team') or {}
-            teams={home.get('id'):home.get('name'),away.get('id'):away.get('name')}
+            teams={str(x.get('id')):x.get('name') for x in (home,away)
+                   if x.get('id') and x.get('name')}
+            if len(teams)!=2:
+                continue
             try:
-                stats=get('/matches/'+mid+'/players',key)
-                requests+=1;checked+=1
-                if not isinstance(stats,list):continue
-                processed=[]
-                for entry in stats:
-                    player=entry.get('player') or {}
-                    pid=str(player.get('id') or '')
-                    team=teams.get(entry.get('team_id'))
-                    if not pid.startswith('p_') or not team:continue
-                    known_id=known.get(pid)
-                    original=next((p for p in roster if str(p.get('id'))==str(known_id)),None) if known_id else None
-                    if original is None:original=roster_match(player.get('name'),team,roster)
-                    if original is None:continue
-                    sid=str(original['id'])
-                    metrics=parse_groups(entry.get('stats'))
-                    if not metrics:continue
-                    known[pid]=sid
-                    processed.append({'player_id':sid,'pitch_id':pid,'team':team,
-                                      'stats':metrics,'pitch_photo':player.get('image_url')})
-                cached[mid]={'id':mid,'date':match.get('date'),'season':'2026' if season=='2026' else '2026/27',
-                             'league':canonical,'league_id':league_id,'competition_id':LEAGUE_IDS.get(canonical),
+                rows=get('/matches/'+mid+'/players',key)
+                requests+=1
+                checked+=1
+                if not isinstance(rows,list):
+                    errors.append(task['canonical']+': invalid player stat payload')
+                    continue
+                def detail_allowed():
+                    return requests+detail_requests<budget and detail_requests<detail_budget
+                processed,spent=aggregate_match_rows(rows,teams,roster,known,
+                                                       details,key,detail_allowed)
+                requests+=spent
+                detail_requests+=spent
+                cached[mid]={'id':mid,'date':match.get('date'),
+                             'season':canonical_season(task['season']),
+                             'league':task['canonical'],
+                             'league_id':task['league_id'],
+                             'competition_id':LEAGUE_IDS.get(task['canonical']),
                              'players':processed,'source':'PitchAPI'}
                 fetched+=1
             except urllib.error.HTTPError as exc:
-                errors.append(canonical+': HTTP '+str(exc.code))
+                errors.append(task['canonical']+': HTTP '+str(exc.code))
                 if exc.code in (401,403,429):
-                    break
+                    denied=True
             except (ValueError,OSError,RuntimeError) as exc:
-                errors.append(canonical+': '+type(exc).__name__)
-            time.sleep(float(os.getenv('PITCHAPI_PAUSE','0.32')))
-        if requests>=budget:break
+                errors.append(task['canonical']+': '+type(exc).__name__)
+            finally:
+                time.sleep(pause)
+            if task['cursor']<len(task['pending']):
+                next_active.append(task)
+        active=next_active
+    coverage=defaultdict(set)
+    for m in cached.values():
+        if not isinstance(m,dict):
+            continue
+        for row in m.get('players') or []:
+            if row.get('player_id'):
+                coverage[str(m.get('season'))].add(str(row['player_id']))
     payload={'provider':'PitchAPI','source':'https://pitchapi.dev/',
              'updated_at':dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
              'key_configured':True,'requests_used':requests,'matches_fetched':fetched,
-             'leagues_available':len(leagues),'league_cursor':cursor+max(1,min(len(leagues),max(1,requests//2))),
-             'match_stats_checked':checked,'matches':cached,'pitch_id_matches':known,'errors':errors}
-    if not leagues:raise RuntimeError('No current-season PitchAPI leagues; refusing empty cache')
+             'leagues_available':len(leagues),'league_cursor':initial_cursor+1,
+             'match_stats_checked':checked,'matches':cached,
+             'pitch_id_matches':known,'player_details':details,
+             'season_player_coverage':{k:len(v) for k,v in sorted(coverage.items())},
+             'catalogue_seasons':[{'name':name,'season':canonical_season(season)}
+                                  for name,_,season in leagues],
+             'errors':errors,'backfill_incomplete':bool(active),
+             'match_cache_limit_reached':len(cached)>=max_report_size}
     OUT.parent.mkdir(exist_ok=True,parents=True)
     tmp=OUT.with_suffix('.tmp')
-    tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
+    tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\\n',encoding='utf-8')
     tmp.replace(OUT)
-    print('PitchAPI:',fetched,'new match reports;',len(known),'identified players;',requests,'API calls')
+    print('PitchAPI: '+str(fetched)+' new match reports; '+str(len(known))+
+          ' identified players; seasons '+str(payload['season_player_coverage'])+
+          '; '+str(requests)+' HTTP requests; errors '+str(len(errors)))
 def test():
     assert parse_groups([{'key':'top_stats','stats':{
         'Goals':{'key':'goals','stat':{'type':'integer','value':2}},
@@ -236,12 +354,20 @@ def test():
     assert team_norm('Man City')==team_norm('Manchester City')
     assert roster_match('P. Foden','Man City',roster)['id']=='10'
     assert discover({'leagues':[{'id':'l_ABC123','name':'Premier League',
-                                 'seasons':['2025/2026','2026/2027']},
+                                 'seasons':['2024/2025','2025/2026','2026/2027']},
                                 {'id':'l_DEF456','name':'Serie A',
-                                 'seasons':['2023/2024']}]})==[('Premier League','l_ABC123','2026/2027')]
+                                 'seasons':['2023/2024']}]})==[
+        ('Premier League','l_ABC123','2026/2027'),
+        ('Premier League','l_ABC123','2025/2026'),
+        ('Premier League','l_ABC123','2024/2025')]
     assert discover({'leagues':[{'id':'l_Zy12Ab','name':'Brasileirão',
                                   'seasons':['2026']}]})==[('Brasileirão','l_Zy12Ab','2026')]
-    print('PitchAPI unique club/player matches, typed metrics, season discovery PASS')
+    assert canonical_season('2024/2025')=='2024/25'
+    assert canonical_season('2025')=='2025'
+    assert safe_fullname_match('Erling Haaland',roster)['id']=='9'
+    assert safe_fullname_match('K. De Bruyne',roster) is None
+    assert safe_fullname_match('Phil Foden',roster)['id']=='10'
+    print('PitchAPI unique club/player matches, three seasons, typed metrics PASS')
 if __name__=='__main__':
     import argparse
     p=argparse.ArgumentParser();p.add_argument('--self-test',action='store_true')
