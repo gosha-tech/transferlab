@@ -61,6 +61,11 @@ def embed(html):
         if live.get('height_cm') and not p.get('height'):p['height']=live['height_cm']
         if live.get('foot') and not p.get('foot'):p['foot']=live['foot']
         if live.get('dob') and not p.get('birth'):p['birth']=live['dob']
+        contract=str(live.get('contract_until') or '')
+        if re.fullmatch(r'20\d{2}-\d{2}-\d{2}',contract):
+            p['contractUntilCurrent']=contract
+            p['contractSource']='pl-catalogue'
+            p['contractSourceAsOf']=live.get('as_of')
         role=str(live.get('position_detail') or '')
         roles={'Right-Back':'RB','Left-Back':'LB','Centre-Back':'CB',
                'Right Winger':'RW','Left Winger':'LW','Defensive Midfield':'DM',
@@ -194,6 +199,22 @@ def embed(html):
                 p['apiPhoto']=picture
                 p['photoAttribution']='TheSportsDB.com'+(': '+str(profile['photo_attribution']) if profile.get('photo_attribution') else '')
                 p['photoSource']='TheSportsDB Creative Commons'
+        role_name=str(profile.get('position_source') or '').strip()
+        known_roles={
+            'Goalkeeper':('Goalkeeper','GK','GK'),
+            'Centre-Back':('Defender','CB','CB'),
+            'Center-Back':('Defender','CB','CB'),
+            'Right-Back':('Defender','LB/RB','RB'),
+            'Left-Back':('Defender','LB/RB','LB'),
+            'Right Winger':('Forward','LW/RW','RW'),
+            'Left Winger':('Forward','LW/RW','LW'),
+            'Defensive Midfield':('Midfielder','DM','DM'),
+            'Central Midfield':('Midfielder','CM','CM'),
+            'Attacking Midfield':('Midfielder','AM','AM'),
+            'Centre-Forward':('Forward','ST','ST')}
+        if role_name in known_roles and not p.get('positionVerified') and not p.get('displayPosition'):
+            p['pos'],p['scoutRole'],p['displayPosition']=known_roles[role_name]
+            p['position_source']='TheSportsDB · verified profile'
         for record in profile.get('stats') or []:
             if not isinstance(record,dict):continue
             season=str(record.get('season') or '')
@@ -219,8 +240,10 @@ def embed(html):
     for season,players_map in by_season.items():
         for pid,events in players_map.items():
             collected={}
-            for field in ('matches','starts','minutes','goals','assists','shots','shots_on_target',
-                          'key_passes','tackles','interceptions','yellow_cards','red_cards'):
+            for field in ('matches','starts','minutes','goals','assists','xg','xa','npxg',
+                          'shots','shots_on_target','key_passes','passes','tackles',
+                          'interceptions','dribbles','recoveries','clearances','blocks',
+                          'progressive_passes','progressive_carries','yellow_cards','red_cards'):
                 valid=[item['stats'][field] for item in events if item.get('stats',{}).get(field) is not None]
                 if valid:collected[field]=sum(valid)
             if collected.get('minutes',0)<180:continue
@@ -234,6 +257,17 @@ def embed(html):
                               'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else ('https://pitchapi.dev/' if pitchonly else 'https://www.api-football.com/documentation-v3')))})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
+    root['profileCoverage']={
+        'total':len(original),
+        'with_precise_position':sum(bool(p.get('displayPosition')) for p in original),
+        'with_foot':sum(p.get('foot') in ('left','right','both') for p in original),
+        'with_contract':sum(bool(p.get('contractUntilCurrent') or p.get('contractUntilArchive')) for p in original),
+        'with_licensed_commons_photo':sum(bool(p.get('commonsPhoto')) for p in original),
+        'with_current_player_stats':len({str(pid) for season in ('2026/27','2026')
+                                        for pid,entries in by_season.get(season,{}).items()
+                                        if any(r.get('stats') for r in entries)}),
+        'with_archive_player_stats':len({str(pid) for season in ('2023/24','2024/25','2025/26')
+                                        for pid in (historical.get('by_season') or {}).get(season,{})})
     root['liveTournamentStats']=by_season
     root['freeMatchResults']=free.get('matches') or {}
     root['freeSourceSyncAt']=free.get('last_success_at')
@@ -315,7 +349,9 @@ def embed(html):
   const tournamentCatalogue=ROOT.liveCompetitionCatalog||[];
   const tournamentCoverage=ROOT.liveCoverage||[];
   const tournamentMetricKeys=['matches','starts','minutes','goals','assists','shots','shots_on_target',
-    'passes','key_passes','tackles','interceptions','dribbles','yellow_cards','red_cards'];
+    'passes','key_passes','tackles','interceptions','dribbles','xg','xa','npxg',
+    'recoveries','clearances','blocks','progressive_passes','progressive_carries',
+    'yellow_cards','red_cards'];
   function tournamentSum(rows){
     const archived=rows.length>0&&rows.every(r=>r.source==='historical_appearances');
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
