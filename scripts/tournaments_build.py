@@ -267,7 +267,7 @@ def embed(html):
                                         for pid,entries in by_season.get(season,{}).items()
                                         if any(r.get('stats') for r in entries)}),
         'with_archive_player_stats':len({str(pid) for season in ('2023/24','2024/25','2025/26')
-                                        for pid in (historical.get('by_season') or {}).get(season,{})})
+                                        for pid in (historical.get('by_season') or {}).get(season,{})})}
     root['liveTournamentStats']=by_season
     root['freeMatchResults']=free.get('matches') or {}
     root['freeSourceSyncAt']=free.get('last_success_at')
