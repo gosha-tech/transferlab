@@ -71,6 +71,8 @@ jobs:
         env:
           WIKIMEDIA_BATCH: '40'
         run: python scripts/commons_photos.py
+      # Import all supported leagues, persist snapshots before HTML tests and
+      # continue incomplete seasons during the next scheduled daily run.
       - name: Refresh PitchAPI player match analytics for 2024/25–2026/27
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-pitch]')
         env:
