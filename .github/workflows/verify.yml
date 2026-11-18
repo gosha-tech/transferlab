@@ -1,0 +1,64 @@
+name: Verify TransferLab code and season aggregation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/**
+      - assets/**
+      - .github/workflows/verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transferlab-verification
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Validate Python source and provider parsers
+        run: |
+          python -m compileall -q scripts
+          python scripts/sync_api.py --self-test
+          python scripts/sync_free.py --self-test
+          python scripts/player_competitions.py
+          python scripts/sync_pl.py --self-test
+          python scripts/sync_pitchapi.py --self-test
+          python scripts/enrich_profiles.py --self-test
+          python scripts/import_historical_appearances.py --self-test
+          python scripts/commons_photos.py --self-test
+      - name: Build with existing verified snapshots without downloading
+        run: |
+          python scripts/prepare.py
+          python scripts/enrich_profiles.py
+          python scripts/tournaments_build.py _site/index.html
+      - name: Check tournament merging and source coverage
+        run: |
+          python scripts/test_tournaments.py
+          python scripts/audit_coverage.py
+          python - <<'PY'
+          import re,pathlib,json
+          html=pathlib.Path('_site/index.html').read_text(encoding='utf-8')
+          payload=json.loads(re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S).group(1))
+          assert len(payload['players'])>=1353
+          assert all(y in payload['liveTournamentStats'] for y in ('2024/25','2025/26'))
+          assert pathlib.Path('_site/data/coverage.json').exists()
+          print('Verified player-season coverage and unique registry')
+          PY
+      - name: JavaScript syntax
+        run: |
+          python - <<'PY'
+          import pathlib,re
+          html=pathlib.Path('_site/index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)
+          pathlib.Path('/tmp/transferlab-verify.js').write_text(scripts[-1],encoding='utf-8')
+          PY
+          node --check /tmp/transferlab-verify.js
+          node --check assets/site.js
