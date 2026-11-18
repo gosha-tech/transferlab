@@ -79,6 +79,52 @@ jobs:
           PITCHAPI_DETAIL_BUDGET: ${{ vars.PITCHAPI_DETAIL_BUDGET || '150' }}
           PITCHAPI_PAUSE: '0.18'
         run: python scripts/sync_pitchapi.py
+      - name: Persist refreshed source data in GitHub
+        # Persist provider snapshots BEFORE the site build/browser tests.
+        # A UI regression must never discard 20 minutes of verified API data.
+        # Generated HTML is not committed, so source and presentation stay separate.
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/live.json data/free_sources.json
+          if [ -f data/pl_current.json ]; then git add data/pl_current.json; fi
+          if [ -f data/commons_photos.json ]; then git add data/commons_photos.json; fi
+          if [ -f data/pitchapi.json ]; then git add data/pitchapi.json; fi
+          if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
+          if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "Cache verified football source snapshots [skip ci]"
+            for attempt in 1 2 3; do
+              git fetch origin main
+              if ! git rebase origin/main; then
+                # Rebase "theirs" means this job's newly checked snapshot.
+                # Resolve only machine-generated JSON cache conflicts, never code.
+                for p in $(git diff --name-only --diff-filter=U); do
+                  case "$p" in
+                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/pitchapi.json|data/profile_enrichment.json|data/historical_stats.json)
+                      git checkout --theirs -- "$p"
+                      git add "$p"
+                      ;;
+                    *)
+                      echo "Unexpected conflict in source code: $p"
+                      git rebase --abort
+                      exit 1
+                      ;;
+                  esac
+                done
+                GIT_EDITOR=true git rebase --continue || { git rebase --abort; exit 1; }
+              fi
+              if git push origin HEAD:main; then
+                echo "Updated player and match snapshots persisted"
+                break
+              fi
+              if [ "$attempt" = 3 ]; then
+                echo "Failed to persist source data after retries"
+                exit 1
+              fi
+              sleep 4
+            done
+          fi
       - name: Build TransferLab from uploaded ZIP
         run: |
           python scripts/prepare.py
@@ -126,51 +172,6 @@ jobs:
           name: transferlab-screenshots
           path: smoke_screenshots/
           if-no-files-found: ignore
-      - name: Persist refreshed source data in GitHub
-        # Published HTML comes from the Pages artifact. Commit source snapshots
-        # without generated HTML to avoid losing data during concurrent edits.
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/live.json data/free_sources.json
-          if [ -f data/pl_current.json ]; then git add data/pl_current.json; fi
-          if [ -f data/commons_photos.json ]; then git add data/commons_photos.json; fi
-          if [ -f data/pitchapi.json ]; then git add data/pitchapi.json; fi
-          if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
-          if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
-          if ! git diff --cached --quiet; then
-            git commit -m "Cache verified football source snapshots [skip ci]"
-            for attempt in 1 2 3; do
-              git fetch origin main
-              if ! git rebase origin/main; then
-                # Rebase "theirs" means this job's newly checked snapshot.
-                # Resolve only machine-generated JSON cache conflicts, never code.
-                for p in $(git diff --name-only --diff-filter=U); do
-                  case "$p" in
-                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/pitchapi.json|data/profile_enrichment.json|data/historical_stats.json)
-                      git checkout --theirs -- "$p"
-                      git add "$p"
-                      ;;
-                    *)
-                      echo "Unexpected conflict in source code: $p"
-                      git rebase --abort
-                      exit 1
-                      ;;
-                  esac
-                done
-                GIT_EDITOR=true git rebase --continue || { git rebase --abort; exit 1; }
-              fi
-              if git push origin HEAD:main; then
-                echo "Updated player and match snapshots persisted"
-                break
-              fi
-              if [ "$attempt" = 3 ]; then
-                echo "Failed to persist source data after retries"
-                exit 1
-              fi
-              sleep 4
-            done
-          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
