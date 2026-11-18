@@ -127,15 +127,31 @@ def sync(batch=75):
     missed={str(k):v for k,v in (cache.get('checked') or {}).items()}
     # Never run exhaustive sweeps after a rate limit. Increment cursor only on actual checks.
     start=int(cache.get('cursor') or 0)%len(players)
+    today=dt.datetime.now(dt.timezone.utc).date()
     successes=0;checked=0;rate_limited=None
     for i in range(min(max(0,batch),len(players))):
         p=players[(start+i)%len(players)]
         pid=str(p['id'])
-        if pid in previous or pid in missed:checked+=1;continue
+        if pid in previous:
+            checked+=1
+            continue
+        # Retry unsuccessful identity/photo searches after two weeks. New photos,
+        # corrected birth dates and improvements in Wikimedia metadata can appear.
+        if pid in missed:
+            try:
+                last_checked=dt.date.fromisoformat(str(missed[pid])[:10])
+                if 0 <= (today-last_checked).days < 14:
+                    checked+=1
+                    continue
+            except ValueError:
+                pass
         try:
             photo=lookup(p)
         except Quota as exc:
             rate_limited=str(exc)
+            # Do not retry the same first rate-limited player forever. Move the
+            # cursor to a different player for the next scheduled run.
+            checked+=1
             break
         except (OSError,ValueError,RuntimeError):
             checked+=1
