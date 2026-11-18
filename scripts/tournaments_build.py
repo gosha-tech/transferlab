@@ -343,23 +343,22 @@ def embed(html):
     html=html[:m.start(2)]+content+html[m.end(2):]
     # The public UI must never conflate a successful site deployment with
     # a successful current-season statistics sync.
-    current_ids=set((root['liveTournamentStats'].get('2026/27') or {}).keys())
-    current_ids.update((root['liveTournamentStats'].get('2026') or {}).keys())
-    current_count=len(current_ids)
-    official_count=len({pid for season in ('2026/27','2026') for pid,entries in (by_season.get(season) or {}).items()
-                         if any(x.get('source')!='thesportsdb_sample' and x.get('source')!='historical_appearances'
-                                for x in entries)})
-    free_count=len({pid for season in ('2026/27','2026') for pid,entries in (by_season.get(season) or {}).items()
-                     if any(x.get('source')=='thesportsdb_sample' for x in entries)})
-    if current_count:
-        timestamp=snapshot.get('updated_at') or 'дата неизвестна'
-        msg=('2026/27: '+str(official_count)+' игроков с данными футбольного API, '+str(free_count)+
-             ' с частичной статистикой TheSportsDB; результаты матчей обновляются отдельно.'+
-             (' · API '+timestamp[:10] if official_count else ''))
+    def measured_players(season):
+        return len({str(pid) for pid,rows in (by_season.get(season) or {}).items()
+                    if any(isinstance(r,dict) and isinstance(r.get('stats'),dict)
+                           and any(value is not None for value in r['stats'].values())
+                           for r in rows)})
+    by_year={year:measured_players(year) for year in ('2024/25','2025/26','2026/27')}
+    if pitch.get('key_configured'):
+        provider_info='PitchAPI: '+str(pitch.get('updated_at') or 'дата неизвестна')[:10]
+        if pitch.get('backfill_incomplete'):
+            provider_info+=' (идёт дозагрузка матчей)'
     else:
-        msg=('Личные показатели 2026/27: пока нет проверенных записей. '
-             'Результаты матчей обновляются из бесплатных источников отдельно. '
-             'Прошлые сезоны обозначены как архивные.')
+        provider_info='PitchAPI: подтверждённый импорт ещё не активирован'
+    msg=('Проверенная статистика игроков: 2024/25 — '+str(by_year['2024/25'])+
+         ', 2025/26 — '+str(by_year['2025/26'])+
+         ', 2026/27 — '+str(by_year['2026/27'])+' из '+str(len(original))+
+         ' · '+provider_info+' · неполные данные не считаются нулями.')
     html=html.replace('Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.',
                       msg,1)
     # This panel shows competition match SCORES, never claims individual goals/assists.
