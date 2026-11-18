@@ -165,7 +165,7 @@ def embed(html):
                     totals[k]=round(totals.get(k,0)+v,3)
         if not totals:continue
         totals['matches']=sum(1 for mid,stats in data if stats.get('minutes',0)>0)
-        cur.append({'id':int(cid) if cid else ident,'name':name,
+        cur.append({'id':int(cid) if cid and str(cid).isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'as_of':pitch.get('updated_at')})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
