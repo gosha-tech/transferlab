@@ -72,7 +72,7 @@ s=replace_between(s,'  function filterAll(){','  function showView(',r"""  const
 # Render sourced advanced metrics in four readable groups.
 s=replace_between(s,'  function renderAdvanced(s){','  const FORMULA_DRAFT=',r"""  function renderAdvanced(s){
     const ru=state.language==='ru';
-    const per90=k=>s?.minutes>0&&s[k]!=null?Number(s[k])*90/Number(s.minutes):null;
+    const per90=k=>s?.advancedPartial&&['xg','xa','npxg'].includes(k)?null:(s?.minutes>0&&s[k]!=null?Number(s[k])*90/Number(s.minutes):null);
     const groups=[
       [ru?'Атака и xG':'Attack and xG',[[ru?'Голы / 90':'Goals / 90',per90('goals')],['xG',s?.xg],['xG / 90',per90('xg')],['npxG',s?.npxg],[ru?'Удары':'Shots',s?.shots],[ru?'Удары в створ':'Shots on target',s?.shots_on_target]]],
       [ru?'Передачи и создание моментов':'Passing and creation',[[ru?'Ассисты / 90':'Assists / 90',per90('assists')],['xA',s?.xa],['xA / 90',per90('xa')],[ru?'Ключевые передачи':'Key passes',s?.key_passes],['xGChain',s?.xg_chain],['xGBuildup',s?.xg_buildup]]],
