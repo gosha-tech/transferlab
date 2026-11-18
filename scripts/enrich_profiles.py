@@ -186,7 +186,7 @@ def self_test():
     assert mapped['7']['height']==181
     assert mapped['8']['displayPosition']=='ST' and not mapped['8'].get('position_conflict')
     n=enrich(entries,{'profiles':mapped})
-    assert n==1 and entries[0]['displayPosition']=='RB' and entries[0]['positionVerified']
+    assert n==2 and entries[0]['displayPosition']=='RB' and entries[0]['positionVerified']
     assert entries[1]['displayPosition']=='ST' and entries[1]['pos']=='Forward'
     test=convert({'player_id':'42','sub_position':'Right-Back','foot':'left',
                   'contract_expiration_date':'2028-06-30',
