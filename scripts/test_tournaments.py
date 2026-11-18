@@ -42,9 +42,28 @@ def main():
                 'stats':[{'id':'tsdb-5999','name':'Other Competition','season':'2026/27',
                           'source':'thesportsdb_sample','stats':{'goals':2,'minutes':90}}]}}}),
           encoding='utf-8')
+        pl_other=next(p for p in original['players']
+                      if p.get('league')=='Premier League' and p.get('name')!='Phil Foden')
+        other_pid=str(pl_other['id'])
+        (root/'data'/'pl_current.json').write_text(json.dumps({
+            'published_at':'2026-11-10T10:00:00',
+            'players':{other_pid:{'name':pl_other['name'],'team':pl_other['team'],
+                'as_of':'2026-11-10T10:00:00','stats':{'minutes':200,'goals':2,'assists':1}}}
+        }),encoding='utf-8')
         (root/'data'/'pitchapi.json').write_text(json.dumps({
             'key_configured':True,'updated_at':'2026-11-17T19:00:00Z',
-            'matches':{'m_A1b2C3':{
+            'matches':{
+                'm_B9cD4e':{'id':'m_B9cD4e','date':'2026-11-15',
+                  'season':'2026/27','league':'Premier League','league_id':'l_PL1',
+                  'competition_id':39,
+                  'players':[{'player_id':other_pid,'pitch_id':'p_Xy1abc',
+                              'stats':{'minutes':90,'goals':1,'assists':0}}]},
+                'm_C8pQ7r':{'id':'m_C8pQ7r','date':'2026-11-05',
+                  'season':'2026/27','league':'Premier League','league_id':'l_PL1',
+                  'competition_id':39,
+                  'players':[{'player_id':other_pid,'pitch_id':'p_Xy1abc',
+                              'stats':{'minutes':75,'goals':3,'assists':1}}]},
+                'm_A1b2C3':{
                 'id':'m_A1b2C3','date':'2026-11-16','season':'2026/27','league':'FA Cup',
                 'league_id':'l_aB32dq','competition_id':45,'source':'PitchAPI',
                 'players':[{'player_id':foden_id,'pitch_id':'p_xx0aB1',
@@ -70,6 +89,11 @@ def main():
         assert {t['id'] for t in loaded}=={2,39,45,'tsdb-5999'},loaded
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
+        pl_after=next(x for x in d['liveTournamentStats']['2026/27'][other_pid] if x['id']==39)
+        assert pl_after['source']=='pl_catalogue_plus_pitch'
+        assert pl_after['stats']['minutes']==290,pl_after
+        assert pl_after['stats']['goals']==3,pl_after
+        assert pl_after['matches_loaded']==1
         # Advanced match metrics survive the Python aggregation and JS
         # tournamentSum conversion rather than disappearing from indices.
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
