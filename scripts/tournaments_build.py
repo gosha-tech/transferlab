@@ -150,12 +150,12 @@ def embed(html):
         season=match.get('season')
         mid=str(match.get('id') or '')
         cid=match.get('competition_id')
-        if season not in ('2026/27','2026') or not mid.startswith('m_'):continue
+        if season not in ('2024/25','2025/26','2026/27','2024','2025','2026') or not mid.startswith('m_'):continue
         ident=str(cid) if cid else 'pitch-'+str(match.get('league_id') or '')
         for row in match.get('players') or []:
             pid=str(row.get('player_id') or '')
             if not pid or not isinstance(row.get('stats'),dict):continue
-            if cid==39 and pid in pl_rows:continue
+            if cid==39 and pid in pl_rows and season=='2026/27':continue
             if not any(str(p.get('id'))==pid for p in original):continue
             pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats']))
     for (season,pid,ident,name),data in pitch_groups.items():
@@ -171,10 +171,13 @@ def embed(html):
                 if isinstance(v,(float,int)) and not isinstance(v,bool):
                     totals[k]=round(totals.get(k,0)+v,3)
         if not totals:continue
-        totals['matches']=sum(1 for mid,stats in data if stats.get('minutes',0)>0)
+        totals['matches']=sum(1 for mid,stats in data
+                               if stats.get('minutes',0)>0 or
+                               any(stats.get(k) for k in ('goals','assists','shots','tackles','saves')))
         cur.append({'id':int(cid) if cid and str(cid).isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
-                    'matches_loaded':len(valid),'as_of':pitch.get('updated_at')})
+                    'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
+                    'source_url':'https://pitchapi.dev/'})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
     # Avoid counting the same competition twice when a current API snapshot
@@ -191,8 +194,21 @@ def embed(html):
                     api_id=q.get('id')
                     return str(api_id)==archive_id or (
                         isinstance(api_id,int) and archive_id=='tm-'+api_to_tm.get(api_id,'-'))
-                if not any(overlaps(q) for q in recent):
+                matching=next((q for q in recent if overlaps(q)),None)
+                if matching is None:
                     recent.append(record)
+                elif matching.get('source')=='pitchapi_partial':
+                    # Incomplete PitchAPI coverage must not overwrite full
+                    # archived minutes/goals/assists for the same competition.
+                    # Merge only the advanced metrics absent from the archive.
+                    archive=dict(record)
+                    archive['stats']=dict(record.get('stats') or {})
+                    for metric,value in (matching.get('stats') or {}).items():
+                        if metric not in archive['stats'] and value is not None:
+                            archive['stats'][metric]=value
+                    archive['advanced_partial_source']='pitchapi_partial'
+                    archive['advanced_matches_loaded']=matching.get('matches_loaded',0)
+                    recent[recent.index(matching)]=archive
     # TheSportsDB free API only exposes a SMALL SAMPLE of player-stat records.
     # Do not override API-Football current-season rows or older more complete
     # Transfermarkt appearance totals.
@@ -288,6 +304,9 @@ def embed(html):
     root['pitchAPIStatsCoverage']=len({row.get('player_id') for m in (pitch.get('matches') or {}).values() for row in m.get('players',[])})
     root['pitchAPILastSync']=pitch.get('updated_at')
     root['pitchAPIKeyConfigured']=pitch.get('key_configured',False)
+    root['pitchAPISeasonCoverage']=pitch.get('season_player_coverage') or {}
+    root['pitchAPIBackfillIncomplete']=pitch.get('backfill_incomplete',True)
+    root['pitchAPIErrors']=pitch.get('errors') or []
     root['liveUpdatedAt']=snapshot.get('updated_at')
     root['liveCoverage']=snapshot.get('coverage',[])
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
@@ -350,7 +369,9 @@ def embed(html):
     const target=statsBySeason[season]??={};
     for(const [id,v] of Object.entries(map)){
       const previous=target[id];
-      if(!previous||Number(v.minutes)>=Number(previous.minutes||0))target[id]=v;
+      if(!previous||Number(v.minutes)>=Number(previous.minutes||0)){
+        target[id]={...previous,...v};
+      }
     }
   }
   const tournamentCatalogue=ROOT.liveCompetitionCatalog||[];
@@ -393,7 +414,7 @@ def embed(html):
     if(state.competition!=='all'){
       const home={'Premier League':'39','La Liga':'140','Bundesliga':'78',
         'Serie A':'135','Ligue 1':'61','Primeira Liga':'94','Belgian Pro League':'144',
-        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253'}[p.league];
+        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253','Brasileirão':'br-league'}[p.league];
       if(home===state.competition && season!=='2026/27' && season!=='2026')
         return statsBySeason[season]?.[p.id]||null;
       return null;
@@ -421,7 +442,7 @@ def embed(html):
     if(!current && !allNames.size && statsBySeason[state.season]?.[p.id]){
       const leagues={'Premier League':'39','La Liga':'140','Bundesliga':'78',
         'Serie A':'135','Ligue 1':'61','Primeira Liga':'94','Belgian Pro League':'144',
-        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253'};
+        'Süper Lig':'203','Saudi Pro League':'307','MLS':'253','Brasileirão':'br-league'};
       if(leagues[p.league])allNames.set(leagues[p.league],p.league);
     }
     select.innerHTML='<option value="all">'+(ru?'Все загруженные турниры':'All available competitions')+'</option>'+
