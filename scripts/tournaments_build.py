@@ -155,12 +155,19 @@ def embed(html):
         for row in match.get('players') or []:
             pid=str(row.get('player_id') or '')
             if not pid or not isinstance(row.get('stats'),dict):continue
-            if cid==39 and pid in pl_rows and season=='2026/27':continue
+            if cid==39 and pid in pl_rows and season=='2026/27':
+                # Only append played matches strictly AFTER the export cutoff.
+                # Earlier league matches are already included in pl-catalogue.
+                cutoff=str(pl_rows[pid].get('as_of') or pl.get('published_at') or '')[:10]
+                played=str(match.get('date') or '')[:10]
+                if not cutoff or not played or played<=cutoff:continue
             if not any(str(p.get('id'))==pid for p in original):continue
             pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats']))
     for (season,pid,ident,name),data in pitch_groups.items():
         cur=by_season.setdefault(season,{}).setdefault(pid,[])
-        if any(str(row.get('id'))==ident and row.get('source') not in ('pitchapi_partial',) for row in cur):
+        overlapping=next((row for row in cur if str(row.get('id'))==ident
+                          and row.get('source')!='pitchapi_partial'),None)
+        if overlapping and overlapping.get('source')!='pl_catalogue':
             continue
         totals={}
         valid=set()
@@ -174,6 +181,19 @@ def embed(html):
         totals['matches']=sum(1 for mid,stats in data
                                if stats.get('minutes',0)>0 or
                                any(stats.get(k) for k in ('goals','assists','shots','tackles','saves')))
+        if overlapping and overlapping.get('source')=='pl_catalogue':
+            # Identified matches postdate the weekly EPL snapshot. We add ONLY
+            # non-overlapping matches, never overwrite the full-season base.
+            merged=dict(overlapping['stats'])
+            for field,value in totals.items():
+                merged[field]=round(float(merged.get(field) or 0)+value,3)
+            overlapping['stats']=merged
+            overlapping['source']='pl_catalogue_plus_pitch'
+            overlapping['is_complete']=False
+            overlapping['matches_loaded']=len(valid)
+            overlapping['as_of']=pitch.get('updated_at')
+            overlapping['base_as_of']=pl_rows.get(pid,{}).get('as_of')
+            continue
         cur.append({'id':int(cid) if cid and str(cid).isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
@@ -466,7 +486,12 @@ def embed(html):
           'PitchAPI: '+items.reduce((n,x)=>n+(x.matches_loaded||0),0)+' matched games; coverage still partial');
         return;
       }
-      const premier=items.every(x=>x.source==='pl_catalogue');
+      const boosted=items.every(x=>x.source==='pl_catalogue_plus_pitch');
+     if(boosted){
+       $('competitionStatus').textContent=title+' · '+(ru?'АПЛ: срез '+(ROOT.plCurrentAsOf||'—').slice(0,10)+' + проверенные более новые матчи PitchAPI':'PL snapshot + newer PitchAPI games; partial coverage');
+       return;
+     }
+     const premier=items.every(x=>x.source==='pl_catalogue');
       if(premier){
         $('competitionStatus').textContent=title+' · '+(ru?'АПЛ: актуальный опубликованный срез от ':'PL: published weekly snapshot ')+(ROOT.plCurrentAsOf||'—').slice(0,10);
         return;
