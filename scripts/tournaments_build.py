@@ -274,7 +274,7 @@ def embed(html):
             community=all(x.get('source')=='thesportsdb_sample' for x in events)
             premier=all(x.get('source')=='pl_catalogue' for x in events)
             pitchonly=all(x.get('source')=='pitchapi_partial' for x in events)
-            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else ('pitchapi_partial' if pitchonly else 'api_football_partial'))),
+            collected.update({'source':'transfermarkt_historical' if archival else ('thesportsdb_partial' if community else ('pl_catalogue' if premier else ('pitchapi_partial' if pitchonly else 'verified_multi_source_partial'))),
                               'partial':True,
                               'as_of':historical.get('as_of') if archival else (free.get('last_success_at') if community else (pl.get('published_at') if premier else (pitch.get('updated_at') if pitchonly else snapshot.get('updated_at')))),
                               'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else ('https://pitchapi.dev/' if pitchonly else 'https://www.api-football.com/documentation-v3')))})
@@ -396,7 +396,7 @@ def embed(html):
     const community=rows.length>0&&rows.every(r=>r.source==='thesportsdb_sample');
     const premier=rows.length>0&&rows.every(r=>r.source==='pl_catalogue');
     const pitched=rows.length>0&&rows.every(r=>r.source==='pitchapi_partial');
-    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'api_football_partial',
+    const result={source:archived?'transfermarkt_historical':community?'thesportsdb_partial':premier?'pl_catalogue':pitched?'pitchapi_partial':'verified_multi_source_partial',
       partial:!premier,updated_at:archived?ROOT.historicalThrough:community?ROOT.freeSourceSyncAt:premier?ROOT.plCurrentAsOf:pitched?ROOT.pitchAPILastSync:ROOT.liveUpdatedAt};
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
@@ -476,7 +476,9 @@ def embed(html):
       const onlyArchive=items.every(x=>x.source==='historical_appearances');
       if(onlyArchive){
         $('competitionStatus').textContent=title+' · '+(ru?'Архив до ':'Archive through ')+(ROOT.historicalThrough||'2026-06-28')+
-          ' · '+(ru?'матчи из источника Transfermarkt, не текущий сезон':'Transfermarkt match data, not live');
+          ' · '+(ru?'матчи из Transfermarkt, не текущий сезон':'Transfermarkt match data, not live')+
+          (items.some(x=>x.advanced_partial_source==='pitchapi_partial')?
+           (ru?' · расширенные показатели PitchAPI по части матчей':' · partial PitchAPI advanced metrics'):'');
         return;
       }
       message=(ru?'Загружено: ':'Available: ')+items.length+' '+(ru?'турн.':'comp.')+
@@ -552,6 +554,9 @@ def embed(html):
   }
 """
     html=patch(html,"  function renderProfile(){",controls+profile_meta+"  function renderProfile(){")
+    html=patch(html,
+      "$('valueMain').textContent=model.index.proxy?(ru?'Нет данных':'No data'):euroM(model.estimate);",
+      "$('valueMain').textContent=model.index.proxy?(p.marketValueArchiveEUR!=null?euroM(p.marketValueArchiveEUR/1000000):(ru?'Нет данных':'No data')):euroM(model.estimate);")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);renderVerifiedProfileMeta(p);
     if(s?.source==='pitchapi_partial'){
@@ -562,6 +567,10 @@ def embed(html):
       $('statsSourceCaption').textContent=state.language==='ru'?'TheSportsDB · неполные показатели, не сезонный итог':'TheSportsDB · incomplete records, not a season total';
     }else if(s?.source==='api_football_partial'){
       $('statsSourceCaption').textContent='API-Football · '+(state.language==='ru'?'по загруженным турнирам (неполное покрытие)':'loaded competitions only (partial)');
+    }else if(s?.source==='verified_multi_source_partial'){
+      $('statsSourceCaption').textContent=state.language==='ru'?
+        'PitchAPI / pl-catalogue / архив · неполное покрытие':
+        'PitchAPI / pl-catalogue / archive · partial coverage';
     }else if(s){
       $('statsSourceCaption').textContent=s.source==='transfermarkt_historical'
         ?(state.language==='ru'?'Архив матчей до июня 2026 · все доступные турниры':'Match archive through June 2026 · available competitions')
