@@ -68,11 +68,13 @@ jobs:
         env:
           WIKIMEDIA_BATCH: '40'
         run: python scripts/commons_photos.py
-      - name: Refresh free PitchAPI player match analytics
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      - name: Refresh PitchAPI player match analytics for 2024/25–2026/27
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-pitch]')
         env:
           PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
-          PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '95' }}
+          PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '1600' }}
+          PITCHAPI_DETAIL_BUDGET: ${{ vars.PITCHAPI_DETAIL_BUDGET || '150' }}
+          PITCHAPI_PAUSE: '0.18'
         run: python scripts/sync_pitchapi.py
       - name: Build TransferLab from uploaded ZIP
         run: |
