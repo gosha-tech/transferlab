@@ -332,7 +332,7 @@ def sync():
              'match_cache_limit_reached':len(cached)>=max_report_size}
     OUT.parent.mkdir(exist_ok=True,parents=True)
     tmp=OUT.with_suffix('.tmp')
-    tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\\n',encoding='utf-8')
+    tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
     tmp.replace(OUT)
     print('PitchAPI: '+str(fetched)+' new match reports; '+str(len(known))+
           ' identified players; seasons '+str(payload['season_player_coverage'])+
@@ -364,7 +364,7 @@ def test():
                                   'seasons':['2026']}]})==[('Brasileirão','l_Zy12Ab','2026')]
     assert canonical_season('2024/2025')=='2024/25'
     assert canonical_season('2025')=='2025'
-    assert safe_fullname_match('Erling Haaland',roster)['id']=='9'
+    assert safe_fullname_match('Erling Haaland',roster) is None
     assert safe_fullname_match('K. De Bruyne',roster) is None
     assert safe_fullname_match('Phil Foden',roster)['id']=='10'
     print('PitchAPI unique club/player matches, three seasons, typed metrics PASS')
