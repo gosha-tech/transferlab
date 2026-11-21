@@ -172,7 +172,7 @@ def embed(html):
                 allowed={str(x['id']) for x in choices_for(athlete)}
                 if ident not in allowed or team_norm(row.get('team'))!=team_norm(athlete.get('team')):
                     continue
-            pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats']))
+            pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats'],str(match.get('date') or '')[:10]))
     for (season,pid,ident,name),data in pitch_groups.items():
         cur=by_season.setdefault(season,{}).setdefault(pid,[])
         overlapping=next((row for row in cur if str(row.get('id'))==ident
@@ -181,16 +181,17 @@ def embed(html):
             continue
         totals={}
         valid=set()
-        for mid,stats in data:
+        for mid,stats,day in data:
             if mid in valid:continue
             valid.add(mid)
             for k,v in stats.items():
                 if isinstance(v,(float,int)) and not isinstance(v,bool):
                     totals[k]=round(totals.get(k,0)+v,3)
         if not totals:continue
-        totals['matches']=sum(1 for mid,stats in data
+        totals['matches']=sum(1 for mid,stats,day in data
                                if stats.get('minutes',0)>0 or
                                any(stats.get(k) for k in ('goals','assists','shots','tackles','saves')))
+        last_game=max((day for mid,stats,day in data if day),default=None)
         if overlapping and overlapping.get('source')=='pl_catalogue':
             # Identified matches postdate the weekly EPL snapshot. We add ONLY
             # non-overlapping matches, never overwrite the full-season base.
@@ -203,10 +204,12 @@ def embed(html):
             overlapping['matches_loaded']=len(valid)
             overlapping['as_of']=pitch.get('updated_at')
             overlapping['base_as_of']=pl_rows.get(pid,{}).get('as_of')
+            overlapping['last_match_date']=last_game
             continue
         cur.append({'id':int(cid) if cid and str(cid).isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
+                    'last_match_date':last_game,
                     'source_url':'https://pitchapi.dev/'})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
@@ -336,6 +339,11 @@ def embed(html):
     root['commonsPhotoCount']=len(commons.get('photos') or {})
     root['pitchAPIStatsCoverage']=len({row.get('player_id') for m in (pitch.get('matches') or {}).values() for row in m.get('players',[])})
     root['pitchAPILastSync']=pitch.get('updated_at')
+    root['pitchAPILastMatchDate']=max(
+        (str(m.get('date'))[:10] for m in (pitch.get('matches') or {}).values()
+         if isinstance(m,dict) and m.get('season') in ('2026/27','2026')
+         and m.get('players') and str(m.get('date') or '')[:10]),
+        default=None)
     root['pitchAPIKeyConfigured']=pitch.get('key_configured',False)
     root['pitchAPISeasonCoverage']=pitch.get('season_player_coverage') or {}
     root['pitchAPIBackfillIncomplete']=pitch.get('backfill_incomplete',True)
@@ -391,7 +399,7 @@ def embed(html):
           ' · некоммерческое использование · источник обновляется еженедельно.</div>')
     html=html.replace('<details class="free-scoreboard"',note+'<details class="free-scoreboard"',1)
     anchor='<div class="stat-grid">'
-    toolbar='<div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
+    toolbar='<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div><div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
     html=patch(html,anchor,toolbar+anchor)
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
@@ -462,6 +470,18 @@ def embed(html):
     const rows=eligibleRows(p,state.season);
     const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
     const current=state.season===currentSeason;
+    const banner=$('currentSeasonBanner');
+    if(banner){
+      const last=rows.map(x=>x.last_match_date||x.as_of||'').filter(Boolean).sort().at(-1);
+      const updated=ROOT.pitchAPILastSync?String(ROOT.pitchAPILastSync).slice(0,10):null;
+      banner.textContent=(ru?'Сезон ':'Season ')+state.season+
+        (current?(rows.length?
+          (ru?' · Показатели подтверждены по '+rows.length+' турнирам':' · Verified data for '+rows.length+' competitions'):
+          (ru?' · Статистика этого игрока ещё не получена (не 0)':' · No verified player data yet (not zero)')):
+          (ru?' · Архивный сезон':' · Archived season'))+
+        (last?' · '+(ru?'Последние данные ':'Latest evidence ')+last:'')+
+        (updated?' · PitchAPI '+(ru?'проверен ':'checked ')+updated:'');
+    }
     const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
     const allNames=new Map(choices.map(x=>[String(x.id),x.name]));
     // Older season: show only recorded competitions. Current season: domestic
