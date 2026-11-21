@@ -213,6 +213,8 @@ def read_roster():
 def sync():
     key=os.getenv('PITCHAPI_KEY','').strip()
     if not key:
+        if os.getenv('PITCHAPI_REQUIRED')=='1':
+            raise RuntimeError('PITCHAPI_KEY not configured: daily player statistics cannot update')
         print('PITCHAPI_KEY absent: match-player importer not activated')
         return
     try:
