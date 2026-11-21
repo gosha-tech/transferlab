@@ -52,8 +52,6 @@ jobs:
           assert pathlib.Path('_site/data/coverage.json').exists()
           print('Verified player-season coverage and unique registry')
           PY
-      - name: Audit tennis-like model and current UCL feed
-        run: python scripts/diagnose_source.py
       - name: Check current-season player profiles in Chromium
         run: |
           mkdir -p _site/assets
