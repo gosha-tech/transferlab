@@ -4,7 +4,7 @@
 This transforms the generated site (not the immutable archived source ZIP).
 Only documented API-Football player-season entries become current-season data.
 """
-import json, pathlib, re, unicodedata
+import json, pathlib, re, unicodedata, datetime as dt
 from collections import defaultdict
 from player_competitions import add_choices,choices_for
 from sync_pitchapi import team_norm
@@ -327,6 +327,7 @@ def embed(html):
                                         if any(r.get('stats') for r in entries)}),
         'with_archive_player_stats':len({str(pid) for season in ('2023/24','2024/25','2025/26')
                                         for pid in (historical.get('by_season') or {}).get(season,{})})}
+    root['siteBuiltAtUTC']=dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
     root['liveTournamentStats']=by_season
     root['freeMatchResults']=free.get('matches') or {}
     root['freeSourceSyncAt']=free.get('last_success_at')
