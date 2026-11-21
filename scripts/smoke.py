@@ -77,6 +77,20 @@ def main():
         picker.select_option('2')
         assert 'Фоден' not in page.locator('#competitionStatus').inner_text() # does not claim unverified match scores
         picker.select_option('all')
+        # Verify real PitchAPI UCL records remain attached to competition 2.
+        page.locator('#search').fill('Mbapp')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert 'Mbapp' in page.locator('#pName').inner_text()
+        picker.select_option('2')
+        cl_minutes=page.locator('#statMinutes').inner_text().replace(' ','').replace('\\u00a0','')
+        cl_goals=page.locator('#statGoals').inner_text().strip()
+        assert cl_minutes not in ('—','0',''), ('Mbappe UCL minutes absent despite provider records',cl_minutes)
+        assert cl_goals not in ('—','0',''), ('Mbappe UCL goals absent despite provider records',cl_goals)
+        print('Mbappe UCL 2026/27:',cl_minutes,'minutes,',cl_goals,'goals;',
+              'model value:',page.locator('#valueMain').inner_text(),
+              'index:',page.locator('#playerIndexBadge').inner_text())
+        picker.select_option('all')
         # Verify exact right-back classification from PSG, not generic CB.
         page.locator('#search').fill('Achraf Hakimi')
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
