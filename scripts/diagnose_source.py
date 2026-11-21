@@ -12,6 +12,24 @@ for match in re.finditer(r'(?i)(function\s+(?:projectedIndex|rolling\w*|\w*[Vv]a
     if '2026/27' in word:continue
     excerpt=html[max(0,match.start()-65):match.start()+1250]
     print(word,'@',match.start(),re.sub(r'\s+',' ',excerpt)[:1280])
+print("=== EXACT original rolling mechanism and monetary model ===")
+for name in ('const ROLLING_WINDOW_MONTHS=36','function rollingEvidence(','function projectedIndex(','function pricedPlayer(','const MONETARY_MODEL='):
+    idx=html.find(name)
+    print('BEGIN',name,idx)
+    if idx>=0:
+        print(html[idx:idx+(8500 if name in ('function rollingEvidence(','function projectedIndex(') else 4200)])
+print('=== BUILD actual current UCL player tournament data ===')
+out=ROOT/'_site'/'index.html'
+if out.exists():
+    z=out.read_text(encoding='utf-8')
+    q=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',z,re.S)
+    if q:
+        built=json.loads(q.group(1))
+        print('built current',built.get('pitchAPILastSync'),built.get('profileCoverage'))
+        for p in built['players']:
+            if 'Mbapp' in p.get('name','') or 'Foden' in p.get('name',''):
+                print('BUILT PLAYER',p['name'],p['id'],p.get('team'),built.get('currentCompetitionByPlayer',{}).get(str(p['id'])))
+                print('BUILT 2026/27',built.get('liveTournamentStats',{}).get('2026/27',{}).get(str(p['id'])))
 print("=== Source ZIP embedded formula tokens ===")
 m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
 root=json.loads(m.group(1))
