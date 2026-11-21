@@ -206,7 +206,7 @@ def embed(html):
             overlapping['base_as_of']=pl_rows.get(pid,{}).get('as_of')
             overlapping['last_match_date']=last_game
             continue
-        cur.append({'id':int(cid) if cid and str(cid).isdigit() else ident,'name':name,
+        cur.append({'id':int(ident) if ident.isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
                     'last_match_date':last_game,
