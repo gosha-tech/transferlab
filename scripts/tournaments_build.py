@@ -7,7 +7,7 @@ Only documented API-Football player-season entries become current-season data.
 import json, pathlib, re, unicodedata, datetime as dt
 from collections import defaultdict
 from player_competitions import add_choices,choices_for
-from sync_pitchapi import team_norm
+from sync_pitchapi import team_norm, LEAGUE_IDS as PITCH_COMPETITION_IDS
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -151,7 +151,7 @@ def embed(html):
         if not isinstance(match,dict):continue
         season=match.get('season')
         mid=str(match.get('id') or '')
-        cid=match.get('competition_id')
+        cid=match.get('competition_id') or PITCH_COMPETITION_IDS.get(str(match.get('league') or ''))
         if season not in ('2024/25','2025/26','2026/27','2024','2025','2026') or not mid.startswith('m_'):continue
         ident=str(cid) if cid else 'pitch-'+str(match.get('league_id') or '')
         for row in match.get('players') or []:
@@ -170,7 +170,11 @@ def embed(html):
                 # Never let a name-only cross-club match put Foden in
                 # Bundesliga/Ligue 1. The current club is authoritative.
                 allowed={str(x['id']) for x in choices_for(athlete)}
-                if ident not in allowed or team_norm(row.get('team'))!=team_norm(athlete.get('team')):
+                if team_norm(row.get('team'))!=team_norm(athlete.get('team')):
+                    continue
+                # Real UEFA match evidence can add Europa/Conference, even if
+                # the pre-season club qualification catalogue did not list it.
+                if ident not in allowed and ident not in ('2','3','848'):
                     continue
             pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats'],str(match.get('date') or '')[:10]))
     for (season,pid,ident,name),data in pitch_groups.items():
@@ -209,7 +213,7 @@ def embed(html):
         cur.append({'id':int(ident) if ident.isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
-                    'last_match_date':last_game,
+                    'team_verified':True,'last_match_date':last_game,
                     'source_url':'https://pitchapi.dev/'})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
     # labeled as old data, never presented as current 2026/27 statistics.
@@ -469,6 +473,8 @@ def embed(html):
     // An unverified current competition from a community sample must not
     // add unrelated leagues/cups. Allow authenticated match appearances.
     return pool.filter(x=>permitted.has(String(x.id))||
+      (x.source==='pitchapi_partial'&&x.team_verified===true&&
+       Number(x.matches_loaded)>0&&['2','3','848'].includes(String(x.id)))||
       (x.source==='api_football_authenticated'&&x.team_verified===true));
   }
   function tournamentSum(rows){
