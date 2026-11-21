@@ -48,4 +48,46 @@
     selector.addEventListener('change',render);render();
   }
   matchBoard();
+
+  // GitHub Pages is static, but Actions publishes refreshed, verified player
+  // statistics every day. A long-open tab must not remain on yesterday's data.
+  // Check the published build manifest periodically and when the tab resumes.
+  // Do not request any API key or provider data in the browser.
+  const embedded = document.getElementById('embeddedData');
+  let loadedAt = NaN;
+  try {
+    loadedAt = Date.parse(JSON.parse(embedded?.textContent || '{}').siteBuiltAtUTC || '');
+  } catch (_) {}
+  let checking = false;
+  async function checkForNewPlayerStats() {
+    if (checking || !Number.isFinite(loadedAt) || document.hidden) return;
+    checking = true;
+    try {
+      const resource = new URL('data/coverage.json', document.baseURI);
+      resource.searchParams.set('version', String(Date.now()));
+      const response = await fetch(resource.toString(), {cache: 'no-store'});
+      if (!response.ok) return;
+      const report = await response.json();
+      const published = Date.parse(report.built_at_utc || '');
+      if (!Number.isFinite(published) || published <= loadedAt + 60000) return;
+      // Guard against CDN propagation and stale index.html reload loops.
+      const key = 'transferlab-reloaded-build';
+      let already = '';
+      try { already = sessionStorage.getItem(key) || ''; } catch (_) {}
+      if (already === report.built_at_utc) return;
+      try { sessionStorage.setItem(key, report.built_at_utc); } catch (_) {}
+      const next = new URL(location.href);
+      next.searchParams.set('updated', String(published));
+      location.replace(next.toString());
+    } catch (_) {
+      // Offline access and temporary GitHub Pages outages preserve the cache.
+    } finally {
+      checking = false;
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkForNewPlayerStats();
+  });
+  setInterval(checkForNewPlayerStats, 60 * 60 * 1000);
+  checkForNewPlayerStats();
 })();
