@@ -56,6 +56,7 @@ def main():
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Messi' in page.locator('#pName').inner_text(),'Search did not navigate to Messi'
+        assert '2026' in page.locator('#currentSeasonBanner').inner_text(), 'MLS defaults to current 2026 season'
         # A Miami player must not show England's EPL / French Ligue 1.
         picker=page.locator('#competitionSelect')
         assert picker.count()==1
@@ -66,6 +67,10 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         available=picker.locator('option').evaluate_all('(nodes)=>nodes.map(x=>x.value)')
         assert available==['all','39','45','48','2'],('Foden competition list is incorrect',available)
+        banner=page.locator('#currentSeasonBanner').inner_text()
+        assert '2026/27' in banner,('Foden must open current season, not archive',banner)
+        assert 'PitchAPI' in banner,('Current data synchronization date must be visible',banner)
+        assert 'Статистика этого игрока ещё не получена' not in banner, ('Foden current data must display',banner)
         assert not any(x in available for x in ['61','66','3','140','135'])
         picker.select_option('45')
         assert 'нет' in page.locator('#competitionStatus').inner_text().lower() or 'получена' in page.locator('#competitionStatus').inner_text().lower()
