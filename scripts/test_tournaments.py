@@ -32,6 +32,7 @@ def main():
         seed=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',page,re.S)
         original=json.loads(seed.group(1))
         foden_id=next(str(p['id']) for p in original['players'] if p['name']=='Phil Foden' and p['team']=='Manchester City')
+        mbappe_id=next(str(p['id']) for p in original['players'] if 'Mbapp' in p['name'] and p['team']=='Real Madrid')
         (root/'data').mkdir(exist_ok=True)
         (root/'data'/'free_sources.json').write_text(json.dumps({
             'last_success_at':'2026-11-17T00:00:00Z','profiles_verified':1,
@@ -73,6 +74,16 @@ def main():
                   'competition_id':78,
                   'players':[{'player_id':foden_id,'pitch_id':'p_BAD234',
                               'team':'Manchester City','stats':{'minutes':90,'goals':8}}]},
+                'm_F1gH2i':{'id':'m_F1gH2i','date':'2026-11-18',
+                  'season':'2026/27','league':'La Liga','league_id':'l_LL',
+                  'competition_id':140,
+                  'players':[{'player_id':mbappe_id,'pitch_id':'p_Mba123',
+                              'team':'Real Madrid','stats':{'minutes':90,'goals':2}}]},
+                'm_G2hJ3k':{'id':'m_G2hJ3k','date':'2026-11-19',
+                  'season':'2026/27','league':'UEFA Champions League','league_id':'l_CL',
+                  'competition_id':2,
+                  'players':[{'player_id':mbappe_id,'pitch_id':'p_Mba123',
+                              'team':'Real Madrid','stats':{'minutes':90,'goals':1,'xg':0.9}}]},
                 'm_A1b2C3':{
                 'id':'m_A1b2C3','date':'2026-11-16','season':'2026/27','league':'FA Cup',
                 'league_id':'l_aB32dq','competition_id':45,'source':'PitchAPI',
@@ -100,6 +111,10 @@ def main():
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
         assert not any(str(x['id'])=='78' for x in loaded), 'Foden must not show Bundesliga'
+        madrid=d['liveTournamentStats']['2026/27'][mbappe_id]
+        assert {x['id'] for x in madrid}=={2,140},madrid
+        assert next(x for x in madrid if x['id']==2)['stats']['goals']==1
+        assert next(x for x in madrid if x['id']==140)['stats']['goals']==2
         pl_after=next(x for x in d['liveTournamentStats']['2026/27'][other_pid] if x['id']==39)
         assert pl_after['source']=='pl_catalogue_plus_pitch'
         assert pl_after['stats']['minutes']==290,pl_after
