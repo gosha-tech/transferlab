@@ -360,6 +360,13 @@ def embed(html):
     # Write embedded JSON before modifying the runtime script.
     content=json.dumps(root,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')
     html=html[:m.start(2)]+content+html[m.end(2):]
+    # GitHub Pages and browsers cache static assets. Each daily build must load
+    # the newest code for the automatic stats refresh and freshness indicator.
+    asset_version=str(root['siteBuiltAtUTC']).replace(':','').replace('+','')[:18]
+    html=html.replace('src="assets/site.js"',
+                      'src="assets/site.js?v='+asset_version+'"')
+    html=html.replace('href="assets/site.css"',
+                      'href="assets/site.css?v='+asset_version+'"')
     # The public UI must never conflate a successful site deployment with
     # a successful current-season statistics sync.
     def measured_players(season):
