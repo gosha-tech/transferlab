@@ -436,7 +436,7 @@ def embed(html):
     return result;
   }""")
     html=patch(html,"favorites:[], timeline:{}, seasonLoading:{}, photoDisabled:false};",
-               "favorites:[], timeline:{}, seasonLoading:{}, photoDisabled:false,competition:'all'};")
+               "favorites:[], timeline:{}, seasonLoading:{}, photoDisabled:false,competition:'all'};state.season='2026/27';")
     html=patch(html,"function stat(p,season=state.season){return statsBySeason[season]?.[p.id]||null};",
                r"""function stat(p,season=state.season){
     const all=eligibleRows(p,season);
@@ -550,20 +550,12 @@ def embed(html):
     html=patch(html,"${esc(p.season||'2026/27')}</span></span></button>","${esc(p.season||'2026/27')}</span>${indexTag}</span></button>")
     html=patch(html,"function choosePlayer(id){state.player=String(id);",
        """function choosePlayer(id){state.player=String(id);state.competition='all';
-      // For a footballer with no verified stats in the selected season,
-      // open the most recent supported season with measured minutes.
+      // Default to the actual current season on each player open. The previous
+      // archive auto-fallback silently switched users to 2025/26 when PitchAPI
+      // had goals or assists but no minute count, making 2026/27 look empty.
       const athlete=players.find(x=>String(x.id)===String(id));
       const calendar=athlete&&['MLS','Brasileirão'].includes(athlete.league);
-      const years=calendar?['2026','2025','2024']:['2026/27','2025/26','2024/25'];
-      const hasMinutes=y=>{
-        const rows=ROOT.liveTournamentStats?.[y]?.[String(id)]||[];
-        const mins=rows.reduce((n,r)=>n+Number(r.stats?.minutes||0),0);
-        return mins>0||Number(statsBySeason[y]?.[String(id)]?.minutes||0)>0;
-      };
-      if(!hasMinutes(state.season)){
-        const latest=years.find(hasMinutes);
-        if(latest)state.season=latest;
-      }""")
+      state.season=calendar?'2026':'2026/27';""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
