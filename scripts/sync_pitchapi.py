@@ -52,7 +52,7 @@ TARGETS={
 # Directly mapped internal competition ids, no cross-league conflation.
 LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
  'Ligue 1':61,'Primeira Liga':94,'Belgian Pro League':144,'Süper Lig':203,
- 'Saudi Pro League':307,'MLS':253,'Brasileirão':'br-league','UEFA Champions League':2,
+ 'Saudi Pro League':307,'MLS':253,'Brasileirão':'br-league','Eredivisie':'nl-league','Taça de Portugal':'cup-portugal','UEFA Champions League':2,
  'UEFA Europa League':3,'UEFA Conference League':848,'FA Cup':45,
  'EFL Cup':48,'Copa del Rey':143,'Coppa Italia':137,'DFB Pokal':81,
  'Coupe de France':66}
