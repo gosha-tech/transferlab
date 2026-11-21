@@ -125,6 +125,11 @@ def main():
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
         assert 'eligibleRows(p,state.season)' in result
         assert 'verifiedProfileMeta' in result
+        assert 'const factor=share;' in result, 'Tennis-style: season gets full in-window weight'
+        assert 'const sampleStrength=Math.min(1,Math.sqrt(sample/180));' in result
+        assert 'return Math.max(0,Math.min(1,(dt-start)/(end-start)));' not in result
+        assert '[100,100,100,0].map((n,i)=>' in result
+
         assert d['profileCoverage']['with_current_player_stats']>=1
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
         assert 'freeMatchesPanel' in result
