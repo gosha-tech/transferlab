@@ -58,6 +58,8 @@ jobs:
           cp assets/site.js assets/site.css _site/assets/
           python -m pip install --quiet playwright==1.56.0
           python scripts/smoke.py
+      - name: Audit tennis-like model and current UCL feed
+        run: python scripts/diagnose_source.py
       - name: JavaScript syntax
         run: |
           python - <<'PY'
