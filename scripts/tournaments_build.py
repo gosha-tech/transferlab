@@ -409,6 +409,39 @@ def embed(html):
     anchor='<div class="stat-grid">'
     toolbar='<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div><div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
     html=patch(html,anchor,toolbar+anchor)
+    # Tennis-style rolling window: every confirmed match contributes 100%
+    # until it exits the 36-month period, not a fractional age multiplier.
+    # The existing per-role metric weights remain separate from time weight.
+    html=patch(html,
+      "return Math.max(0,Math.min(1,(dt-start)/(end-start)));",
+      "return 1;")
+    html=patch(html,
+      "const avg=Math.max(0,(wA+wB)/2),factor=share*avg;",
+      "const factor=share;")
+    html=patch(html,
+      "const ROLLING_PRIOR_MINUTES=900;",
+      "const ROLLING_PRIOR_MINUTES=180;")
+    html=patch(html,
+      "const sampleStrength=Math.sqrt(sample/(sample+220));",
+      "const sampleStrength=Math.min(1,Math.sqrt(sample/180));")
+    # Explain the real weighting in the formula panel rather than displaying
+    # the obsolete 100% / 67% / 33% time-decay illustration.
+    html=html.replace(
+      "Рейтинг строится за 36 месяцев с постепенным снижением веса, а не обнуляется в августе.",
+      "Рейтинг учитывает матчи за последние 36 месяцев полностью, как в теннисном скользящем рейтинге. По истечении периода результат выбывает.")
+    html=html.replace(
+      "The index spans 36 rolling months with gradually decaying weights, without an August reset.",
+      "Every verified match counts fully over the rolling 36 months; its contribution expires at the cutoff.")
+    html=html.replace(
+      "Важность результата снижается каждый день, через 36 месяцев становится нулевой.",
+      "Результат учитывается полностью до истечения 36 месяцев, затем перестаёт учитываться.")
+    html=html.replace(
+      "The result loses weight daily and reaches zero after 36 months.",
+      "Each match retains full weight for 36 months, then expires.")
+    html=patch(html,"[100,67,33,0].map((n,i)=>",
+               "[100,100,100,0].map((n,i)=>")
+    html=html.replace("Recency-weighted minutes","Eligible minutes in rolling window")
+    html=html.replace("Эквивалент минут с учётом давности","Минуты в скользящем окне")
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
