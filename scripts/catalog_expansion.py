@@ -41,10 +41,15 @@ LEAGUES={
  'KR1':'Croatian HNL','SER1':'Serbian SuperLiga',
  'RO1':'Romanian SuperLiga','UKR1':'Ukrainian Premier League',
  'RU1':'Russian Premier League','MEX1':'Liga MX',
- 'AUS1':'A-League Men'
+ 'AUS1':'A-League Men',
+ # Calendar-year domestic competitions verified against competitions.json.
+ 'ARG1':'Argentine Primera División',
+ 'NO1':'Eliteserien','SE1':'Allsvenskan',
+ 'JAP1':'J1 League','RSK1':'K League 1'
 }
 CUP_CODES={'CL','EL','ECL','DFB','FAC','CGB','CDR','NLP','USC','POCP'}
-CALENDAR={'MLS1','BRA1'}
+CALENDAR={'MLS1','BRA1','ARG1','NO1','SE1','JAP1','RSK1'}
+CALENDAR_NAMES={LEAGUES[code] for code in CALENDAR}
 POSITION={
  'Goalkeeper':('Goalkeeper','GK','GK'),
  'Centre-Back':('Defender','CB','CB'),
@@ -93,7 +98,8 @@ def profile(row):
        'league':league,'pos':role[0],'scoutRole':role[1],
        'displayPosition':role[2],'position_source':SOURCE,
        'positionAsOf':'2026-07','birth':birth.isoformat(),
-       'season':'2025/26','origin':'transfermarkt_archived_2026',
+       'season':'2025' if league in CALENDAR_NAMES else '2025/26',
+       'origin':'transfermarkt_archived_2026',
        'teamArchiveAsOf':'2026-07','originSource':SOURCE}
     foot=str(row.get('foot') or '').strip().lower()
     if foot in ('left','right','both'):p['foot']=foot
@@ -149,7 +155,7 @@ def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None)
         stats=totals.get(tm,{})
         # For calendar championships use the last actual full campaign 2025.
         # A 2026-only partial set cannot certify a complete 2026 season.
-        reference='2025' if p['league'] in ('MLS','Brasileirão') else '2025/26'
+        reference='2025' if p['league'] in CALENDAR_NAMES else '2025/26'
         minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
                     if season==reference and comp in LEAGUES)
         if minutes<MIN_MINUTES:continue
@@ -289,6 +295,10 @@ def selftest():
     assert profile(dict(one,current_club_domestic_competition_id='PL1'))['league']=='Ekstraklasa'
     assert profile(dict(one,current_club_domestic_competition_id='TS1'))['league']=='Czech First League'
     assert profile(dict(one,current_club_domestic_competition_id='KR1'))['league']=='Croatian HNL'
+    assert profile(dict(one,current_club_domestic_competition_id='ARG1'))['season']=='2025'
+    assert profile(dict(one,current_club_domestic_competition_id='NO1'))['league']=='Eliteserien'
+    assert season_of(date(2025,3,15),'ARG1')=='2025'
+    assert season_of(date(2025,3,15),'NO1')=='2025'
     assert profile({**one,'sub_position':'Unknown'}) is None
     assert profile({**one,'date_of_birth':'abc'}) is None
     appearances=[
