@@ -213,6 +213,15 @@ def embed(html):
                 if isinstance(v,(float,int)) and not isinstance(v,bool):
                     totals[k]=round(totals.get(k,0)+v,3)
         if not totals:continue
+        # A start flag comes only from a confirmed starting XI. If even one
+        # played match lacks that XI, known starts are a LOWER BOUND, not a
+        # complete season total. Never display it as a definitive number.
+        start_observed=len({mid for mid,stats,day in data
+                            if stats.get('starts') in (0,1)})
+        if start_observed<len(valid):
+            if 'starts' in totals:
+                totals['starts_min']=totals.pop('starts')
+            totals['starts_verified_matches']=start_observed
         totals['matches']=sum(1 for mid,stats,day in data
                                if stats.get('minutes',0)>0 or
                                any(stats.get(k) for k in ('goals','assists','shots','tackles','saves')))
@@ -222,7 +231,16 @@ def embed(html):
             # non-overlapping matches, never overwrite the full-season base.
             merged=dict(overlapping['stats'])
             for field,value in totals.items():
+                if field=='starts_min':
+                    merged['starts_min']=round(float(merged.get('starts_min') or 0)+value,3)
+                    continue
+                # The published PL base has complete starts only through its
+                # export; if newer games lack confirmed XI then full starts
+                # are unknown. Retain the verified minimum instead.
+                if field=='starts_verified_matches':continue
                 merged[field]=round(float(merged.get(field) or 0)+value,3)
+            if 'starts_min' in totals:
+                merged['starts_min']=merged.pop('starts',0)+totals.get('starts_min',0)
             overlapping['stats']=merged
             overlapping['source']='pl_catalogue_plus_pitch'
             overlapping['is_complete']=False
@@ -368,6 +386,8 @@ def embed(html):
     root['commonsPhotoCount']=len(commons.get('photos') or {})
     root['pitchAPIStatsCoverage']=len({row.get('player_id') for m in (pitch.get('matches') or {}).values() for row in m.get('players',[])})
     root['pitchAPILastSync']=pitch.get('updated_at')
+    root['lineupSyncAt']=pitch.get('lineup_sync_at')
+    root['lineupCoverage']=pitch.get('lineup_refresh_stats') or {}
     root['pitchAPILastMatchDate']=max(
         (str(m.get('date'))[:10] for m in (pitch.get('matches') or {}).values()
          if isinstance(m,dict) and m.get('season') in ('2026/27','2026')
@@ -587,7 +607,7 @@ def embed(html):
   }
   const tournamentCatalogue=ROOT.liveCompetitionCatalog||[];
   const tournamentCoverage=ROOT.liveCoverage||[];
-  const tournamentMetricKeys=['matches','starts','minutes','goals','assists','shots','shots_on_target',
+  const tournamentMetricKeys=['matches','starts','starts_min','starts_verified_matches','minutes','goals','assists','shots','shots_on_target',
     'passes','key_passes','tackles','interceptions','dribbles','xg','xa','npxg',
     'recoveries','clearances','blocks','progressive_passes','progressive_carries',
     'yellow_cards','red_cards'];
@@ -613,6 +633,12 @@ def embed(html):
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
+    }
+    const completeStarts=rows.length>0&&rows.every(x=>x.stats?.starts!=null && x.stats?.starts_min==null);
+    if(!completeStarts){
+      const verified=Number(result.starts||0)+Number(result.starts_min||0);
+      result.starts_min=(rows.some(x=>x.stats?.starts!=null||x.stats?.starts_min!=null)?verified:null);
+      result.starts=null;
     }
     return result;
   }""")
