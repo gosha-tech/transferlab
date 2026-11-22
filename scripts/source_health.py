@@ -29,8 +29,8 @@ def inspect(as_of,inputs):
     descriptors={
         'premier_league':('pl_current','retrieved_at',7),
         'pitchapi':('pitchapi','updated_at',4),
-        'open_and_community_sources':('free_sources','retrieved_at',8),
-        'contract_enrichment':('contract_enrichment','updated_at',30),
+        'open_and_community_sources':('free_sources','last_success_at',8),
+        'contract_enrichment':('contract_enrichment','last_check',30),
     }
     for name,(key,field,limit) in descriptors.items():
         obj=inputs.get(key) or {}
@@ -50,6 +50,13 @@ def inspect(as_of,inputs):
             out[name]['errors_reported']=len(obj.get('errors') or [])
             out[name]['status']=(
                 'provider_not_configured' if obj.get('key_configured') is False else status)
+        if key=='free_sources':
+            out[name]['verified_current_player_stats']=int(obj.get('players_with_current_stats') or 0)
+            out[name]['recent_match_results']=int(obj.get('recent_matches') or 0)
+            out[name]['import_status']=obj.get('status') or 'unknown'
+            out[name]['roster_size_during_import']=obj.get('roster_size')
+        if key=='contract_enrichment':
+            out[name]['profiles_with_provider_records']=len(obj.get('profiles') or {})
         if key=='premier_league':
             out[name]['players_with_snapshot']=len(obj.get('players') or {})
             out[name]['source_terms']=obj.get('license') or None
