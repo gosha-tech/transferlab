@@ -45,7 +45,7 @@
     data = bridge.list().map(p => {
       const age = ageAt(p.birth, stamp);
       const r = p.rating;
-      const reliable = !!r && !r.proxy && r.coverage >= 60 &&
+      const reliable = !!p.positionEvidence && !!r && !r.proxy && r.coverage >= 60 &&
         r.weightedMinutes >= 450 && Number.isFinite(r.score) &&
         p.minutes >= 450 && ['Goalkeeper','Defender','Midfielder','Forward'].includes(p.position);
       const fresh = p.market && asDate(p.market.as_of) &&
@@ -108,9 +108,9 @@
     return {confirmed,preliminary};
   }
   function renderCard(p) {
-    const price=p.market ? money(p.market.value_eur) :
+    const price=p.market ? money(p.market.value_eur)+' <small>· '+esc(p.market.as_of)+' · '+esc(p.market.source)+'</small>' :
       p.archive && Number.isFinite(p.archive.eur) ?
-        money(p.archive.eur) + ' <small>архив · '+esc(p.archive.as_of)+'</small>' :
+        money(p.archive.eur) + ' <small>архив · '+esc(p.archive.as_of)+' · Transfermarkt</small>' :
         'Нет проверенной стоимости';
     const rating=p.score!==null ?
       '<strong class="gems-score">'+p.score+'/100</strong>' :
@@ -122,7 +122,6 @@
       'стоимость: '+Math.round(p.pricePercentile*100)+'-й · аналогов: '+p.peers :
       (p.market ? 'Недостаточно сопоставимых игроков с актуальной стоимостью' :
       'Актуальная стоимость не подтверждена; рейтинг недооценённости не рассчитывается');
-    const date=p.market?.as_of ? ' · цена от '+esc(p.market.as_of) : '';
     const meta=esc(p.club)+' · '+esc(p.league);
     return '<article class="gems-card"><button class="gems-card-open" type="button" data-gem-open="'+esc(p.id)+'">'+
       '<span class="gems-avatar"><span class="gems-avatar-fallback" data-gem-fallback="'+esc(p.id)+'">'+
@@ -131,7 +130,8 @@
       '<span class="gems-card-main"><span class="gems-player">'+esc(p.name)+'</span>'+
       '<span class="gems-meta">'+meta+'</span><span class="gems-meta">'+p.age+' лет · '+
       esc(p.precisePosition||p.position)+' · '+fmt(p.minutes)+' минут · '+fmt(p.matches??'—')+' матчей</span>'+
-      '<span class="gems-price">'+price+date+'</span>'+
+      '<span class="gems-meta">Статистика: '+esc(p.statsAsOf||'дата не подтверждена')+' · '+esc(p.statsSource||'источник не указан')+'</span>'+ 
+      '<span class="gems-price">'+price+'</span>'+
       '<span class="gems-explain">'+esc(explanation)+'</span>'+tag+'</span>'+
       '<span class="gems-card-stats"><span class="gems-stat-label">TransferLab Index</span>'+
       '<strong>'+p.rating.score+'/100</strong><span class="gems-stat-label">Hidden Gem Score</span>'+
