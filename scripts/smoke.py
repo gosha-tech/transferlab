@@ -279,6 +279,11 @@ def main():
         # screening signal, NOT a 36-month index backdated to archived fees.
         assert measured['archiveIsNotCurrent'] is True, measured
         assert measured['youthWithArchivedValueGap']>=0, measured
+        assert measured['youthWithContemporaneousScoutingScore']>=0,measured
+        scout_cards=page.locator('.gems-scout-score')
+        print('Current-role scout signals:',scout_cards.count())
+        if scout_cards.count():
+            assert 'Не рыночная недооценка' in scout_cards.first.inner_text()
         if scored:
             assert 'Г+А/90' in page.locator('.gems-archival-score').first.inner_text()
         assert measured['youthWithVerifiedCurrentValueGap']==0 or (
