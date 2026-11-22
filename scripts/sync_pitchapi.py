@@ -280,12 +280,13 @@ def sync():
                 # confirmation that every player recorded zero minutes.
                 if not previous.get('players'):
                     try:
-                        checked=dt.datetime.fromisoformat(
+                        last_checked_at=dt.datetime.fromisoformat(
                             str(previous.get('checked_at') or '').replace('Z','+00:00'))
-                        if checked.tzinfo is None:checked=checked.replace(tzinfo=dt.timezone.utc)
+                        if last_checked_at.tzinfo is None:
+                            last_checked_at=last_checked_at.replace(tzinfo=dt.timezone.utc)
                     except (TypeError,ValueError):
-                        checked=now_utc-dt.timedelta(days=15)
-                    if now_utc-checked>=dt.timedelta(days=14):
+                        last_checked_at=now_utc-dt.timedelta(days=15)
+                    if now_utc-last_checked_at>=dt.timedelta(days=14):
                         pending.append(m)
             # Uncached matches first, then older empty results requiring review.
             pending.sort(key=lambda m:(
