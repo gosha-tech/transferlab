@@ -26,7 +26,7 @@ def inject_transfer_ui(html):
       Number(historical.eur_m)>0;
     const current=!model.index?.proxy&&Number.isFinite(Number(model.estimate))?
       price(model.estimate):tr('нет надёжной оценки','not available');
-    const fee=price(move.reported_fee_eur_m);
+    const fee='≈ '+price(move.reported_fee_eur_m);
     const actualText=tr('Сообщённая сумма трансфера','Reported transfer fee');
     const priorText=tr('Оценка TransferLab до сделки','Pre-transfer TransferLab valuation');
     const todayText=tr('Текущая оценка модели','Current model valuation');
@@ -59,7 +59,7 @@ def inject_transfer_ui(html):
       '</h3><p class="transfer-route">'+esc(move.from_club)+' → '+
       esc(move.to_club)+' · '+fmtDate(move.date)+'</p>'+
       '<div class="transfer-values">'+
-        '<div><span>'+actualText+'</span><strong>'+fee+' ≈</strong></div>'+
+        '<div><span>'+actualText+'</span><strong>'+fee+'</strong></div>'+
         '<div><span>'+priorText+'</span><strong>'+
           esc(prior)+'</strong></div>'+
         '<div><span>'+todayText+' · '+fmtDate(ROOT.siteBuiltAtUTC)+
@@ -69,6 +69,7 @@ def inject_transfer_ui(html):
         tr('Сумма сообщена СМИ, не официально раскрытая точная цена. Сделка и рыночная стоимость — разные величины. ',
            'Fee reported by media, not officially disclosed exact consideration. Price and market valuation differ. ')+
         link(move.fee_source,tr('Источник суммы','Fee report'))+
+        ' · '+link(move.fee_structure_source,'Sky Sports')+
         ' · '+link(move.official_source,tr('Подтверждение перехода','Confirmed transfer'))+
       '</p>';
   }
