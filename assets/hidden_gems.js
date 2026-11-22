@@ -202,7 +202,7 @@
       '</span>':'';
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
-    const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
+    const club=esc(p.club)+(p.clubArchived?' · клуб по историческим данным, сейчас не подтверждён':'')+' · '+esc(p.league);
     const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
       p.rated&&p.rating.provisional?'Data Confidence: C · предварительный индекс':
       p.rated?'Data Confidence: B · частичная статистика':
