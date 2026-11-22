@@ -63,13 +63,33 @@ def inject_competition_exposure(html):
     // rules, so this cannot manufacture a Mendes > Hakimi ranking.
     const leagueFactor=setting.factor+(1-setting.factor)*evidence.share;
     const adjusted=raw>=50?50+(raw-50)*leagueFactor:raw*leagueFactor;
-    return {score:Math.round(clamp(adjusted,1,setting.ceiling)),
+    // Opponent difficulty is an additional, SMALL independently verified
+    // signal. Missing match opponents cause NO adjustment. Only 2026/27
+    // UEFA match minutes with documented opponent and dated coefficient count.
+    const opponent=ROOT.opponentStrengthByPlayer?.[String(player?.id)]||null;
+    const observed=Number(opponent?.minutes||0);
+    const strength=Number(opponent?.average_uefa_coefficient);
+    const coverage=Math.min(1,Math.max(0,observed/450));
+    const opponentDelta=opponent&&observed>0&&Number.isFinite(strength)?
+      Math.max(-2,Math.min(2.5,((strength-75)/75)*2.4*coverage)):0;
+    return {score:Math.round(clamp(adjusted+opponentDelta,1,setting.ceiling)),
       factor:leagueFactor,ceiling:setting.ceiling,
-      europeanExposure:evidence};
+      europeanExposure:evidence,opponentEvidence:opponent,
+      opponentDelta:Math.round(opponentDelta*100)/100};
   }
 """
     html=html[:a]+replacement+html[b:]
-    meta="    const standing=relativeRoleRank(p);"
+    meta="    const opponent=competitionEvidence?.opponentEvidence;
+    if(opponent?.matches>0&&Number.isFinite(competitionEvidence.opponentDelta))
+      facts.push(label('Сила соперников в подтверждённых матчах ЛЧ/ЛЕ: ',
+                       'Verified UEFA opponent strength: ')+
+        opponent.average_uefa_coefficient.toFixed(1)+
+        label(' баллов УЕФА · ', ' UEFA coefficient points · ')+
+        opponent.matches+label(' матч(ей), поправка ',
+                               ' matches, index adjustment ')+
+        (competitionEvidence.opponentDelta>0?'+':'')+
+        competitionEvidence.opponentDelta.toFixed(2));
+    const standing=relativeRoleRank(p);"
     if html.count(meta)!=1:
         raise RuntimeError("Cannot show European evidence in player profile")
     extra=r"""    const competitionEvidence=projectedIndex(p).leagueAdjustment;
