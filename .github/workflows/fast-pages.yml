@@ -14,7 +14,7 @@ permissions:
 # UI/index fixes must not be held back by a large scheduled API backfill.
 # The existing scheduled import publishes newer snapshots when complete.
 concurrency:
-  group: transferlab-pages
+  group: transferlab-pages-main
   cancel-in-progress: false
 
 jobs:
@@ -27,16 +27,19 @@ jobs:
       - name: Build from verified cached match snapshots (no provider calls)
         run: |
           python scripts/prepare.py
+          python scripts/catalog_expansion.py --embed _site/index.html
           python scripts/enrich_profiles.py
           python scripts/tournaments_build.py _site/index.html
+          python scripts/hidden_gems.py _site/index.html
           mkdir -p _site/assets _site/data
-          cp assets/site.css assets/site.js _site/assets/
+          cp assets/site.css assets/site.js assets/hidden_gems.js assets/hidden_gems.css _site/assets/
           cp data/live.json data/free_sources.json _site/data/
           for filename in pl_current.json commons_photos.json pitchapi.json; do
             if [ -f "data/$filename" ]; then cp "data/$filename" _site/data/; fi
           done
           python scripts/audit_coverage.py
           python scripts/test_tournaments.py
+          python scripts/test_hidden_gems.py
       - name: Validate generated source syntax
         run: |
           python - <<'PY'
@@ -44,13 +47,15 @@ jobs:
           import re,json
           html=Path('_site/index.html').read_text(encoding='utf-8')
           root=json.loads(re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S).group(1))
-          assert len(root['players'])>=1353
+          assert len(root['players'])>=4400
+          assert 'hiddenGemsMarket' in root
           assert root['marketHistoryCoverage']['profiles']>=1100
-          assert '"LB/RB":{"goals":6,"xg":8,"creation":31,"minutes":25,"defense":30}' in html
-          Path('/tmp/transferlab-check.js').write_text(re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)[-1],encoding='utf-8')
+          assert 'function projectedIndex(' in html
+          Path('/tmp/transferlab-check.js').write_text([x for x in re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S) if x.strip()][-1],encoding='utf-8')
           PY
           node --check /tmp/transferlab-check.js
           node --check _site/assets/site.js
+          node --check _site/assets/hidden_gems.js
       - name: Verify player indices in Chromium
         run: |
           python -m pip install --quiet playwright==1.56.0
