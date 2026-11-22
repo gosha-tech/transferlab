@@ -27,6 +27,12 @@ if out.exists():
         built=json.loads(q.group(1))
         print('built current',built.get('pitchAPILastSync'),built.get('profileCoverage'))
         for p in built['players']:
+            if 'Hakimi' in p.get('name',''):
+                pid=str(p['id'])
+                print('HAKIMI DATA:',pid,p.get('team'),p.get('scoutRole'),
+                      'archive',built.get('marketHistory5Y',{}).get(pid),
+                      'last-year',built.get('liveIndexStats',{}).get('2026/27',{}).get(pid),
+                      'history',built.get('liveIndexStats',{}).get('2025/26',{}).get(pid))
             if 'Mbapp' in p.get('name','') or 'Foden' in p.get('name',''):
                 print('BUILT PLAYER',p['name'],p['id'],p.get('team'),built.get('currentCompetitionByPlayer',{}).get(str(p['id'])))
                 print('BUILT 2026/27',built.get('liveTournamentStats',{}).get('2026/27',{}).get(str(p['id'])))
