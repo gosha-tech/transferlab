@@ -20,10 +20,16 @@ def inject_uniform_cards(html):
   }
   function cardStatEvidence(p){
     const year=cardCurrentSeason(p),id=String(p.id);
-    const source=ROOT.liveIndexStats?.[year]?.[id]||statsBySeason[year]?.[id]||null;
-    if(!source||![source.minutes,source.matches,source.goals,source.assists]
-       .some(v=>v!==null&&v!==undefined))return null;
-    return source;
+    const valid=source=>source&&[source.minutes,source.matches,source.goals,source.assists]
+      .some(v=>v!==null&&v!==undefined);
+    const current=ROOT.liveIndexStats?.[year]?.[id]||statsBySeason[year]?.[id]||null;
+    if(valid(current))return {stats:current,season:year,archived:false};
+    const prior=year==='2026'?'2025':'2025/26';
+    // A historical season is presented with its REAL date, never silently
+    // relabeled as 2026/27, and never treated as zero current production.
+    const history=ROOT.liveIndexStats?.[prior]?.[id]||statsBySeason[prior]?.[id]||null;
+    if(valid(history))return {stats:history,season:prior,archived:true};
+    return null;
   }
   function cardContractEvidence(p){
     const ru=state.language==='ru';
@@ -74,12 +80,15 @@ def inject_uniform_cards(html):
     const stats=cardStatEvidence(p);
     const c=cardContractEvidence(p);
     const idx=projectedIndex(p);
-    const goal=stats?.goals==null?'—':nf(stats.goals);
-    const assist=stats?.assists==null?'—':nf(stats.assists);
+    const goal=stats?.stats?.goals==null?'—':nf(stats.stats.goals);
+    const assist=stats?.stats?.assists==null?'—':nf(stats.stats.assists);
+    const seasonLabel=stats?.archived
+      ?(ru?' · Архив '+stats.season:' · Archive '+stats.season):'';
     const gs=(ru?'Голы: ':'Goals: ')+goal+
-      (ru?' · Ассисты: ':' · Assists: ')+assist;
+      (ru?' · Ассисты: ':' · Assists: ')+assist+seasonLabel;
     const label=stats
-      ?(ru?'Статистика '+year:'Stats '+year)
+      ?(ru?'Подтверждённая статистика '+stats.season:
+            'Verified statistics '+stats.season)
       :(ru?'Нет подтверждённой статистики '+year:'Unverified stats '+year);
     const index=idx.proxy?(ru?'Индекс: нет данных':'Index: no data'):
       (ru?'Индекс ':'Index ')+(idx.exact?'':'≈')+idx.score+'/100';
