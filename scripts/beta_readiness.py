@@ -216,7 +216,7 @@ def main():
       'current_verified':priority['current_verified'],
       'missing_by_league':priority['missing_by_league'],
       'missing_player_ids':priority['missing_player_ids']}
-    queue_data=json.dumps(priority_queue,ensure_ascii=False,indent=2)+'\\n'
+    queue_data=json.dumps(priority_queue,ensure_ascii=False,indent=2)+'\n'
     (ROOT/'data'/'priority_refresh_queue.json').write_text(
       queue_data,encoding='utf-8')
     (SITE/'data'/'priority_refresh_queue.json').write_text(
