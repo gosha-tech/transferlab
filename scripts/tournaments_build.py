@@ -1257,6 +1257,10 @@ def embed(html):
       "$('valueMain').textContent=model.index.proxy?(p.marketValueArchiveEUR!=null?euroM(p.marketValueArchiveEUR/1000000):(ru?'Нет данных':'No data')):euroM(model.estimate);")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);renderVerifiedProfileMeta(p);
+    const valuationCaption=$('valueCaption');
+    if(valuationCaption)valuationCaption.textContent=state.language==='ru'?
+      'Оценка TransferLab β · экспериментальный прогноз, не фактическая цена сделки':
+      'TransferLab β estimate · experimental, not an actual transfer fee';
     if(s?.matchesExact===false&&s?.matches!=null){
       const note=$('competitionStatus');
       if(note)note.textContent+=' · '+(state.language==='ru'?
