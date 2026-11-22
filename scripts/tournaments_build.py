@@ -17,6 +17,7 @@ from verified_club_fixtures import inject as attach_verified_fixtures
 from verified_current_contracts import apply as attach_current_contracts
 from transfer_history import attach as attach_verified_transfers,load as load_transfer_file
 from transfer_ui import inject_transfer_ui
+from opponent_strength import evaluate as evaluate_opponents
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -465,6 +466,12 @@ def embed(html):
                               'source_url':'https://github.com/dcaribou/transfermarkt-datasets' if archival else ('https://www.thesportsdb.com/' if community else ('https://github.com/oladeeayo/pl-catalogue' if premier else ('https://pitchapi.dev/' if pitchonly else 'https://www.api-football.com/documentation-v3')))})
             index_stats.setdefault(season,{})[pid]=collected
     root['liveIndexStats']=index_stats
+    uefa_path=ROOT/'data'/'uefa_coefficients_2026.json'
+    uefa_coeff=json.loads(uefa_path.read_text(encoding='utf-8')) if uefa_path.exists() else {}
+    root['opponentStrengthByPlayer']=evaluate_opponents(original,pitch.get('matches') or {},uefa_coeff)
+    root['opponentStrengthCoverage']=len(root['opponentStrengthByPlayer'])
+    root['opponentStrengthSource']=uefa_coeff.get('source')
+
     root['profileCoverage']={
         'total':len(original),
         'with_precise_position':sum(bool(p.get('displayPosition')) for p in original),
