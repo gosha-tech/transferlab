@@ -15,6 +15,8 @@ from role_calibration import inject_role_calibration
 from european_exposure import inject_competition_exposure
 from verified_club_fixtures import inject as attach_verified_fixtures
 from verified_current_contracts import apply as attach_current_contracts
+from transfer_history import attach as attach_verified_transfers,load as load_transfer_file
+from transfer_ui import inject_transfer_ui
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -81,6 +83,12 @@ def embed(html):
         'profiles':len(root['marketHistory5Y']),
         'two_or_more':sum(len(x)>=2 for x in root['marketHistory5Y'].values())}
     original=root['players']
+    root['verifiedTransfersByPlayer'],root['transferEvidenceCoverage']=attach_verified_transfers(
+        original,
+        load_transfer_file(ROOT/'data'/'verified_transfers.json'),
+        load_transfer_file(ROOT/'data'/'valuation_forecast_snapshots.json'),
+        load_transfer_file(ROOT/'data'/'profile_enrichment.json'))
+
     for p in original:
         photo=(commons.get('photos') or {}).get(str(p.get('id')))
         if not isinstance(photo,dict) or not photo.get('url'):continue
@@ -1182,6 +1190,7 @@ def embed(html):
     html=inject_uniform_cards(html)
     html=inject_competition_exposure(html)
     html=inject_role_calibration(html)
+    html=inject_transfer_ui(html)
     return html
 
 if __name__=='__main__':
