@@ -95,12 +95,12 @@ jobs:
       - name: Refresh PitchAPI player match analytics for 2024/25–2026/27
         # Never block site publication indefinitely when provider backfill
         # is slow/unavailable. Keep the last verified snapshot if it fails.
-        timeout-minutes: 30
+        timeout-minutes: 38
         continue-on-error: true
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-pitch]')
         env:
           PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
-          PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '1600' }}
+          PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '2400' }}
           PITCHAPI_DETAIL_BUDGET: ${{ vars.PITCHAPI_DETAIL_BUDGET || '150' }}
           PITCHAPI_PAUSE: '0.18'
           PITCHAPI_REQUIRED: '1'
