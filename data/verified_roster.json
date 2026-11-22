@@ -35,6 +35,16 @@
       "foot": "left",
       "source": "https://fbref.com/en/players/6456e745/matchlogs/2026-2027/Abdulkadir-Omur-Match-Logs",
       "source_as_of": "2026-11-22"
+    },
+    "Crysencio Summerville": {
+      "club": "Al-Hilal",
+      "league": "Saudi Pro League",
+      "position": "Forward",
+      "scoutRole": "LW/RW",
+      "displayPosition": "LW",
+      "source": "https://alhilal.com/en/news/al-hilal-signs-crysencio-summerville-for-four-years",
+      "source_as_of": "2026-07-24",
+      "contractThrough": "2030"
     }
   }
 }
