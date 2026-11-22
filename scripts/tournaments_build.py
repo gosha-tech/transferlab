@@ -607,6 +607,14 @@ def embed(html):
       """pairedFinishing.minutes+=(
           ROOT.liveIndexStats?.[season]?.[id]?.metricMinutes?.xg ??
           seasonStat.metricMinutes?.xg ?? mm)*decay.factor;}""")
+    html=patch(html,
+      "const per90=k=>s?.advancedPartial&&['xg','xa','npxg'].includes(k)?null:(s?.minutes>0&&s[k]!=null?Number(s[k])*90/Number(s.minutes):null);",
+      """const per90=k=>{
+      const measured=s?.metricMinutes?.[k];
+      const denominator=measured==null?Number(s?.minutes||0):Number(measured);
+      return s?.advancedPartial&&['xg','xa','npxg'].includes(k)?null:
+        (denominator>0&&s?.[k]!=null?Number(s[k])*90/denominator:null);
+    };""")
     # Explain the real weighting in the formula panel rather than displaying
     # the obsolete 100% / 67% / 33% time-decay illustration.
     html=html.replace(
@@ -826,6 +834,18 @@ def embed(html):
     for(const key of tournamentMetricKeys){
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
+    }
+    // A metric only covers matches that supplied that metric. Never use
+    // total season minutes to compute partial xG or recoveries per 90.
+    result.metricMinutes={};
+    for(const metric of ['xg','xa','npxg','shots','shots_on_target',
+      'key_passes','tackles','interceptions','recoveries','clearances',
+      'blocks','progressive_passes','progressive_carries']){
+      const observed=rows.filter(row=>row.stats?.[metric]!=null);
+      if(observed.length)
+        result.metricMinutes[metric]=observed.reduce((sum,row)=>sum+
+          Math.max(0,Number(row.advanced_metric_minutes?.[metric] ??
+            row.stats?.minutes ?? 0)||0),0);
     }
     const completeStarts=rows.length>0&&rows.every(x=>x.stats?.starts!=null && x.stats?.starts_min==null);
     if(!completeStarts){
