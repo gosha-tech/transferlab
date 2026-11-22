@@ -823,7 +823,11 @@ def embed(html):
     # A verified 0 is valid only when a whole competition has complete data.
     html=patch(html,
       "$('statStarts').textContent=nf(s?.starts);",
-      """$('statStarts').textContent=nf(s?.matches);
+      """$('statStarts').textContent=s?.matchesExact===false && s?.matches!=null ?
+      '≥'+nf(s.matches):nf(s?.matches);
+    const matchesLabel=$('statStarts');
+    if(matchesLabel)matchesLabel.title=s?.matchesExact===false?
+      (state.language==='ru'?'Подтверждённый минимум матчей: один или несколько турниров имеют неполные данные':'Verified minimum appearances: one or more competitions have incomplete counts'):'';
     const appearancesCell=$('statStarts')?.parentElement;
     if(appearancesCell){
       for(const tag of appearancesCell.querySelectorAll('span,div,small,label')){
@@ -876,6 +880,30 @@ def embed(html):
       const vals=rows.map(x=>x.stats?.[key]).filter(x=>x!=null&&Number.isFinite(Number(x)));
       result[key]=vals.length?vals.reduce((sum,val)=>sum+Number(val),0):null;
     }
+    // The number of reported appearances must cover the SAME tournaments as
+    // the summed minutes. PL season snapshots can have starts/minutes but no
+    // appearances; adding them to four UEFA matches is not "4 matches".
+    // A start is proof of at least one appearance, never the exact count.
+    const matchBounds=rows.map(row=>{
+      const stat=row.stats||{};
+      const n=stat.matches==null?null:Number(stat.matches);
+      const starts=stat.starts==null?0:Number(stat.starts);
+      const startsMin=stat.starts_min==null?0:Number(stat.starts_min);
+      const fixtureMin=stat.matches_min==null?0:Number(stat.matches_min);
+      const minutes=Number(stat.minutes||0);
+      const lower=Math.max(0,Number.isFinite(n)?n:0,
+        Number.isFinite(starts)?starts:0,
+        Number.isFinite(startsMin)?startsMin:0,
+        Number.isFinite(fixtureMin)?fixtureMin:0,
+        minutes>0?1:0);
+      const exact=n!=null&&Number.isFinite(n)&&n>=lower &&
+        row.is_complete!==false;
+      return {lower,exact,source:row.source||'unknown'};
+    });
+    result.matches=matchBounds.reduce((total,x)=>total+x.lower,0);
+    result.matchesExact=matchBounds.every(x=>x.exact);
+    result.matchesPartialSources=[...new Set(matchBounds.filter(x=>!x.exact)
+      .map(x=>x.source))];
     // A metric only covers matches that supplied that metric. Never use
     // total season minutes to compute partial xG or recoveries per 90.
     result.metricMinutes={};
