@@ -16,6 +16,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 MARKET = ROOT / 'data' / 'current_market_values.json'
 MARKER = '  function renderProfile(){'
 SECTION_ANCHOR = '<section id="viewCatalog" class="hidden">'
+# Navigation is static HTML, not a DOM element injected by a deferred JS file.
+# This makes Hidden Gems visible in the same initial paint as the other tabs.
+GEMS_NAV = ('<button id="navGems" type="button" aria-current="false" '
+            'aria-label="Hidden Gems — недооценённые игроки">'
+            '<span class="sym" aria-hidden="true">✦</span>'
+            '<span class="nav-label">Hidden Gems</span></button>')
 
 GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHeading">
   <div class="gems-head">
@@ -258,6 +264,15 @@ def inject(html, today=None):
         raise RuntimeError('Hidden Gems integration anchors missing or ambiguous')
     html, root, rejected = patch_embedded(html, today)
     html = html.replace(SECTION_ANCHOR, GEMS_SECTION + SECTION_ANCHOR, 1)
+    # Use the original Catalog nav button as the structural anchor. Inject
+    # next to it during BUILD, rather than waiting for HTML parsing and the
+    # deferred Hidden Gems script to finish executing in the browser.
+    catalog_nav = re.search(
+        r'<button(?=[^>]*id="navCatalog")[^>]*>.*?</button>',
+        html, re.S | re.I)
+    if not catalog_nav:
+        raise RuntimeError('Cannot locate navCatalog for first-paint Hidden Gems tab')
+    html = html[:catalog_nav.end()] + GEMS_NAV + html[catalog_nav.end():]
     html = html.replace(MARKER, BRIDGE + MARKER, 1)
     if html.count('</head>') != 1 or html.count('</body>') != 1:
         raise RuntimeError('Cannot link Hidden Gems assets')
