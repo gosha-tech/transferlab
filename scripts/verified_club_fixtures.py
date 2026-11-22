@@ -32,7 +32,7 @@ ALIASES={
  'ruben dias':('rubendias','rubendossantosgatoalvesdias'),
  'nico oreilly':('nicooreilly','nicolasoreilly'),
  'gabriel magalhaes':('gabrielmagalhaes','gabrieldossantosmagalhaes','gabriel'),
- 'martin odegaard':('martinodegaard','martinødegaard'),
+ 'martin odegaard':('martinodegaard','martindegaard'),
  'viktor gyokeres':('viktorgyokeres','viktorgyökeres'),
  'nicogonzalez':('nicogonzalez','nicolasgonzalez')
 }
@@ -56,8 +56,9 @@ def map_participants(starters,substitutes):
 
 CITY=map_participants(CITY_STARTERS,CITY_SUBS)
 ARSENAL=map_participants(ARSENAL_STARTERS,ARSENAL_SUBS)
-ARSENAL_GOALS={norm(n):1 for n in ('Riccardo Calafiori','Kai Havertz','Martin Odegaard')}
-ARSENAL_ASSISTS={norm('Myles Lewis-Skelly'):1,norm('Christos Tzolis'):2}
+ARSENAL_GOALS={key:1 for n in ('Riccardo Calafiori','Kai Havertz','Martin Odegaard') for key in keys(n)}
+ARSENAL_ASSISTS={**{key:1 for key in keys('Myles Lewis-Skelly')},
+                 **{key:2 for key in keys('Christos Tzolis')}}
 
 def club_key(team):
     value=team_norm(team)
@@ -111,7 +112,8 @@ def inject(rows,players):
     return counters
 
 def selftest():
-    assert len(CITY)==17 and len(ARSENAL)==17
+    assert len(CITY_STARTERS)+len(CITY_SUBS)==17
+    assert len(ARSENAL_STARTERS)+len(ARSENAL_SUBS)==17
     assert CITY[norm('Phil Foden')]==1 and CITY[norm('Rayan Cherki')]==0
     d={}
     roster=[{'id':str(i),'team':'Manchester City','league':'Premier League','name':n}
