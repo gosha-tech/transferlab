@@ -218,6 +218,22 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert page.locator('#pPosition').inner_text()=='AM', 'Ömür must be attacking midfielder'
         print('ÖMÜR role corrected to AM')
+        # Never present a current Al-Hilal estimate as a July 2026
+        # pre-transfer quote. A verified reported fee is separate evidence.
+        page.locator('#search').fill('Crysencio Summerville')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert 'Al-Hilal' in page.locator('#pClub').inner_text()
+        compare=page.locator('#transferComparison')
+        assert compare.is_visible(), 'Missing sourced Summerville transfer card'
+        transfer_text=compare.inner_text()
+        assert '70' in transfer_text and 'West Ham United' in transfer_text
+        assert 'Нет сохранённого прогноза' in transfer_text, (
+            'Must not re-label a present-day forecast as historical',transfer_text)
+        assert 'Текущая оценка модели' in transfer_text
+        print('SUMMERVILLE TRANSFER vs MODEL:',
+              transfer_text.replace('\\n',' / ')[:1000],
+              'current model:',page.locator('#valueMain').inner_text())
         page.locator('#search').fill('Messi')
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
