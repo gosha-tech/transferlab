@@ -256,12 +256,34 @@ def sync():
             if not isinstance(matches,list):
                 errors.append(canonical+' '+season+': match list missing')
                 continue
-            pending=[m for m in matches if isinstance(m,dict)
-                     and m.get('status')=='finished'
-                     and re.fullmatch(r'm_[A-Za-z0-9]{6}',str(m.get('id') or ''))
-                     and str(m['id']) not in cached]
-            # Newer games before older: today's stats first, backfill follows.
-            pending.sort(key=lambda m:(str(m.get('date') or ''),str(m.get('id'))),reverse=True)
+            pending=[]
+            now_utc=dt.datetime.now(dt.timezone.utc)
+            for m in matches:
+                if not isinstance(m,dict) or m.get('status')!='finished':
+                    continue
+                mid=str(m.get('id') or '')
+                if not re.fullmatch(r'm_[A-Za-z0-9]{6}',mid):
+                    continue
+                previous=cached.get(mid) or {}
+                if not previous:
+                    pending.append(m)
+                    continue
+                # Retry an empty player report: match stats sometimes arrive
+                # days after the final whistle. A cached empty result is not
+                # confirmation that every player recorded zero minutes.
+                if not previous.get('players'):
+                    try:
+                        checked=dt.datetime.fromisoformat(
+                            str(previous.get('checked_at') or '').replace('Z','+00:00'))
+                        if checked.tzinfo is None:checked=checked.replace(tzinfo=dt.timezone.utc)
+                    except (TypeError,ValueError):
+                        checked=now_utc-dt.timedelta(days=15)
+                    if now_utc-checked>=dt.timedelta(days=14):
+                        pending.append(m)
+            # Uncached matches first, then older empty results requiring review.
+            pending.sort(key=lambda m:(
+                str(m.get('id')) not in cached,
+                str(m.get('date') or ''),str(m.get('id'))),reverse=True)
             tasks.append({'canonical':canonical,'league_id':league_id,
                           'season':season,'pending':pending,'cursor':0,
                           'indexed_matches':len(matches)})
@@ -310,7 +332,8 @@ def sync():
                              'league':task['canonical'],
                              'league_id':task['league_id'],
                              'competition_id':LEAGUE_IDS.get(task['canonical']),
-                             'players':processed,'source':'PitchAPI'}
+                             'players':processed,'source':'PitchAPI',
+                             'checked_at':dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')}
                 fetched+=1
             except urllib.error.HTTPError as exc:
                 errors.append(task['canonical']+': HTTP '+str(exc.code))
@@ -345,7 +368,7 @@ def sync():
     tmp=OUT.with_suffix('.tmp')
     tmp.write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
     tmp.replace(OUT)
-    print('PitchAPI: '+str(fetched)+' new match reports; '+str(len(known))+
+    print('PitchAPI: '+str(fetched)+' checked match reports; '+str(len(known))+
           ' identified players; seasons '+str(payload['season_player_coverage'])+
           '; '+str(requests)+' HTTP requests; errors '+str(len(errors)))
 def test():
