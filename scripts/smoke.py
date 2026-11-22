@@ -35,6 +35,31 @@ def main():
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=1353, ('Unexpected shrinkage of player registry',count)
+
+        # Hidden Gems is a separate page, backed by current player model and verified valuations.
+        page.locator('#navGems').click()
+        assert page.locator('#viewGems').is_visible(), 'Hidden Gems page did not open'
+        assert page.locator('#gemsAge').input_value()=='23'
+        assert page.locator('#gemsPrice').input_value()=='15'
+        assert page.locator('#gemsPosition').input_value()=='all'
+        page.wait_for_function("""() => {
+          const text=document.getElementById('gemsInfo')?.textContent||'';
+          return text.length>0 && !/Рассчитываем|Готовим/.test(text);
+        }""",timeout=35000)
+        # An empty confirmed list is legitimate when no current licensed prices exist.
+        page.locator('#gemsPreviewTab').click()
+        assert page.locator('#gemsPreviewCount').inner_text().strip().isdigit()
+        for card in page.locator('.gems-card').all()[:5]:
+            assert card.locator('.gems-player').inner_text().strip()
+            assert 'Hidden Gem Score' in card.inner_text()
+            assert '—' not in card.locator('.gems-player').inner_text()
+        page.screenshot(path=str(screenshot/'hidden-gems-desktop.png'))
+        if page.locator('.gems-card').count()>0:
+            page.locator('.gems-card [data-gem-open]').first.click()
+            assert page.locator('#pName').is_visible()
+            assert not page.locator('#viewGems').is_visible()
+        page.locator('#navCatalog').click()
+
         assert page.locator('.player-index').count()>0,'Catalog indices must be shown'
         # Every card (not just cards with goals or contracts) has the same
         # ordered content: current season G/A, contract, tournament and index.
