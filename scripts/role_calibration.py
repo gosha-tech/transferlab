@@ -14,39 +14,70 @@ def inject_role_calibration(html):
   // without proving the same ability in a current full league campaign.
   // Never use market value or player identity to modify sporting ability.
   function indexEvidenceConfidence(p,actual,calibrated){
-    const id=String(p.id),calendar=['MLS','Brasileirão'].includes(p.league);
-    const seasons=calendar?['2024','2025','2026']:
-      ['2023/24','2024/25','2025/26','2026/27'];
-    const liveSeason=calendar?'2026':'2026/27';
-    const records=seasons.map(season=>({
-      season,stat:ROOT.liveIndexStats?.[season]?.[id]||null
-    }));
-    const trustedCurrent=records.some(({season,stat})=>season===liveSeason&&
-      stat&&Number(stat.minutes)>=180&&
-      !['transfermarkt_historical','historical_appearances'].includes(stat.source));
-    const archiveRecords=records.filter(({stat})=>stat&&
-      stat.source==='transfermarkt_historical'&&Number(stat.minutes)>0);
-    const archivedOnly=!trustedCurrent&&archiveRecords.length>0&&
-      records.filter(({stat})=>stat&&Number(stat.minutes)>0)
-        .every(({stat})=>stat.source==='transfermarkt_historical');
-    if(!archivedOnly)return {score:calibrated.score,
-      provisional:false,confidence:1,sampleMinutes:Number(actual.rolling?.weightedMinutes||0)};
-    const sampleMinutes=Number(actual.rolling?.weightedMinutes||0);
-    const coverage=Math.max(0,Math.min(100,Number(actual.coverage||0)));
-    // The neutral 50-point prior is a heuristic conservative shrinkage,
-    // NOT a probability of player quality and not invented match statistics.
-    const seasonCount=archiveRecords.filter(({stat})=>Number(stat.minutes)>=180).length;
-    const minuteConfidence=Math.min(1,Math.sqrt(Math.max(0,sampleMinutes)/2600));
-    const metricConfidence=Math.max(.35,Math.min(1,coverage/95));
-    const historyConfidence=seasonCount<=1?.90:seasonCount===2?.97:1;
-    const confidence=Math.max(.3,Math.min(1,
-      minuteConfidence*metricConfidence*historyConfidence));
-    const neutral=50;
-    return {score:Math.round(neutral+(calibrated.score-neutral)*confidence),
-      provisional:true,confidence:Math.round(confidence*100)/100,
-      baseline:calibrated.score,sampleMinutes,
-      reasons:['archived only','partial metric coverage','sample uncertainty'],
-      seasonCount,coverage};
+    // Never discount sporting ability because of market value, nationality,
+    // player name or membership in Hidden Gems.
+    const id=String(p.id);
+    const calendar=['MLS','Brasileirão'].includes(p.league);
+    const currentSeason=calendar?'2026':'2026/27';
+    const previousSeason=calendar?'2025':'2025/26';
+    const olderSeason=calendar?'2024':'2024/25';
+    const row=season=>ROOT.liveIndexStats?.[season]?.[id]||
+      statsBySeason?.[season]?.[id]||null;
+    const minutes=r=>{
+      const value=Number(r?.minutes);
+      return Number.isFinite(value)?Math.max(0,value):0;
+    };
+    const current=row(currentSeason);
+    const previous=row(previousSeason);
+    const older=row(olderSeason);
+    const source=String(current?.source||'');
+    const verifiedCurrent=minutes(current)>0&&source.length>0&&
+      source!=='transfermarkt_historical'&&source!=='historical_appearances';
+    const currentMinutes=verifiedCurrent?minutes(current):0;
+    const previousMinutes=minutes(previous);
+    const olderMinutes=minutes(older);
+    const sampleMinutes=Math.max(0,Number(actual.rolling?.weightedMinutes||0));
+    if(!sampleMinutes)return {score:calibrated.score,
+      provisional:false,confidence:1,sampleMinutes:0,
+      reasons:['no measured 36-month minutes']};
+    // A single productive cup spell cannot substitute for sustained
+    // first-team output. Use past seasons as actual match evidence, but
+    // demand more recent volume before claiming an elite overall score.
+    // This shrinks only the confidence in the RATING, not match totals.
+    const recentEvidence=currentMinutes+
+      .60*previousMinutes+.15*olderMinutes;
+    const recentFactor=Math.min(1,Math.sqrt(recentEvidence/2300));
+    const sampleFactor=.80+.20*Math.min(1,Math.sqrt(sampleMinutes/3600));
+    // Metric availability in a partial feed is not the same as a complete
+    // 36-month observation. metricMinutes is the actually observed
+    // denominator; missing xG/xA cannot be treated as full coverage.
+    const measuredMinutes=r=>{
+      const m=r?.metricMinutes||{};
+      const keys=['xg','xa','npxg','shots','key_passes','tackles',
+        'interceptions','recoveries','progressive_carries','saves'];
+      return Math.max(0,...keys.map(k=>{
+        const value=Number(m[k]);
+        return Number.isFinite(value)?Math.max(0,value):0;
+      }));
+    };
+    const recentMeasured=currentMinutes+
+      .50*measuredMinutes(current)+measuredMinutes(previous)+
+      .20*measuredMinutes(older);
+    const metricFactor=.80+.20*Math.min(1,Math.sqrt(recentMeasured/1100));
+    const roleCoverage=Number(actual.coverage||0);
+    const coverageFactor=.80+.20*Math.min(1,Math.max(0,roleCoverage)/80);
+    const confidence=Math.max(.25,Math.min(1,
+      recentFactor*sampleFactor*metricFactor*coverageFactor));
+    const provisional=confidence<.985;
+    const score=provisional?
+      Math.min(calibrated.score,
+        Math.round(50+(calibrated.score-50)*confidence)):calibrated.score;
+    return {score,provisional,confidence:Math.round(confidence*100)/100,
+      baseline:calibrated.score,sampleMinutes,currentMinutes,
+      previousMinutes,olderMinutes,metricObservedMinutes:recentMeasured,
+      reasons:['recent-season first-team minutes',
+        '36-month sample size','observed advanced-metric minutes'],
+      recentFactor,metricFactor,coverageFactor};
   }
   const peerIndexCalibration={};
   function peerNormalizedIndex(p,actual,adjusted){
