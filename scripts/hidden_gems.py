@@ -198,11 +198,29 @@ def summarize(root, today, rejected):
                                     age_on(p.get('birth'), today) <= 23)]
     current_stats = root.get('liveIndexStats') or {}
     eligible_minutes = []
+    historical_minutes = []
+    historical_value_under_15m = []
+    history = root.get('marketHistory5Y') or {}
     for p in youths:
-        season = '2026' if p.get('league') in ('MLS', 'Brasileirão') else '2026/27'
-        row = (current_stats.get(season) or {}).get(str(p.get('id'))) or {}
-        if float(row.get('minutes') or 0) >= 450:
+        is_calendar = p.get('league') in ('MLS','Brasileirão')
+        current = '2026' if is_calendar else '2026/27'
+        previous = '2025' if is_calendar else '2025/26'
+        pid = str(p.get('id'))
+        current_row = (current_stats.get(current) or {}).get(pid) or {}
+        old_row = (current_stats.get(previous) or {}).get(pid) or {}
+        if (float(current_row.get('minutes') or 0)>=450 and
+            current_row.get('source')!='transfermarkt_historical'):
             eligible_minutes.append(p)
+        if float(old_row.get('minutes') or 0)>=450:
+            historical_minutes.append(p)
+            v=p.get('marketValueArchiveEUR')
+            if v is None and history.get(pid):
+                try:v=float(history[pid][-1][1])*1000000
+                except (ValueError,TypeError,IndexError):v=None
+            if v is not None:
+                try:
+                    if 0<float(v)<=15000000:historical_value_under_15m.append(p)
+                except (TypeError,ValueError):pass
     values = root.get('hiddenGemsMarket') or {}
     return {
         'generated_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -210,6 +228,10 @@ def summarize(root, today, rejected):
         'default_max_age': 23, 'default_max_market_eur': 15000000,
         'young_players_with_verified_birth': len(youths),
         'young_players_with_450_current_minutes': len(eligible_minutes),
+        'young_players_with_450_previous_minutes': len(historical_minutes),
+        'young_players_with_archive_under_15m_and_450_previous_minutes':
+            len(historical_value_under_15m),
+        'archival_candidates_are_not_currently_valued': True,
         'fresh_rights_reviewed_market_values': len(values),
         'with_fresh_value_under_15m_and_450_minutes': sum(
             str(p.get('id')) in values and values[str(p.get('id'))]['value_eur'] <= 15000000
