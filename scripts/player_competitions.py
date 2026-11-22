@@ -63,6 +63,17 @@ def choices_for(p):
         items.append({'id':'3','name':'Лига Европы',
                       'reason':'участник ЛЕ 2026/27 по Премьер-лиге',
                       'source':PL_SOURCE,'data_available':False})
+    # PSG took part in both 2026/27 super cups, confirmed by official
+    # UEFA and PSG fixtures, not from general UCL qualification.
+    if league=='Ligue 1' and club in {norm('Paris Saint-Germain'),norm('Paris SG'),norm('PSG')}:
+        items.append({'id':'uefa-super-cup','name':'Суперкубок УЕФА',
+             'reason':'официальный матч 12.08.2026',
+             'source':'https://www.uefa.com/uefasupercup/clubs/52747--paris-sg/matches/',
+             'data_available':True})
+        items.append({'id':'fr-super-cup','name':'Суперкубок Франции',
+             'reason':'официальный матч 16.08.2026',
+             'source':'https://www.psg.fr/en/mens-football/fixtures/season/2026-2027?competition=French_Champions%27_Trophy',
+             'data_available':True})
     return items
 
 def add_choices(root):
@@ -80,7 +91,7 @@ def selftest():
     assert [v['id'] for v in x]==['39','45','48','2'],x
     assert not any(v['id'] in ('3','61','66') for v in x)
     hazard=choices_for({'id':'h','name':'Achraf Hakimi','team':'Paris Saint-Germain','league':'Ligue 1'})
-    assert [v['id'] for v in hazard]==['61','66','2'],hazard
+    assert [v['id'] for v in hazard]==['61','66','2','uefa-super-cup','fr-super-cup'],hazard
     west=choices_for({'id':'x','team':'West Ham United','league':'Premier League'})
     assert [v['id'] for v in west]==['39','45','48'],west
     arsenal=choices_for({'id':'x','team':'Arsenal','league':'Premier League'})
