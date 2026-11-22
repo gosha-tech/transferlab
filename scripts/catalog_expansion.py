@@ -153,11 +153,11 @@ def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None)
         p['archiveLastSeasonMinutes']=minutes
         p['archiveStatEvidence']='regular' if tier==0 else (
             'limited' if tier<=2 else 'very_limited')
-        eligible.append((tier,int(age>23),int(age>27),-minutes,tm,p,stats))
-    eligible.sort(key=lambda r:r[:5])
+        eligible.append((tier,int(age>23),int(age>27),int(not bool(p.get('contractUntilArchive'))),-minutes,tm,p,stats))
+    eligible.sort(key=lambda r:r[:6])
     chosen=[]
     for item in eligible:
-        tm,p=item[4],item[5]
+        tm,p=item[5],item[6]
         key=norm(p['name'])
         if key in known_names:continue
         known_names.add(key)
@@ -165,7 +165,7 @@ def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None)
         if len(chosen)>=limit:break
     result_players=[]
     by_season=defaultdict(lambda:defaultdict(list))
-    for _,_,_,_,tm,p,history in chosen:
+    for _,_,_,_,_,tm,p,history in chosen:
         result_players.append(p)
         for (season,comp),row in sorted(history.items()):
             by_season[season][p['id']].append(row)
