@@ -95,7 +95,7 @@ def inject_transfer_ui(html):
     existing="renderTournamentSelector(p);renderVerifiedProfileMeta(p);"
     if html.count(existing)!=1:
         raise RuntimeError('Transfer comparison render call marker missing')
-    html=html.replace(existing,existing+"renderTransferComparison(p,model);",1)
+    html=html.replace(existing,existing+"renderTransferComparison(p,pricedPlayer(p));",1)
     return html
 
 def selftest():
@@ -103,7 +103,7 @@ def selftest():
     page=inject_transfer_ui(html)
     for phrase in ('window.transferLabForecastExport=function()',
        'historical.as_of<move.date','No forecast was archived before this deal',
-       'renderTransferComparison(p,model)', 'transferComparison'):
+       'renderTransferComparison(p,pricedPlayer(p))', 'transferComparison'):
         assert phrase in page,phrase
     print('Transfer UI: strictly pre-deal price comparisons PASS')
 
