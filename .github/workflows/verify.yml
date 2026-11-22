@@ -44,6 +44,8 @@ jobs:
           python scripts/prepare.py
           python scripts/enrich_profiles.py
           python scripts/tournaments_build.py _site/index.html
+      - name: Inspect model data inputs and raw role formula
+        run: python scripts/audit_rating_inputs.py
       - name: Audit actual current club evidence, starts and position mappings
         run: python scripts/audit_roster_freshness.py
       - name: Check tournament merging and source coverage
