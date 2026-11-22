@@ -359,6 +359,8 @@ def sync():
                              'league':task['canonical'],
                              'league_id':task['league_id'],
                              'competition_id':LEAGUE_IDS.get(task['canonical']),
+                             'home_team_name':home.get('name'),
+                             'away_team_name':away.get('name'),
                              'players':processed,'source':'PitchAPI',
                              'checked_at':dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')}
                 fetched+=1
