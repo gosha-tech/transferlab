@@ -289,6 +289,15 @@ def main():
         assert measured['youthWithVerifiedCurrentValueGap']==0 or (
             measured['youthWithVerifiedCurrentValueGap']>0)
         print('HIDDEN GEMS COVERAGE:',measured)
+        # Sporting comparison is a separate tab: it does not enforce a
+        # stale archive value against the current €15m budget filter.
+        page.locator('#gemsScoutTab').click()
+        scout_count=int(page.locator('#gemsScoutCount').inner_text().replace(' ',''))
+        if measured['youthWithContemporaneousScoutingScore']>0:
+            assert scout_count>0,('Scout leaderboard unexpectedly hidden',measured)
+            assert page.locator('.gems-scout-score').count()>0
+            assert 'НЕ применяется' in page.locator('#gemsInfo').inner_text()
+        print('CURRENT SCOUT SHORTLIST:',scout_count,'source-backed peers')
         # Diagnose a concrete outlier using sourced rows, not a manual score override.
         zonneveld=page.evaluate("""() => {
           const root=JSON.parse(document.getElementById('embeddedData').textContent);
