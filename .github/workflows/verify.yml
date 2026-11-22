@@ -39,6 +39,8 @@ jobs:
           python scripts/capture_forecasts.py --self-test
           python scripts/forecast_backtest.py --self-test
           python scripts/beta_readiness.py --self-test
+          python scripts/ingest_priority.py
+          python scripts/source_health.py --self-test
           python scripts/transfer_ui.py
           python scripts/european_exposure.py
           python scripts/roster_freshness.py
@@ -63,6 +65,7 @@ jobs:
           python scripts/test_tournaments.py
           python scripts/test_hidden_gems.py
           python scripts/audit_coverage.py
+          python scripts/source_health.py
           python scripts/audit_match_consistency.py --self-test
           python scripts/audit_match_consistency.py
           python scripts/forecast_backtest.py _site/index.html
