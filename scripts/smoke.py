@@ -97,6 +97,12 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Hakimi' in page.locator('#pName').inner_text()
         assert page.locator('#pPosition').inner_text()=='RB','Achraf Hakimi must be right-back'
+        print('HAKIMI DIAGNOSTIC:',page.locator('#valueMain').inner_text(),
+              page.locator('#playerIndexBadge').inner_text(),
+              'quality:',page.locator('#modelQuality').inner_text(),
+              'market dots:',page.locator('[data-value-kind=market]').count(),
+              'chart:',page.locator('#chartSubtitle').inner_text())
+
         page.locator('#search').fill('Messi')
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
