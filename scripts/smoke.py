@@ -174,6 +174,20 @@ def main():
               tournaments2026:root.liveTournamentStats?.['2026/27']?.[p.id],
               market:root.marketHistory5Y?.[p.id]});
           }""")[:2900])
+        # Verify evidence, not a fixed numerical rating: team data may change.
+        assert page.locator('#pPosition').inner_text()=='LB'
+        meta=page.locator('#verifiedProfileMeta').inner_text()
+        assert '2029-06-30' in meta and '2026-11-22' in meta
+        assert '€80' in meta
+        for comp,minutes in [('uefa-super-cup','74'),('fr-super-cup','26')]:
+            assert picker.locator('option[value="'+comp+'"]').count()==1
+            picker.select_option(comp)
+            assert page.locator('#statStarts').inner_text().strip()=='1'
+            assert page.locator('#statMinutes').inner_text().strip()==minutes
+            assert page.locator('#statGoals').inner_text().strip()=='0'
+            assert page.locator('#statAssists').inner_text().strip()=='0'
+        picker.select_option('all')
+        assert page.locator('#statStarts').inner_text().strip()=='8'
         # Club corrections must restore Lookman's current La Liga metrics,
         # instead of attaching his 2026/27 appearances to Atalanta.
         page.locator('#search').fill('Ademola Lookman')
