@@ -34,7 +34,14 @@ LEAGUES={
  'C1':'Swiss Super League','GR1':'Greek Super League',
  'SC1':'Scottish Premiership','GB2':'EFL Championship',
  'ES2':'Segunda División','L2':'2. Bundesliga',
- 'IT2':'Serie B','FR2':'Ligue 2'
+ 'IT2':'Serie B','FR2':'Ligue 2',
+ # Exact codes cross-checked against dcaribou/transfermarkt-datasets'
+ # published competitions.json (not inferred from club names).
+ 'TS1':'Czech First League','PL1':'Ekstraklasa',
+ 'KR1':'Croatian HNL','SER1':'Serbian SuperLiga',
+ 'RO1':'Romanian SuperLiga','UKR1':'Ukrainian Premier League',
+ 'RU1':'Russian Premier League','MEX1':'Liga MX',
+ 'AUS1':'A-League Men'
 }
 CUP_CODES={'CL','EL','ECL','DFB','FAC','CGB','CDR','NLP','USC','POCP'}
 CALENDAR={'MLS1','BRA1'}
@@ -279,6 +286,9 @@ def selftest():
                 'last_season':'2025'}
     one=test_profile(1)
     assert profile(one)['league']=='Eredivisie'
+    assert profile(dict(one,current_club_domestic_competition_id='PL1'))['league']=='Ekstraklasa'
+    assert profile(dict(one,current_club_domestic_competition_id='TS1'))['league']=='Czech First League'
+    assert profile(dict(one,current_club_domestic_competition_id='KR1'))['league']=='Croatian HNL'
     assert profile({**one,'sub_position':'Unknown'}) is None
     assert profile({**one,'date_of_birth':'abc'}) is None
     appearances=[
