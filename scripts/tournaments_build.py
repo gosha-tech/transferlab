@@ -1049,7 +1049,7 @@ def embed(html):
     const banner=$('currentSeasonBanner');
     if(banner){
       const dates=rows.map(x=>String(x.last_match_date||x.as_of||'').slice(0,10))
-        .filter(d=>/^20\\d{2}-\\d{2}-\\d{2}$/.test(d)).sort();
+        .filter(d=>/^20\d{2}-\d{2}-\d{2}$/.test(d)).sort();
       const dated=dates.at(-1);
       banner.textContent=state.season+' · '+
         (current?(rows.length?
