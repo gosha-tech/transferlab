@@ -609,7 +609,16 @@ def embed(html):
           ' · некоммерческое использование · источник обновляется еженедельно.</div>')
     html=html.replace('<details class="free-scoreboard"',note+'<details class="free-scoreboard"',1)
     anchor='<div class="stat-grid">'
-    toolbar='<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div><div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span><span id="advancedCoverageNote" class="competition-status"></span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
+    toolbar=('<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div>'
+       '<div class="competition-toolbar"><label for="competitionSelect">Турнир</label>'
+       '<select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира">'
+       '<option value="all">Все загруженные турниры</option></select></div>'
+       '<div id="competitionStatus" class="competition-status" aria-live="polite"></div>'
+       '<div id="advancedCoverageNote" class="advanced-coverage-status"></div>'
+       '<details class="profile-source-details" id="profileEvidence">'
+       '<summary id="profileEvidenceLabel">Источники и качество данных</summary>'
+       '<div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
+       '</details>')
     html=patch(html,anchor,toolbar+anchor)
     # Tennis-style rolling window: every confirmed match contributes 100%
     # until it exits the 36-month period, not a fractional age multiplier.
@@ -1039,15 +1048,15 @@ def embed(html):
     const current=state.season===currentSeason;
     const banner=$('currentSeasonBanner');
     if(banner){
-      const last=rows.map(x=>x.last_match_date||x.as_of||'').filter(Boolean).sort().at(-1);
-      const updated=ROOT.pitchAPILastSync?String(ROOT.pitchAPILastSync).slice(0,10):null;
-      banner.textContent=(ru?'Сезон ':'Season ')+state.season+
+      const dates=rows.map(x=>String(x.last_match_date||x.as_of||'').slice(0,10))
+        .filter(d=>/^20\\d{2}-\\d{2}-\\d{2}$/.test(d)).sort();
+      const dated=dates.at(-1);
+      banner.textContent=state.season+' · '+
         (current?(rows.length?
-          (ru?' · Показатели подтверждены по '+rows.length+' турнирам':' · Verified data for '+rows.length+' competitions'):
-          (ru?' · Статистика этого игрока ещё не получена (не 0)':' · No verified player data yet (not zero)')):
-          (ru?' · Архивный сезон':' · Archived season'))+
-        (last?' · '+(ru?'Последние данные ':'Latest evidence ')+last:'')+
-        (updated?' · PitchAPI '+(ru?'проверен ':'checked ')+updated:'');
+          (ru?'Данные по турнирам: ':'Competitions with data: ')+rows.length:
+          (ru?'Статистика пока не загружена (не 0)':'No player stats loaded yet (not zero)')):
+          (ru?'Архивный сезон':'Archived season'))+
+        (dated?' · '+(ru?'срез ':'as of ')+dated:'');
     }
     const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
     const allNames=new Map(choices.map(x=>[String(x.id),localizeComp(x.id,x.name,ru)]));
@@ -1072,7 +1081,7 @@ def embed(html):
     const advanced=$('advancedCoverageNote');
     if(advanced){
       const available=items.filter(x=>x.stats?.recoveries!=null);
-      if(!available.length){advanced.textContent='';}
+      if(!available.length){advanced.textContent='';advanced.title='';}
       else{
         const notes=available.map(x=>{
           const covered=x.advanced_metric_coverage?.recoveries ??
@@ -1084,8 +1093,10 @@ def embed(html):
               '/'+recorded:'')+' '+(ru?'матч.':'matches');
           return name+': '+(ru?'покрытие не подтверждено':'coverage unknown');
         });
-        advanced.textContent=(ru?'Возвраты — выборка источника: ':'Recoveries — provider sample: ')+
-          notes.join('; ')+(ru?' · не гарантирован полный сезон':' · not necessarily full-season coverage');
+        advanced.textContent=ru?
+          'Возвраты: покрытие матчей неполное — подробности по наведению':
+          'Recoveries: partial match coverage — hover for sources';
+        advanced.title=notes.join('; ');
       }
     }
     const missingCurrent=state.competition!=='all'&&!items.length&&current &&
@@ -1227,9 +1238,17 @@ def embed(html):
       facts.push(label('Архивная стоимость: €','Archived value: €')+
         Number(p.marketValueArchiveEUR).toLocaleString(ru?'ru-RU':'en-GB'));
     }
-    el.textContent=facts.length?facts.join(' · '):
-      label('Дополнительные данные профиля пока не подтверждены',
-            'Additional profile attributes not yet verified');
+    const summary=$('profileEvidenceLabel');
+    if(summary)summary.textContent=label('Источники и качество данных','Sources and data quality')+
+      ' · '+facts.length;
+    el.replaceChildren();
+    for(const fact of facts.length?facts:[
+       label('Дополнительные данные профиля пока не подтверждены',
+             'Additional profile attributes not yet verified')]){
+      const paragraph=document.createElement('p');
+      paragraph.textContent=fact;
+      el.append(paragraph);
+    }
   }
 """
     html=patch(html,"  function renderProfile(){",controls+profile_meta+"  function renderProfile(){")
