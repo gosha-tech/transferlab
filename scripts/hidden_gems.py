@@ -103,7 +103,9 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
           league:p.league||'—',position:p.pos||'Unknown',
           precisePosition:p.displayPosition||null,role:p.scoutRole||p.pos,
           positionEvidence:!!(p.displayPosition||p.position_source||p.positionVerified),
-          clubArchived:!!(p.origin==='transfermarkt_archived_2026'&&!p.clubSource),
+          clubArchived:!!(p.origin==='transfermarkt_archived_2026'&&
+            (!p.clubSourceAsOf||!Number.isFinite(Date.parse(p.clubSourceAsOf))||
+             (Date.now()-Date.parse(p.clubSourceAsOf)>120*86400000))),
           statPeriod:season,currentEvidence:!!liveVerified,
           minutes, matches:stats?.matches??null,
           statsAsOf:stats?.as_of||(liveVerified?null:'2026-06-28'),

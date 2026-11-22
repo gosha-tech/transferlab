@@ -36,6 +36,34 @@ def main():
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=10000, ('Requested 10000-player catalogue has not been built',count)
+        current_archive=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const live=root.liveIndexStats?.['2026/27']||{};
+          const archived=root.players.filter(p=>p.origin==='transfermarkt_archived_2026');
+          const stale=archived.find(p=>!p.clubSourceAsOf);
+          const current=archived.find(p=>{
+            const row=live[String(p.id)];
+            return row&&Number(row.minutes)>0 &&
+              !['transfermarkt_historical','historical_appearances',
+                'club_fixture_unverified_player'].includes(String(row.source||''));
+          });
+          return {staleName:stale?.name||null,currentName:current?.name||null,
+                  currentEvidence:current?live[String(current.id)]:null};
+        }""")
+        assert current_archive['staleName'],current_archive
+        page.locator('#search').fill(current_archive['staleName'])
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        club_note=page.locator('#verifiedProfileMeta').inner_text()
+        assert 'не подтверждён' in club_note or 'не подтвержден' in club_note,club_note
+        page.locator('#navCatalog').click()
+        if current_archive['currentName']:
+            page.locator('#search').fill(current_archive['currentName'])
+            page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+            page.locator('#suggestions [data-suggest]').first.click()
+            assert '2026/27' in page.locator('#currentSeasonBanner').inner_text(),current_archive
+            page.locator('#navCatalog').click()
+        print('Current vs archive club and season labelling PASS')
         # Expansion entries are archive-only, have a source identity and real
         # 2025/26 stats. Their previous-season totals must open in the profile.
         expanded = page.evaluate("""() => {
@@ -116,6 +144,24 @@ def main():
 
 
         # Hidden Gems is a separate page, backed by current player model and verified valuations.
+        # All sidebar tabs must have the same horizontal start, width,
+        # height and icon gutter (regression from a plain-text Gems button).
+        nav_geometry=page.evaluate("""() => {
+          const buttons=[...document.querySelectorAll('.sidebar .nav button')];
+          const gems=document.getElementById('navGems');
+          return {total:buttons.length,gemsIcon:!!gems?.querySelector('.sym'),
+            rows:buttons.map(el=>({id:el.id,left:el.getBoundingClientRect().left,
+              width:el.getBoundingClientRect().width,
+              height:el.getBoundingClientRect().height})),
+            horizontalOverflow:document.documentElement.scrollWidth>innerWidth};
+        }""")
+        assert nav_geometry['total']>=4 and nav_geometry['gemsIcon'],nav_geometry
+        measured=nav_geometry['rows']
+        assert max(x['left'] for x in measured)-min(x['left'] for x in measured)<=2,nav_geometry
+        assert max(x['width'] for x in measured)-min(x['width'] for x in measured)<=2,nav_geometry
+        assert max(x['height'] for x in measured)-min(x['height'] for x in measured)<=2,nav_geometry
+        assert not nav_geometry['horizontalOverflow'],nav_geometry
+        print('Sidebar navigation alignment PASS',nav_geometry)
         page.locator('#navGems').click()
         assert page.locator('#viewGems').is_visible(), 'Hidden Gems page did not open'
         assert page.locator('#gemsAge').input_value()=='23'

@@ -23,6 +23,15 @@ def inject_uniform_cards(html):
     const valid=source=>source&&[source.minutes,source.matches,source.goals,source.assists]
       .some(v=>v!==null&&v!==undefined);
     if(p.origin==='transfermarkt_archived_2026'){
+      // Newly indexed current-season player matches must take precedence over
+      // the frozen archive even for profiles imported through Transfermarkt.
+      const live=ROOT.liveIndexStats?.[year]?.[id]||statsBySeason?.[year]?.[id]||null;
+      const liveSource=String(live?.source||'');
+      if(valid(live)&&Number(live.minutes)>0&&
+         !['historical_appearances','transfermarkt_historical',
+           'club_fixture_unverified_player'].includes(liveSource))
+        return {stats:live,season:year,archived:false,source:liveSource,
+                lowSample:Number(live.minutes)<450};
       // The index aggregation requires >=180 minutes, but a factual card
       // remains available for a single verified appearance. Never zero-fill
       // missing advanced stats or label a 2024/25 match as 2025/26.
@@ -120,6 +129,13 @@ def inject_uniform_cards(html):
     const role=p.displayPosition?
       p.displayPosition+' · '+(position[state.language][p.pos]||p.pos):
       (position[state.language][p.pos]||p.pos||'—');
+    const sourceDate=Date.parse(String(p.clubSourceAsOf||'').slice(0,10));
+    const clubFresh=Number.isFinite(sourceDate)&&
+      sourceDate<=Date.now()&&Date.now()-sourceDate<=120*86400000;
+    const isArchiveClub=p.origin==='transfermarkt_archived_2026'&&!clubFresh;
+    const clubText=isArchiveClub
+      ?(ru?'Клуб по архиву: ':'Archived club: ')+(p.team||'—')
+      :(p.team||'—');
     const cls=idx.proxy?'unavailable':'';
     return '<article class="player-card card-uniform">'+
       '<button class="player-card-open" data-open="'+esc(p.id)+'">'+
@@ -128,8 +144,9 @@ def inject_uniform_cards(html):
           '" alt="" loading="lazy" decoding="async" hidden></span>'+
         '<span class="card-body-uniform">'+
           '<span class="card-name">'+esc(p.name)+'</span>'+
-          '<span class="card-meta">'+esc(p.team||'—')+
-            (p.origin==='transfermarkt_archived_2026'?' · архив клуба 2026':'')+'<br>'+esc(role)+'</span>'+
+          '<span class="card-meta">'+esc(clubText)+
+            (isArchiveClub?' · '+(ru?'не подтверждён сейчас':'current club unverified'):'')+
+            '<br>'+esc(role)+'</span>'+
           '<span class="card-fixed-stats" title="'+esc(label)+'">'+esc(gs)+'</span>'+
           '<span class="card-fixed-contract '+c.status+'" title="'+esc(c.hint)+'">'+
             esc(c.text)+' <small>'+esc(c.hint)+'</small></span>'+

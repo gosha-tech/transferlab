@@ -202,7 +202,7 @@
       '</span>':'';
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
-    const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
+    const club=esc(p.club)+(p.clubArchived?' · клуб по историческим данным, сейчас не подтверждён':'')+' · '+esc(p.league);
     const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
       p.rated&&p.rating.provisional?'Data Confidence: C · предварительный индекс':
       p.rated?'Data Confidence: B · частичная статистика':
@@ -312,7 +312,16 @@
     nav.removeAttribute('data-view');
     nav.removeAttribute('onclick');
     nav.classList.remove('active');
-    nav.textContent='✦ Hidden Gems';
+    // The original navigation uses a separate icon column. A raw text node
+    // changed the button's alignment and made the sidebar look uneven.
+    const sym=document.createElement('span');
+    sym.className='sym';
+    sym.setAttribute('aria-hidden','true');
+    sym.textContent='✦';
+    const label=document.createElement('span');
+    label.className='nav-label';
+    label.textContent='Hidden Gems';
+    nav.replaceChildren(sym,label);
     nav.setAttribute('aria-current','false');
     nav.setAttribute('aria-label','Hidden Gems — недооценённые игроки');
     catalogue.insertAdjacentElement('afterend',nav);
