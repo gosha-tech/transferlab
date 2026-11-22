@@ -84,7 +84,9 @@ def inject_uniform_cards(html):
     const assist=stats?.stats?.assists==null?'—':nf(stats.stats.assists);
     const seasonLabel=stats?.archived
       ?(ru?' · Архив '+stats.season:' · Archive '+stats.season):'';
-    const gs=(ru?'Голы: ':'Goals: ')+goal+
+    const matchCount=stats?.stats?.matches==null?'—':nf(stats.stats.matches);
+    const gs=(ru?'Матчи: ':'Matches: ')+matchCount+
+      (ru?' · Голы: ':' · Goals: ')+goal+
       (ru?' · Ассисты: ':' · Assists: ')+assist+seasonLabel;
     const label=stats
       ?(ru?'Подтверждённая статистика '+stats.season:
