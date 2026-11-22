@@ -1,6 +1,8 @@
 name: Build and publish TransferLab
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -31,7 +33,7 @@ jobs:
           fetch-depth: 0
           # A scheduled import may have committed a fresher data snapshot while
           # this build was queued. Always build the latest main, not stale event SHA.
-          ref: main
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
       - name: Validate API-Football data parser
         run: |
           python scripts/sync_api.py --self-test
@@ -261,6 +263,7 @@ jobs:
           path: _site
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
