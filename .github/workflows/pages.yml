@@ -88,6 +88,7 @@ jobs:
           PITCHAPI_PAUSE: '0.18'
           PITCHAPI_REQUIRED: '1'
         run: python scripts/sync_pitchapi.py
+      # Never infer an exact day from a year-only API field.
       - name: Enrich verified contract years from secondary public provider
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-contracts]')
         continue-on-error: true
