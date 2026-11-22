@@ -65,6 +65,8 @@ jobs:
           python scripts/test_tournaments.py
           python scripts/test_hidden_gems.py
           python scripts/audit_coverage.py
+          python scripts/audit_player_stats.py --self-test
+          python scripts/audit_player_stats.py
           python scripts/source_health.py
           python scripts/audit_match_consistency.py --self-test
           python scripts/audit_match_consistency.py
