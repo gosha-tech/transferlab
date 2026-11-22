@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-22",
+  "description": "Current club and contract overrides backed by named official club/verified published evidence. Review on schedule; never infer from archived rosters.",
+  "players": {
+    "Ademola Lookman": {
+      "club": "Atlético Madrid",
+      "league": "La Liga",
+      "position": "Forward",
+      "scoutRole": "LW/RW",
+      "displayPosition": "LW/RW",
+      "foot": "right",
+      "birth": "1997-10-20",
+      "contractUntil": "2030-06-30",
+      "source": "https://www.atleticodemadrid.com/noticias/welcome-lookman",
+      "source_as_of": "2026-02-02"
+    },
+    "Mohamed Salah": {
+      "club": "Trabzonspor",
+      "league": "Süper Lig",
+      "position": "Forward",
+      "scoutRole": "LW/RW",
+      "displayPosition": "RW",
+      "foot": "left",
+      "contractUntil": "2028-06-30",
+      "source": "https://www.skysports.com/football/news/13570282/mohamed-salah-former-liverpool-forward-joins-turkish-club-trabzonspor-on-free-transfer-after-leaving-anfield",
+      "source_as_of": "2026-08-06",
+      "contract_precision": "derived from two-year contract, official exact end date not independently published"
+    },
+    "Abdülkadir Ömür": {
+      "club": "Hull City",
+      "league": "Premier League",
+      "position": "Midfielder",
+      "scoutRole": "AM",
+      "displayPosition": "AM",
+      "foot": "left",
+      "source": "https://fbref.com/en/players/6456e745/matchlogs/2026-2027/Abdulkadir-Omur-Match-Logs",
+      "source_as_of": "2026-11-22"
+    }
+  }
+}
