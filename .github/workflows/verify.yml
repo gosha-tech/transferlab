@@ -44,8 +44,9 @@ jobs:
           python scripts/enrich_profiles.py --self-test
           python scripts/import_historical_appearances.py --self-test
           python scripts/commons_photos.py --self-test
-      - name: Build with existing verified snapshots without downloading
+      - name: Build from verified snapshots (refresh only if cache schema changed)
         run: |
+          python scripts/catalog_expansion.py --download
           python scripts/prepare.py
           python scripts/catalog_expansion.py --embed _site/index.html
           python scripts/enrich_profiles.py
