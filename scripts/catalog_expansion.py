@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-linked archival profiles for a 7,000+ player TransferLab catalogue.
+"""Source-linked archival profiles for a 10,000+ player TransferLab catalogue.
 
 Each addition needs an exact provider player ID, DOB, position, dated roster
 source and real match appearances. Higher-minute players come first; low-minute
@@ -18,8 +18,8 @@ ROOT=Path(__file__).resolve().parents[1]
 CACHE=ROOT/'data'/'catalog_expansion.json'
 BASE='https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/'
 SOURCE='dcaribou/transfermarkt-datasets; last observed appearances 2026-06-28'
-CACHE_VERSION=2
-TARGET_TOTAL=7200
+CACHE_VERSION=3
+TARGET_TOTAL=10500
 MAX_NEW=12500
 MIN_MINUTES=1
 MIN_SOLID_MINUTES=450
@@ -89,8 +89,8 @@ def profile(row):
     role=POSITION.get(str(row.get('sub_position') or '').strip())
     year=numeric(row.get('last_season'))
     if (not pid.isdigit() or not (1<=len(name)<=105) or not club or
-        not birth or not (1990<=birth.year<=2011) or
-        birth>date(2026,7,6) or (year not in (2025,2026) if league in CALENDAR_NAMES else year!=2025) or
+        not birth or not (1987<=birth.year<=2011) or
+        birth>date(2026,7,6) or (year not in (2023,2024,2025,2026) if league in CALENDAR_NAMES else year not in (2023,2024,2025)) or
         not league or not role):
         return None
     # Known snapshot is 2025/26; never relabel club as a verified Nov-2026 roster.
@@ -101,7 +101,8 @@ def profile(row):
        'positionAsOf':'2026-07','birth':birth.isoformat(),
        'season':'2025' if league in CALENDAR_NAMES else '2025/26',
        'origin':'transfermarkt_archived_2026',
-       'teamArchiveAsOf':'2026-07','originSource':SOURCE}
+       'teamArchiveAsOf':'2026-07','originSource':SOURCE,
+       'clubLastObservedSeason':year}
     foot=str(row.get('foot') or '').strip().lower()
     if foot in ('left','right','both'):p['foot']=foot
     height=numeric(row.get('height_in_cm'))
@@ -126,11 +127,11 @@ def aggregate(profiles, rows):
         day=parse_day(a.get('date'))
         comp=str(a.get('competition_id') or '')
         gid=str(a.get('game_id') or a.get('appearance_id') or '')
-        if (day is None or not (date(2024,7,1)<=day<=date(2026,6,28)) or
+        if (day is None or not (date(2023,7,1)<=day<=date(2026,6,28)) or
             (comp not in LEAGUES and comp not in CUP_CODES) or not gid):
             continue
         season=season_of(day,comp)
-        if season not in ('2024/25','2025/26','2025','2026'):continue
+        if season not in ('2023/24','2024/25','2025/26','2023','2024','2025','2026'):continue
         marker=(pid,gid,comp)
         if marker in seen:continue
         seen.add(marker)
@@ -154,21 +155,21 @@ def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None)
         if tm in known_tm or norm(p['name']) in known_names:
             continue
         stats=totals.get(tm,{})
-        # For calendar championships use the last actual full campaign 2025.
-        # A 2026-only partial set cannot certify a complete 2026 season.
-        reference='2025' if p['league'] in CALENDAR_NAMES else '2025/26'
+        # Use the most recent historically evidenced domestic season. Teams
+        # from these snapshots are not proof of current squad membership.
+        candidates=('2025','2024','2023') if p['league'] in CALENDAR_NAMES else (
+            '2025/26','2024/25','2023/24')
+        reference=next((year for year in candidates if sum(
+            v['stats']['minutes'] for (season,comp),v in stats.items()
+            if season==year and comp in LEAGUES)>=MIN_MINUTES),None)
+        if reference is None:continue
         minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
                     if season==reference and comp in LEAGUES)
-        older_only=minutes<MIN_MINUTES
-        if older_only:
-            reference='2024' if p['league'] in CALENDAR_NAMES else '2024/25'
-            minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
-                        if season==reference and comp in LEAGUES)
-        if minutes<MIN_MINUTES:continue
+        older_only=reference!=candidates[0]
         # 2024/25-only profiles are last in the catalogue priority, and
         # never passed off as having played in 2025/26 or 2026/27.
         quality_tier=0 if minutes>=450 else 1 if minutes>=180 else 2 if minutes>=90 else 3
-        tier=4+quality_tier if older_only else quality_tier
+        tier=(4 if reference==candidates[1] else 8) + quality_tier if older_only else quality_tier
         age=2026-int(p['birth'][:4])
         p['season']=reference
         p['archiveReferenceSeason']=reference
@@ -254,10 +255,10 @@ def download():
     data['target_total']=TARGET_TOTAL
     print('SOURCE ELIGIBLE:',len(data['players']),'previous-only candidates:',data['possible_previous_season_only'],
           'league counts:',data['included_by_league'])
-    if base_size+len(data['players'])<7000:
-        raise RuntimeError('Verified source-backed candidates below 7000 target: '+
+    if base_size+len(data['players'])<10000:
+        raise RuntimeError('Verified source-backed candidates below 10000 target: '
             str(base_size+len(data['players']))+
-            '; do not publish a fabricated 7k catalogue')
+            '; do not publish a fabricated 10k catalogue')
     data['built_at_utc']=datetime.now(timezone.utc).isoformat(timespec='seconds')
     CACHE.parent.mkdir(parents=True,exist_ok=True)
     tmp=CACHE.with_suffix('.tmp')
@@ -307,8 +308,8 @@ def inject(page):
     page.write_text(content[:match.start(2)]+payload+content[match.end(2):],encoding='utf-8')
     print('Expanded visible TransferLab roster by',len(fresh),
           'to',len(root['players']),'profiles')
-    if len(root['players'])<7000:
-        raise RuntimeError('Expanded published catalogue below requested 7000 profiles')
+    if len(root['players'])<10000:
+        raise RuntimeError('Expanded published catalogue below requested 10000 profiles')
     return len(fresh)
 def selftest():
     def test_profile(i,age=2003,league='NL1',club='Ajax'):
@@ -324,6 +325,8 @@ def selftest():
     assert profile(dict(one,current_club_domestic_competition_id='ARG1'))['season']=='2025'
     assert profile(dict(one,current_club_domestic_competition_id='ARG1',last_season='2026'))['season']=='2025'
     assert profile(dict(one,current_club_domestic_competition_id='NO1'))['league']=='Eliteserien'
+    assert profile(dict(one,last_season='2024'))['clubLastObservedSeason']==2024
+    assert profile(dict(one,last_season='2022')) is None
     assert season_of(date(2025,3,15),'ARG1')=='2025'
     assert season_of(date(2025,3,15),'NO1')=='2025'
     assert profile({**one,'sub_position':'Unknown'}) is None
@@ -351,13 +354,17 @@ def selftest():
     assert len(data_small['players'])==1
     assert data_small['players'][0]['archiveStatEvidence']=='very_limited'
     assert data_small['players'][0]['archiveLastSeasonMinutes']==65
-    prev=build([test_profile(3)],[{'player_id':'3','game_id':'300',
+    prev=build([test_profile(3,league='NL1')],[{'player_id':'3','game_id':'300',
         'date':'2024-10-07','competition_id':'NL1','minutes_played':'90',
         'goals':'1','assists':'1'}])
     assert len(prev['players'])==1
     assert prev['players'][0]['season']=='2024/25'
     assert prev['players'][0]['archiveStatEvidence']=='older_archival'
     assert prev['by_season']['2024/25']['tm-player-3'][0]['stats']['minutes']==90
+    early=build([test_profile(4)],[{'player_id':'4','game_id':'400',
+        'date':'2023-10-07','competition_id':'NL1','minutes_played':'95'}])
+    assert early['players'][0]['archiveReferenceSeason']=='2023/24'
+    assert early['players'][0]['archiveStatEvidence']=='older_archival'
     data_excluded=build([one,test_profile(2)],appearances,exclude_names={norm(one['name'])})
     assert all(norm(p['name'])!=norm(one['name']) for p in data_excluded['players'])
     assert data['version']==CACHE_VERSION
