@@ -6,6 +6,7 @@ cannot claim more player coverage than the actual built site.
 """
 from __future__ import annotations
 from collections import Counter,defaultdict
+from profile_consistency import canonical_group
 from datetime import datetime,timezone
 import json,pathlib,re,sys
 
@@ -25,6 +26,12 @@ def summarize(root):
     ids=[str(p['id']) for p in players]
     if len(ids)!=len(set(ids)) or len(ids)<1300:
         raise RuntimeError('Incomplete or duplicate player registry')
+    contradictions=[(str(p.get('id')),p.get('name'),p.get('pos'),
+        p.get('displayPosition')) for p in players
+        if canonical_group(p) and p.get('pos')!=canonical_group(p)]
+    if contradictions:
+        raise RuntimeError('Inconsistent broad/detailed positions: '+
+                           repr(contradictions[:12]))
     index=root.get('liveIndexStats') or {}
     events=root.get('liveTournamentStats') or {}
     expected=set(ids)
@@ -77,6 +84,16 @@ def summarize(root):
             'with_minutes':len(val['with_minutes']),
             'source_rows':dict(val['sources'])}
             for key,val in sorted(by_comp.items())}
+
+    current_row_gaps=Counter()
+    current_match_missing=set()
+    for year in ('2026/27','2026'):
+        for pid,rows in (events.get(year) or {}).items():
+            for row in rows or []:
+                metrics=row.get('stats') or {}
+                if float(metrics.get('minutes') or 0)>0 and metrics.get('matches') is None:
+                    current_match_missing.add(str(pid))
+                    current_row_gaps[str(row.get('source') or 'unknown')]+=1
     market=root.get('marketHistory5Y') or {}
     market_count=len(market)
     profile=root.get('profileCoverage') or {}
@@ -226,6 +243,12 @@ def summarize(root):
          'players_by_season':root.get('pitchAPISeasonCoverage') or {},
          'backfill_incomplete':root.get('pitchAPIBackfillIncomplete',True),
          'errors':(root.get('pitchAPIErrors') or [])[:30],
+      },
+      'position_consistency':root.get('positionConsistency') or {},
+      'current_appearance_count_gaps':{
+         'players_with_minutes_but_no_exact_match_count':len(current_match_missing),
+         'rows_by_source':dict(current_row_gaps),
+         'display_policy':'Show verified minimum appearances (≥), never treat UEFA-only counts as a full-season total'
       },
       'interpretation':'Partial coverage is not zero appearances. A value is only supplied when its provider backed data exists.'
     }
