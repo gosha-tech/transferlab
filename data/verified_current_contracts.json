@@ -1,0 +1,20 @@
+{
+  "as_of": "2026-11-22",
+  "description": "Independently confirmed contracts at current clubs. Do not extrapolate or replace with an archive as if it were current. Add players when contract expiry and club are verified.",
+  "players": [
+    {
+      "name": "Nuno Mendes",
+      "club": "Paris Saint-Germain",
+      "expires_on": "2029-06-30",
+      "verified_as_of": "2026-11-22",
+      "source_url": "https://www.transfermarkt.co.uk/nuno-mendes/profil/spieler/616341"
+    },
+    {
+      "name": "Achraf Hakimi",
+      "club": "Paris Saint-Germain",
+      "expires_on": "2029-06-30",
+      "verified_as_of": "2026-11-22",
+      "source_url": "https://www.transfermarkt.co.uk/achraf-hakimi/profil/spieler/398073"
+    }
+  ]
+}
