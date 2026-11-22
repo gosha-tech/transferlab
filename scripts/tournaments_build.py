@@ -792,7 +792,7 @@ def embed(html):
     html=patch(html,"function stat(p,season=state.season){return statsBySeason[season]?.[p.id]||null};",
                r"""function stat(p,season=state.season){
     const all=eligibleRows(p,season);
-    const rows=state.competition==='all'?all:all.filter(x=>String(x.id)===state.competition);
+    const rows=state.competition==='all'?all.filter(x=>!(x.source==='official_club_match_report' && Number(x.stats?.matches)===0)):all.filter(x=>String(x.id)===state.competition);
     if(rows.length)return tournamentSum(rows);
     if(state.competition!=='all'){
       const home={'Premier League':'39','La Liga':'140','Bundesliga':'78',
