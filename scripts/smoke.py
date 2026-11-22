@@ -121,6 +121,10 @@ def main():
         assert hakimi_eur>=50,('Elite RB valuation is still implausibly depressed',hakimi_eur)
         print('INDEX CONTRIBUTIONS HAKIMI:',
               page.locator('#formulaBreakdown').inner_text().replace('\\n',' / ')[:2800])
+        rank_caption=page.locator('#verifiedProfileMeta').inner_text()
+        assert 'Ранг в базе' in rank_caption or 'Rank among' in rank_caption, (
+            'Hakimi should have evidence-based comparison with other fullbacks',rank_caption)
+        print('HAKIMI POSITION RANK:',rank_caption[:300])
         print('HAKIMI DIAGNOSTIC:',page.locator('#valueMain').inner_text(),
               page.locator('#playerIndexBadge').inner_text(),
               'quality:',page.locator('#modelQuality').inner_text(),
