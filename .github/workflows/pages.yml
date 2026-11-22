@@ -92,7 +92,8 @@ jobs:
         env:
           PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
           PITCHAPI_REQUIRED: '1'
-          PITCHAPI_LINEUP_BUDGET: ${{ vars.PITCHAPI_LINEUP_BUDGET || '550' }}
+          # First full season starts backfill; subsequent runs skip verified lineups.
+          PITCHAPI_LINEUP_BUDGET: ${{ vars.PITCHAPI_LINEUP_BUDGET || '1100' }}
           PITCHAPI_PAUSE: '0.18'
         run: python scripts/sync_lineups.py
       - name: Confirm fresh current-season player data
