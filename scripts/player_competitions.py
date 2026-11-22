@@ -63,6 +63,13 @@ def choices_for(p):
         items.append({'id':'3','name':'Лига Европы',
                       'reason':'участник ЛЕ 2026/27 по Премьер-лиге',
                       'source':PL_SOURCE,'data_available':False})
+    # 2026 FA Community Shield: Arsenal and Manchester City played on 16 August.
+    # Club participation is independent of the individual player's appearance.
+    if league=='Premier League' and club in {norm('Arsenal'),norm('Manchester City'),norm('Man City')}:
+        items.append({'id':'eng-community-shield','name':'Суперкубок Англии',
+             'reason':'официальный матч 16.08.2026, участие клуба подтверждено',
+             'source':'https://www.thefa.com/news/2026/aug/16/fa-community-shield-2026-report-16082026',
+             'data_available':True,'club_fixture_completed':True})
     # PSG took part in both 2026/27 super cups, confirmed by official
     # UEFA and PSG fixtures, not from general UCL qualification.
     if league=='Ligue 1' and club in {norm('Paris Saint-Germain'),norm('Paris SG'),norm('PSG')}:
@@ -88,14 +95,14 @@ def add_choices(root):
 def selftest():
     foden={'id':'209244','name':'Phil Foden','team':'Manchester City','league':'Premier League'}
     x=choices_for(foden)
-    assert [v['id'] for v in x]==['39','45','48','2'],x
+    assert [v['id'] for v in x]==['39','45','48','2','eng-community-shield'],x
     assert not any(v['id'] in ('3','61','66') for v in x)
     hazard=choices_for({'id':'h','name':'Achraf Hakimi','team':'Paris Saint-Germain','league':'Ligue 1'})
     assert [v['id'] for v in hazard]==['61','66','2','uefa-super-cup','fr-super-cup'],hazard
     west=choices_for({'id':'x','team':'West Ham United','league':'Premier League'})
     assert [v['id'] for v in west]==['39','45','48'],west
     arsenal=choices_for({'id':'x','team':'Arsenal','league':'Premier League'})
-    assert [v['id'] for v in arsenal]==['39','45','48','2'],arsenal
+    assert [v['id'] for v in arsenal]==['39','45','48','2','eng-community-shield'],arsenal
     le=choices_for({'id':'x','team':'Sunderland','league':'Premier League'})
     assert [v['id'] for v in le]==['39','45','48','3'],le
     la=choices_for({'id':'x','team':'FC Barcelona','league':'La Liga'})
