@@ -90,7 +90,8 @@ def profile(row):
     year=numeric(row.get('last_season'))
     if (not pid.isdigit() or not (1<=len(name)<=105) or not club or
         not birth or not (1990<=birth.year<=2011) or
-        birth>date(2026,7,6) or year!=2025 or not league or not role):
+        birth>date(2026,7,6) or (year not in (2025,2026) if league in CALENDAR_NAMES else year!=2025) or
+        not league or not role):
         return None
     # Known snapshot is 2025/26; never relabel club as a verified Nov-2026 roster.
     p={'id':'tm-player-'+pid,'tm_player_id':pid,
@@ -296,6 +297,7 @@ def selftest():
     assert profile(dict(one,current_club_domestic_competition_id='TS1'))['league']=='Czech First League'
     assert profile(dict(one,current_club_domestic_competition_id='KR1'))['league']=='Croatian HNL'
     assert profile(dict(one,current_club_domestic_competition_id='ARG1'))['season']=='2025'
+    assert profile(dict(one,current_club_domestic_competition_id='ARG1',last_season='2026'))['season']=='2025'
     assert profile(dict(one,current_club_domestic_competition_id='NO1'))['league']=='Eliteserien'
     assert season_of(date(2025,3,15),'ARG1')=='2025'
     assert season_of(date(2025,3,15),'NO1')=='2025'
