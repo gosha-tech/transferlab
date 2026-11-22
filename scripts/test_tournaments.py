@@ -209,6 +209,8 @@ def main():
         assert 'return Math.max(0,Math.min(1,(dt-start)/(end-start)));' not in result
         assert '[100,100,100,0].map((n,i)=>' in result
 
+        assert 'opponentStrengthByPlayer' in d
+        assert 'opponentDelta' in result
         assert 'transferComparison' in result
         assert 'window.transferLabForecastExport=function()' in result
         assert d['transferEvidenceCoverage']['accepted']>=1
