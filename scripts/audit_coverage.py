@@ -57,6 +57,28 @@ def summarize(root):
             if pid in (events.get(season) or {}) and any(
                  isinstance(r,dict) and r.get('stats') for r in events[season][pid]):
                 leagues[league]['seasons'][season]+=1
+    competitions={}
+    for season in (*SEASONS,*CALENDAR_SEASONS):
+        by_comp=defaultdict(lambda:{'players':set(),'with_minutes':set(),'sources':Counter()})
+        for pid,rows in (events.get(season) or {}).items():
+            if str(pid) not in expected or not isinstance(rows,list):continue
+            for record in rows:
+                if not isinstance(record,dict) or not isinstance(record.get('stats'),dict):
+                    continue
+                if not record['stats']:continue
+                key=str(record.get('id') or '')+' · '+str(record.get('name') or '?')
+                row=by_comp[key]
+                row['players'].add(str(pid))
+                if float(record['stats'].get('minutes') or 0)>0:
+                    row['with_minutes'].add(str(pid))
+                row['sources'][str(record.get('source') or 'unknown')]+=1
+        competitions[season]={key:{
+            'players':len(val['players']),
+            'with_minutes':len(val['with_minutes']),
+            'source_rows':dict(val['sources'])}
+            for key,val in sorted(by_comp.items())}
+    market=root.get('marketHistory5Y') or {}
+    market_count=len(market)
     profile=root.get('profileCoverage') or {}
     result={
       'built_at_utc':datetime.now(timezone.utc).isoformat(timespec='seconds'),
@@ -66,6 +88,14 @@ def summarize(root):
       'leagues':{key:{'players':v['players'],'seasons':dict(v['seasons'])}
                  for key,v in sorted(leagues.items())},
       'profiles':profile,
+      'competition_coverage':competitions,
+      'five_year_market_values':{
+        'players_with_actual_observations':market_count,
+        'players_with_two_or_more':sum(len(v)>=2 for v in market.values()),
+        'last_real_market_date':root.get('marketHistoryLastObserved'),
+        'source':root.get('marketHistorySource'),
+        'observations':sum(len(v) for v in market.values()),
+      },
       'pitchapi':{
          'key_configured_on_last_successful_sync':root.get('pitchAPIKeyConfigured',False),
          'source_last_sync':root.get('pitchAPILastSync'),
