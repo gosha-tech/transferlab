@@ -13,6 +13,7 @@ from uniform_cards import inject_uniform_cards
 from verified_competitions import add_verified_competitions, CUP_IDS
 from role_calibration import inject_role_calibration
 from verified_club_fixtures import inject as attach_verified_fixtures
+from verified_current_contracts import apply as attach_current_contracts
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -139,6 +140,11 @@ def embed(html):
             p['contractSourceAsOf']=evidence.get('as_of')
             p['contractPrecision']='year_only'
             extended+=1
+    # Supplement incomplete public contract feeds with independently confirmed
+    # club-specific current contract expiry records. Missing values stay missing.
+    official_contract_path=ROOT/'data'/'verified_current_contracts.json'
+    official_contracts=json.loads(official_contract_path.read_text(encoding='utf-8')) if official_contract_path.exists() else {}
+    root['officialContractReconciliation']=attach_current_contracts(original,official_contracts)
     root['newContractEvidence']=extended
     root['contractSourceLastChecked']=secondary.get('last_check')
     current_by_id={str(p['id']):p for p in original}
