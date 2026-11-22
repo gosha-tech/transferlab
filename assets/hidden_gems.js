@@ -159,9 +159,9 @@
       'Актуальная стоимость неизвестна';
     const ratio=p.score!==null ?
       '<strong class="gems-score">'+p.score+'/100</strong>' :
-      '<span class="gems-unrated">Нет проверенной текущей оценки</span>';
+      '<span class="gems-unrated" title="Свежая рыночная оценка отсутствует">—</span>';
     const archiveRatio=p.archiveScore!==null ?
-      '<span class="gems-archival-score">Архивный Value Gap: '+p.archiveScore+'/100 · '+
+      '<span class="gems-archival-score">Архивная недооценённость: '+p.archiveScore+'/100 · '+
         p.archivePeers+' аналогов</span>' : '';
     const explanation=p.score!==null ?
       'По эффективности '+Math.round(p.performancePercentile*100)+'-й процентиль, по цене '+
