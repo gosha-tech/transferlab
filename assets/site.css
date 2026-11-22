@@ -87,3 +87,44 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 
 /* Make model uncertainty visible instead of showing a naked index/price. */
 #modelQuality,#rollingWindow{display:block!important;font-size:11px;line-height:1.55;color:#9dbbcc;margin-top:5px;white-space:normal}
+
+/* Every catalog and favorite card has the SAME four data rows.
+   No conditional swapping of contract and goal/assist labels. */
+.player-card.card-uniform{min-height:270px}
+.player-card.card-uniform .player-card-open{width:100%;height:100%;min-height:255px}
+.player-card.card-uniform .card-body-uniform{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+  min-width:0;min-height:216px;padding-bottom:4px;
+}
+.player-card.card-uniform .card-name{
+  line-height:1.2;max-width:calc(100% - 33px);
+}
+.player-card.card-uniform .card-meta{line-height:1.38;min-height:43px}
+.player-card.card-uniform .card-fixed-stats{
+  display:block;min-height:21px;font-size:13px;color:#5eedd7;
+  font-weight:550;white-space:normal;overflow-wrap:anywhere;
+}
+.player-card.card-uniform .card-fixed-contract{
+  display:flex;flex-wrap:wrap;gap:5px 7px;align-items:baseline;
+  min-height:21px;font-size:12px;color:#c9dceb;line-height:1.3;
+}
+.player-card.card-uniform .card-fixed-contract small{
+  color:#91b5c8;font-size:10px;font-weight:400;
+}
+.player-card.card-uniform .card-fixed-contract.missing{color:#91aabd}
+.player-card.card-uniform .card-fixed-contract.archived{color:#bad3e6}
+.player-card.card-uniform .card-fixed-bottom{
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  margin-top:auto;line-height:1.3;
+}
+.player-card.card-uniform .card-fixed-bottom .league-tag{
+  font-size:11px;max-width:100%;white-space:normal;
+}
+.player-card.card-uniform .card-fixed-bottom .player-index{
+  display:inline-block;position:static;font-size:11px;
+  max-width:100%;white-space:normal;
+}
+@media(max-width:450px){
+  .player-card.card-uniform{min-height:285px}
+  .player-card.card-uniform .card-body-uniform{min-height:245px}
+}
