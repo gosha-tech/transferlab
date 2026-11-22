@@ -8,7 +8,7 @@ statistics or full-confidence indices. Market values and contract expiries from
 the archive do not prove a current valuation or valid 2026/27 contract.
 """
 from __future__ import annotations
-from collections import defaultdict
+from collections import defaultdict,Counter
 from datetime import date,datetime,timezone
 from pathlib import Path
 import argparse,csv,gzip,io,json,re,unicodedata,urllib.request
@@ -190,10 +190,25 @@ def build(profiles_rows,appearance_rows,limit=MAX_NEW,exclude_tm=None,exclude_na
         p=profile(row)
         if p:profiles[p['tm_player_id']]=p
     totals=aggregate(profiles,appearance_rows)
+    # Report real-source expansion opportunities, not fabricated profiles.
+    possible_previous=0
+    for tm,p in profiles.items():
+        if tm in set(str(x) for x in (exclude_tm or ())) or norm(p['name']) in (exclude_names or set()):
+            continue
+        history=totals.get(tm) or {}
+        old='2024' if p['league'] in CALENDAR_NAMES else '2024/25'
+        cur='2025' if p['league'] in CALENDAR_NAMES else '2025/26'
+        old_minutes=sum(v['stats']['minutes'] for (season,comp),v in history.items()
+                        if season==old and comp in LEAGUES)
+        cur_minutes=sum(v['stats']['minutes'] for (season,comp),v in history.items()
+                        if season==cur and comp in LEAGUES)
+        if old_minutes>0 and cur_minutes==0:possible_previous+=1
     players,by_season=select(profiles,totals,limit,exclude_tm,exclude_names)
     return {'version':CACHE_VERSION,'source':SOURCE,'archived_through':'2026-06-28',
             'players':players,'by_season':by_season,'profiles_eligible':len(profiles),
             'stat_verified_profiles':len(players),
+            'possible_previous_season_only':possible_previous,
+            'included_by_league':dict(Counter(p['league'] for p in players)),
             'evidence':{
                 'last_season_minutes_450':sum(p['archiveLastSeasonMinutes']>=450 for p in players),
                 'last_season_minutes_180':sum(p['archiveLastSeasonMinutes']>=180 for p in players),
@@ -229,6 +244,8 @@ def download():
                exclude_tm=tmids,exclude_names=names)
     data['seed_count']=base_size
     data['target_total']=TARGET_TOTAL
+    print('SOURCE ELIGIBLE:',len(data['players']),'previous-only candidates:',data['possible_previous_season_only'],
+          'league counts:',data['included_by_league'])
     if base_size+len(data['players'])<7000:
         raise RuntimeError('Verified source-backed candidates below 7000 target: '+
             str(base_size+len(data['players']))+
