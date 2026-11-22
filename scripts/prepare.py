@@ -43,8 +43,8 @@ s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog
 s=change(s,'<span class="pill" id="visibleCount">0</span>','<select id="sortBy" class="filter" aria-label="Сортировка"><option value="name">По алфавиту</option><option value="position">По позиции</option><option value="minutes">По минутам</option></select><span class="pill" id="visibleCount">0</span>')
 # Describe the actual number of leagues instead of the older five-league scope.
 s=change(s,"directoryDesc:'Пять лиг: поиск, позиции, контракты и статистика по сезонам.'","directoryDesc:'Чемпионаты разных стран: проверенные матчи и архивные сезоны.'")
-s=change(s,"sideFoot:'Статистика пяти ведущих лиг. Без выдуманных оценок.'","sideFoot:'Архивные данные 11 лиг. Недостающие показатели не придуманы.'")
-s=change(s,"sideFoot:'Statistics from five major leagues. No invented valuations.'","sideFoot:'Historical data from 11 leagues. Missing data is not fabricated.'")
+s=change(s,"sideFoot:'Статистика пяти ведущих лиг. Без выдуманных оценок.'","sideFoot:'Архивная и текущая статистика по доступным лигам. Пропуски отмечены.'")
+s=change(s,"sideFoot:'Statistics from five major leagues. No invented valuations.'","sideFoot:'Current and historical data where available. Missing stats are marked.'")
 s=change(s,"$('dataState').textContent=players.length+' · '+(masterReady?'Top 5':'offline');","$('dataState').textContent=players.length+' профилей · архив';")
 s=change(s,"$('valueMain').textContent=euroM(model.estimate);","$('valueMain').textContent=model.index.proxy?(ru?'Нет данных':'No data'):euroM(model.estimate);")
 tick=chr(96); dollar=chr(36)
