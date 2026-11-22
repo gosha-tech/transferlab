@@ -64,6 +64,35 @@ def main():
         assert audit['noEvidence']==0,audit
         assert audit['noSource']==0,audit
         print('7000+ verified profiles audit:',audit)
+
+        samples=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const rows=root.players.filter(p=>p.origin==='transfermarkt_archived_2026');
+          const older=rows.find(p=>p.archiveStatEvidence==='older_archival' &&
+            p.archiveReferenceSeason==='2024/25');
+          const short=rows.find(p=>p.archiveStatEvidence==='very_limited' &&
+            p.archiveReferenceSeason==='2025/26');
+          return [{kind:'older',id:older?.id,name:older?.name,
+                   season:older?.archiveReferenceSeason},
+                  {kind:'short',id:short?.id,name:short?.name,
+                   season:short?.archiveReferenceSeason}];
+        }""")
+        for item in samples:
+            assert item['id'] and item['name'] and item['season'],item
+            page.locator('#search').fill(item['name'])
+            page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+            page.locator('#suggestions [data-suggest]').first.click()
+            assert item['name'] in page.locator('#pName').inner_text(),item
+            banner=page.locator('#currentSeasonBanner').inner_text()
+            assert item['season'] in banner,(
+                'Archived player opened with the wrong season',item,banner)
+            shown=page.locator('#statMinutes').inner_text()
+            assert int(''.join(c for c in shown if c.isdigit()) or '0')>0,(
+                'Verified historical stat disappeared for a low-minute player',
+                item,shown)
+            page.locator('#navCatalog').click()
+        print('Historical short-sample and older-season player profile tests PASS')
+
         page.locator('#search').fill(expanded['player'])
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
