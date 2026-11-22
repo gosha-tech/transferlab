@@ -127,7 +127,25 @@ def main():
         assert len(foden)==1,'Must match a single existing player'
         pid=foden[0]['id']
         loaded=d['liveTournamentStats']['2026/27'][pid]
-        assert {t['id'] for t in loaded}=={2,39,45,'tsdb-5999'},loaded
+        assert {t['id'] for t in loaded}=={2,39,45,'tsdb-5999','eng-community-shield'},loaded
+        shield=next(x for x in loaded if x['id']=='eng-community-shield')
+        assert shield['stats']['matches']==1 and shield['stats']['goals']==0
+        assert shield['stats']['assists']==0 and shield['source']=='official_club_match_report'
+        # Every City/Arsenal player has this tournament. Never show a dash
+        # when the official squad proves the individual did not take part.
+        contenders=[p for p in d['players'] if p.get('league')=='Premier League'
+                    and p.get('team') in ('Manchester City','Arsenal')]
+        assert len(contenders)>=20
+        for athlete in contenders:
+            cup=[x for x in d['liveTournamentStats']['2026/27'][str(athlete['id'])]
+                 if str(x['id'])=='eng-community-shield']
+            assert len(cup)==1,athlete['name']
+            assert all(cup[0]['stats'].get(k) is not None
+                       for k in ('matches','goals','assists')),athlete['name']
+            assert any(x['id']=='eng-community-shield'
+                       for x in d['currentCompetitionByPlayer'][str(athlete['id'])])
+        assert d['verifiedClubFixtures']['city_players']>=1
+        assert d['verifiedClubFixtures']['arsenal_players']>=1
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
         assert not any(str(x['id'])=='78' for x in loaded), 'Foden must not show Bundesliga'
@@ -183,6 +201,7 @@ def main():
         assert '[100,100,100,0].map((n,i)=>' in result
 
         assert d['profileCoverage']['with_current_player_stats']>=1
+        assert 'advancedCoverageNote' in result and 'advanced_metric_coverage' in result
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
         assert 'freeMatchesPanel' in result
         assert d['freeMatchResults']['Premier League'][0]['home_goals']==2
