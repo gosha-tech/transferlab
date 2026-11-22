@@ -53,7 +53,7 @@ def summarize(root):
         pid=str(p['id'])
         league=str(p.get('league') or 'Unknown')
         leagues[league]['players']+=1
-        for season in (CALENDAR_SEASONS if league in ('MLS','Brasileirão') else SEASONS):
+        for season in (CALENDAR_SEASONS if league in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else SEASONS):
             if pid in (events.get(season) or {}) and any(
                  isinstance(r,dict) and r.get('stats') for r in events[season][pid]):
                 leagues[league]['seasons'][season]+=1
@@ -112,7 +112,7 @@ def summarize(root):
     # positive-minute season row with a dated, named provider.
     def recorded_archival_matches(p):
         pid=str(p['id'])
-        years=('2025','2026') if p.get('league') in ('MLS','Brasileirão') else ('2024/25','2025/26')
+        years=('2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2024/25','2025/26')
         return any(isinstance(r,dict) and
             r.get('source')=='historical_appearances' and
             (r.get('stats') or {}).get('matches',0)>0 and
@@ -131,8 +131,8 @@ def summarize(root):
         pid=str(p['id'])
         return sum(max(0,float((index.get(season) or {}).get(pid,{}).get('minutes') or 0))
                    for season in seasons)
-    current_seasons=lambda p: ('2026',) if p.get('league') in ('MLS','Brasileirão') else ('2026/27',)
-    archive_seasons=lambda p: ('2025',) if p.get('league') in ('MLS','Brasileirão') else ('2025/26',)
+    current_seasons=lambda p: ('2026',) if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2026/27',)
+    archive_seasons=lambda p: ('2025',) if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2025/26',)
     previous_index={str(p['id']) for p in players if
                     index_minutes(p,archive_seasons(p))>=450}
     current_index={str(p['id']) for p in players if
