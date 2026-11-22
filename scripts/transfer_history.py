@@ -129,7 +129,9 @@ def selftest():
     rows,_=attach(people,deal,{'snapshots':history['snapshots'][1:]},profiles,dt.date(2026,11,22))
     assert rows['p1'][0]['pre_transfer_prediction'] is None
     duplicate=[people[0],dict(people[0],id='p2')]
-    rows,info=attach(duplicate,deal,history,profiles,dt.date(2026,11,22))
+    rows,info=attach(duplicate,deal,history,
+        {'profiles':{'p1':{'tm_player_id':'474701'},'p2':{'tm_player_id':'474701'}}},
+        dt.date(2026,11,22))
     assert not rows and info['rejected']==1
     print('Transfer evidence: identity checks + no post-deal hindsight PASS')
 
