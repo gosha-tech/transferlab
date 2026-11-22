@@ -47,8 +47,10 @@ jobs:
       - name: Build with existing verified snapshots without downloading
         run: |
           python scripts/prepare.py
+          python scripts/catalog_expansion.py --embed _site/index.html
           python scripts/enrich_profiles.py
           python scripts/tournaments_build.py _site/index.html
+          python scripts/hidden_gems.py _site/index.html
       - name: Inspect model data inputs and raw role formula
         run: python scripts/audit_rating_inputs.py
       - name: Audit actual current club evidence, starts and position mappings
@@ -56,6 +58,7 @@ jobs:
       - name: Check tournament merging and source coverage
         run: |
           python scripts/test_tournaments.py
+          python scripts/test_hidden_gems.py
           python scripts/audit_coverage.py
           python - <<'PY'
           import re,pathlib,json
@@ -75,7 +78,7 @@ jobs:
       - name: Check current-season player profiles in Chromium
         run: |
           mkdir -p _site/assets
-          cp assets/site.js assets/site.css _site/assets/
+          cp assets/site.js assets/site.css assets/hidden_gems.js assets/hidden_gems.css _site/assets/
           python -m pip install --quiet playwright==1.56.0
           python scripts/smoke.py
       - name: JavaScript syntax
@@ -84,7 +87,8 @@ jobs:
           import pathlib,re
           html=pathlib.Path('_site/index.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)
-          pathlib.Path('/tmp/transferlab-verify.js').write_text(scripts[-1],encoding='utf-8')
+          pathlib.Path('/tmp/transferlab-verify.js').write_text([x for x in scripts if x.strip()][-1],encoding='utf-8')
           PY
           node --check /tmp/transferlab-verify.js
           node --check assets/site.js
+          node --check assets/hidden_gems.js
