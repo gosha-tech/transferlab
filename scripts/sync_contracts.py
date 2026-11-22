@@ -23,6 +23,15 @@ def input_roster():
     match=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
     if not match:raise RuntimeError('No verified original roster')
     players=json.loads(match.group(1))['players']
+    try:
+        archive=json.loads((ROOT/'data'/'catalog_expansion.json').read_text(encoding='utf-8'))
+        names={normalize(p.get('name')) for p in players}
+        for p in archive.get('players') or []:
+            if p.get('name') and normalize(p['name']) not in names:
+                players.append(p)
+                names.add(normalize(p['name']))
+    except (OSError,ValueError):
+        pass
     extra=ROOT/'data/verified_roster.json'
     cfg=json.loads(extra.read_text()) if extra.exists() else {}
     try:
@@ -104,7 +113,11 @@ def process(players,cache,today,lookup,limit):
     for p in players:
         pid=str(p['id'])
         archived=ix.get(pid) or {}
-        tm=archived.get('tm_player_id')
+        tm=archived.get('tm_player_id') or p.get('tm_player_id')
+        # Archive club is NOT a current team. Never perform a "current contract"
+        # query for an expanded player before real domestic-match membership.
+        if p.get('origin')=='transfermarkt_archived_2026' and not p.get('clubSource'):
+            continue
         # A unique exact player name plus verified current club can also establish identity.
         record=profiles.get(pid) or {}
         stamp=record.get('checked_at')
