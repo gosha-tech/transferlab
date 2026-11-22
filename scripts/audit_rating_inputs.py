@@ -13,7 +13,8 @@ for player in ('Nuno Mendes','Achraf Hakimi'):
         x=d.get('liveIndexStats',{}).get(year,{}).get(p['id'])
         if x:print('RATING SEASON',player,year,json.dumps(
             {k:x.get(k) for k in ('minutes','matches','goals','assists','xg','xa','recoveries',
-              'tackles','interceptions','source','advancedPartial')},ensure_ascii=False))
+              'tackles','interceptions','dribbles','progressive_carries',
+              'progressive_passes','key_passes','metricMinutes','source','advancedPartial')},ensure_ascii=False))
 script=html[m.end():]
 for marker in ("function rollingEvidence(", "function calcDraftIndex(",
                "const rankScaled=percentile<0.5?",
