@@ -18,7 +18,7 @@ def inject_competition_exposure(html):
     const empty={weightedEuropeanMinutes:0,totalMinutes:0,share:0};
     if(!player)return empty;
     const id=String(player.id);
-    const years=['MLS','Brasileirão'].includes(player.league)?
+    const years=['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(player.league)?
       ['2024','2025','2026']:['2024/25','2025/26','2026/27'];
     let totalMinutes=0,weightedEuropeanMinutes=0;
     for(const season of years){
