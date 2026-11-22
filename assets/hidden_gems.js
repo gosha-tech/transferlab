@@ -83,22 +83,34 @@
         !candidate.statsPartial && candidate.rating.exact ? 'A':'B';
     }
 
-    // Separate retrospective comparison. It is NEVER called a current bargain.
-    // Require the same 2025/26 (or 2025) season and comparable *archive* prices.
-    const archiveKnown = data.filter(p => p.eligible && p.rated && !p.currentEvidence &&
-      p.archive && Number.isFinite(p.archive.eur) && p.archive.eur > 0 &&
-      ['2025/26','2025'].includes(p.statPeriod));
-    const byRole = new Map();
-    for (const p of archiveKnown) {
-      if (!byRole.has(p.rating.role)) byRole.set(p.rating.role,[]);
-      byRole.get(p.rating.role).push(p);
+    // Dated archival screening. A CURRENT rolling index cannot be used as
+    // 2025/26 performance against a 2026 archival price: that leaks later data.
+    // Restrict this narrower signal to verified 2025/26 G+A per 90 for
+    // attacking roles and recorded archive prices after the season.
+    const attackingRoles=new Set(['ST','LW/RW','AM','CM']);
+    const archiveKnown=data.filter(p=>{
+      const row=p.archiveStats,stamp=String(p.archive?.as_of||'');
+      const dated=stamp.startsWith('2026-07') ||
+        (asDate(stamp) && asDate(stamp)>=asDate('2026-06-28'));
+      if (!p.eligible || !attackingRoles.has(p.role) ||
+          p.archiveSeason!=='2025/26' || !dated || !p.archive ||
+          !Number.isFinite(p.archive.eur) || p.archive.eur<=0 ||
+          !row || !Number.isFinite(Number(row.minutes)) ||
+          Number(row.minutes)<450 || row.goals==null || row.assists==null) return false;
+      p.archiveProduction=90*(Number(row.goals)+Number(row.assists))/Number(row.minutes);
+      return Number.isFinite(p.archiveProduction) && p.archiveProduction>=0;
+    });
+    const byRole=new Map();
+    for(const p of archiveKnown){
+      if(!byRole.has(p.role))byRole.set(p.role,[]);
+      byRole.get(p.role).push(p);
     }
-    for (const candidate of archiveKnown) {
-      const peers=(byRole.get(candidate.rating.role)||[]).filter(p=>
-        Math.abs(p.age-candidate.age)<=3 && p.statPeriod===candidate.statPeriod);
+    for(const candidate of archiveKnown){
+      const peers=(byRole.get(candidate.role)||[]).filter(p=>
+        Math.abs(p.age-candidate.age)<=3);
       candidate.archivePeers=peers.length;
-      if (peers.length<25) continue;
-      const sport=percentile(peers.map(p=>p.rating.score),candidate.rating.score);
+      if(peers.length<25)continue;
+      const sport=percentile(peers.map(p=>p.archiveProduction),candidate.archiveProduction);
       const price=percentile(peers.map(p=>p.archive.eur),candidate.archive.eur);
       candidate.archivePerformancePercentile=sport;
       candidate.archivePricePercentile=price;
@@ -163,15 +175,16 @@
       '<strong class="gems-score">'+p.score+'/100</strong>' :
       '<span class="gems-unrated" title="Свежая рыночная оценка отсутствует">—</span>';
     const archiveRatio=p.archiveScore!==null ?
-      '<span class="gems-archival-score">Архивная недооценённость: '+p.archiveScore+'/100 · '+
+      '<span class="gems-archival-score">Архивный атакующий сигнал (Г+А/90): '+p.archiveScore+'/100 · '+
         p.archivePeers+' аналогов</span>' : '';
     const explanation=p.score!==null ?
       'По эффективности '+Math.round(p.performancePercentile*100)+'-й процентиль, по цене '+
       Math.round(p.pricePercentile*100)+'-й · '+p.peers+' аналогов' :
       p.archiveScore!==null ?
-      'Архивная выборка: эффективность '+Math.round(p.archivePerformancePercentile*100)+
-        '-й процентиль, архивная цена '+Math.round(p.archivePricePercentile*100)+
-        '-й · не прогноз текущей стоимости' :
+      'Сезон 2025/26: Г+А/90 '+p.archiveProduction.toFixed(2)+
+        ', атакующий вклад '+Math.round(p.archivePerformancePercentile*100)+
+        '-й процентиль, цена архива '+Math.round(p.archivePricePercentile*100)+
+        '-й · это не общий индекс и не текущая недооценка' :
       p.rated ? 'Нет актуальных оценок или 25 сопоставимых игроков; число недооценённости не рассчитывается' :
       'Спортивный индекс пока не подтверждён по полноте показателей';
     const tag=p.score!==null && p.performancePercentile>=.65 && p.gap>=.20 ?
@@ -269,7 +282,7 @@
     const note=activeTab==='confirmed' ?
       (rows.length ? 'Актуальные цены подтверждены. Индекс экспериментальный; дата цены указана в карточке.' :
       'Нет подтверждённых находок по выбранным фильтрам. Для расчёта нужны свежие оценки (не старше 120 дней) и минимум 25 аналогов по роли и возрасту.') :
-      (rows.length ? 'Предварительная подборка: спортивные показатели подтверждены, но актуальная стоимость или достаточная группа сравнения отсутствует. Архивные цены не означают соответствие бюджету сегодня.' :
+      (rows.length ? 'Исследовательская подборка: исторический сигнал основан только на Г+А/90 за 2025/26 и архивной цене. Он не измеряет защитную игру и не подтверждает актуальную недооценку.' :
       'Нет кандидатов с достаточным количеством подтверждённых минут. Попробуйте изменить фильтры.');
     const check=bridge.verification()?.coverage||{};
     const reviewCount=Number(check.review_candidates||0);
