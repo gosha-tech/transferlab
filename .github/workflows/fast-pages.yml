@@ -1,14 +1,9 @@
 name: Publish verified TransferLab UI from cached statistics
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/tournaments_build.py
-      - scripts/uniform_cards.py
-      - assets/site.css
-      - assets/site.js
-      - .github/workflows/fast-pages.yml
+  # Manual emergency deployment only. Normal code changes are already
+  # published by pages.yml; two independent workflows competing for the
+  # same Pages environment caused intermittent HTTP 400 deployments.
   workflow_dispatch:
 
 permissions:
@@ -19,8 +14,8 @@ permissions:
 # UI/index fixes must not be held back by a large scheduled API backfill.
 # The existing scheduled import publishes newer snapshots when complete.
 concurrency:
-  group: transferlab-quick-pages
-  cancel-in-progress: true
+  group: transferlab-pages
+  cancel-in-progress: false
 
 jobs:
   build:
