@@ -21,7 +21,7 @@ COMPETITIONS=[
  (135,'Серия А'),(137,'Кубок Италии'),(61,'Лига 1'),(66,'Кубок Франции'),
  (94,'Португалия'),(144,'Бельгия'),(203,'Турция'),(307,'Саудовская лига'),
  (253,'MLS'),(3,'Лига Европы'),(848,'Лига конференций'),
- ('uefa-super-cup','Суперкубок УЕФА'),('fr-super-cup','Суперкубок Франции'),
+ ('eng-community-shield','Суперкубок Англии'),('uefa-super-cup','Суперкубок УЕФА'),('fr-super-cup','Суперкубок Франции'),
  ('es-super-cup','Суперкубок Испании'),('it-super-cup','Суперкубок Италии'),
  ('de-super-cup','Суперкубок Германии'),('pt-super-cup','Суперкубок Португалии'),
  ('tr-super-cup','Суперкубок Турции'),('bel-super-cup','Суперкубок Бельгии'),
@@ -793,6 +793,12 @@ def embed(html):
     if(season==='2026/27'||season==='2026')return null;
     return statsBySeason[season]?.[p.id]||null;
   }""")
+    # Start portrait CDN connections early, before player cards render.
+    html=html.replace('</head>', '''<link rel="preconnect" href="https://media.premierleague.com" crossorigin>
+<link rel="preconnect" href="https://resources.premierleague.com" crossorigin>
+<link rel="preconnect" href="https://img.sofascore.com" crossorigin>
+<link rel="preconnect" href="https://upload.wikimedia.org" crossorigin>
+</head>''',1)
     # A single deterministic, identity-backed headshot source per player.
     # Previously images raced in parallel across providers, so each reload
     # could display a different pose (or a full-body candid shot). Official
@@ -817,7 +823,7 @@ def embed(html):
     # finished network request should not randomly decide which face/pose is
     # displayed. The next candidate is tried only after the first failed.
     html=patch(html,"const batch=options.slice(0,Math.min(options.length,4));",
-               "const batch=options.slice(0,1);")
+               "const batch=options.slice(0,Math.min(options.length,2));")
 
     controls=r"""  function localizeComp(id,name,ru){
     const code=String(id);
@@ -827,6 +833,7 @@ def embed(html):
       '203':'Суперлига Турции','307':'Саудовская Про-лига','253':'MLS',
       'nl-league':'Эредивизи','br-league':'Бразилейран',
       '2':'Лига чемпионов','3':'Лига Европы','848':'Лига конференций',
+      'eng-community-shield':'Суперкубок Англии',
       'uefa-super-cup':'Суперкубок УЕФА','fr-super-cup':'Суперкубок Франции',
       'es-super-cup':'Суперкубок Испании','it-super-cup':'Суперкубок Италии',
       'de-super-cup':'Суперкубок Германии','pt-super-cup':'Суперкубок Португалии',
@@ -842,6 +849,7 @@ def embed(html):
       'cup-brazil':'Кубок Бразилии','cup-netherlands':'Кубок Нидерландов'};
     const eng={
       '2':'UEFA Champions League','3':'UEFA Europa League','848':'UEFA Conference League',
+      'eng-community-shield':'FA Community Shield',
       'uefa-super-cup':'UEFA Super Cup','fr-super-cup':'Trophée des Champions',
       'es-super-cup':'Supercopa de España','it-super-cup':'Supercoppa Italiana',
       'de-super-cup':'DFL-Supercup','pt-super-cup':'Supertaça de Portugal',
