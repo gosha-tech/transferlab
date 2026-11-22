@@ -257,6 +257,7 @@ def embed(html):
         totals={}
         valid=set()
         metric_coverage={}
+        metric_minute_coverage={}
         for mid,stats,day in data:
             if mid in valid:continue
             valid.add(mid)
@@ -267,9 +268,13 @@ def embed(html):
         # Track exact event coverage by loaded match; the feed is not complete.
         for metric in ('recoveries','interceptions','tackles','clearances',
                        'blocks','xg','xa','key_passes'):
-            metric_coverage[metric]=len({mid for mid,stats,day in data
+            supporting={mid:stats for mid,stats,day in data
                 if isinstance(stats.get(metric),(int,float)) and
-                   not isinstance(stats.get(metric),bool)})
+                   not isinstance(stats.get(metric),bool)}
+            metric_coverage[metric]=len(supporting)
+            metric_minute_coverage[metric]=round(sum(
+                max(0,float(stats.get('minutes') or 0))
+                for stats in supporting.values()),3)
         # A start flag comes only from a confirmed starting XI. If even one
         # played match lacks that XI, known starts are a LOWER BOUND, not a
         # complete season total. Never display it as a definitive number.
@@ -308,10 +313,12 @@ def embed(html):
             overlapping['base_as_of']=pl_rows.get(pid,{}).get('as_of')
             overlapping['last_match_date']=last_game
             overlapping['advanced_metric_coverage']=metric_coverage
+            overlapping['advanced_metric_minutes']=metric_minute_coverage
             continue
         cur.append({'id':int(ident) if ident.isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
                     'matches_loaded':len(valid),'advanced_metric_coverage':metric_coverage,
+                    'advanced_metric_minutes':metric_minute_coverage,
                     'as_of':pitch.get('updated_at'),
                     'team_verified':True,'last_match_date':last_game,
                     'source_url':'https://pitchapi.dev/'})
@@ -422,6 +429,22 @@ def embed(html):
                                          'progressive_passes','progressive_carries')
                                 and item.get('advanced_partial_source'))]
                 if valid:collected[field]=sum(valid)
+            # An advanced metric covers only the minutes of matches that
+            # measured it. A finished cup with no xG must not dilute xG/90.
+            advanced_keys=('xg','xa','npxg','shots','shots_on_target',
+              'key_passes','passes','tackles','interceptions','dribbles',
+              'recoveries','clearances','blocks','progressive_passes','progressive_carries')
+            source_minutes={}
+            for metric in advanced_keys:
+                contributions=[item for item in events
+                    if item.get('stats',{}).get(metric) is not None
+                    and not item.get('advanced_partial_source')]
+                if not contributions:continue
+                minutes=sum(max(0,float((item.get('advanced_metric_minutes') or {}).get(
+                    metric,item.get('stats',{}).get('minutes') or 0)))
+                    for item in contributions)
+                if minutes>0:source_minutes[metric]=round(minutes,3)
+            if source_minutes:collected['metricMinutes']=source_minutes
             if collected.get('minutes',0)<180:continue
             archival=all(x.get('source')=='historical_appearances' for x in events)
             community=all(x.get('source')=='thesportsdb_sample' for x in events)
@@ -566,6 +589,24 @@ def embed(html):
     html=patch(html,
       "const sampleStrength=Math.sqrt(sample/(sample+220));",
       "const sampleStrength=Math.min(1,Math.sqrt(sample/180));")
+    # Runtime rolling averages need metric-specific denominators, since
+    # e.g. two real cup appearances can have minutes and goals but no xG.
+    # These minutes must count for availability, NOT dilute xG or xA / 90.
+    html=patch(html,
+      "totals[key]+=value*decay.factor;metricMinutes[key]+=weightedMm;metricCoverage[key]=true;",
+      """totals[key]+=value*decay.factor;
+        const measuredMinutes=ROOT.liveIndexStats?.[season]?.[id]?.metricMinutes?.[key] ??
+          seasonStat.metricMinutes?.[key];
+        metricMinutes[key]+=(measuredMinutes==null?weightedMm:
+          Math.max(0,Math.min(mm,Number(measuredMinutes)||0))*decay.factor);
+        metricCoverage[key]=true;""")
+    # When finishing xG and goals cover only a subset of a season, track
+    # the same observed-minute denominator for small-sample regularization.
+    html=patch(html,
+      "pairedFinishing.minutes+=weightedMm;}",
+      """pairedFinishing.minutes+=(
+          ROOT.liveIndexStats?.[season]?.[id]?.metricMinutes?.xg ??
+          seasonStat.metricMinutes?.xg ?? mm)*decay.factor;}""")
     # Explain the real weighting in the formula panel rather than displaying
     # the obsolete 100% / 67% / 33% time-decay illustration.
     html=html.replace(
