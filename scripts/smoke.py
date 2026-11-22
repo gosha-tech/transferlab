@@ -447,7 +447,8 @@ def main():
                               ('uefa-super-cup','1'),('fr-super-cup','1')]:
             picker.select_option(comp)
             shown=page.locator('#statStarts').inner_text().strip()
-            assert shown==expected,('Hakimi appearances by competition incorrect',comp,shown,expected)
+            assert shown in (expected,'≥'+expected),(
+                'Hakimi verified appearance count or minimum incorrect',comp,shown,expected)
         picker.select_option('all')
         total_mins=''.join(c for c in page.locator('#statMinutes').inner_text() if c.isdigit())
         assert total_mins=='1157',('Hakimi total verified minutes',total_mins)
@@ -510,7 +511,8 @@ def main():
             assert page.locator('#statGoals').inner_text().strip()=='0'
             assert page.locator('#statAssists').inner_text().strip()=='0'
         picker.select_option('all')
-        assert int(page.locator('#statStarts').inner_text().strip())>=8, 'New live matches may increase current season total'
+        assert int(page.locator('#statStarts').inner_text().strip().lstrip('≥'))>=8, (
+            'Nuno verified appearances lower bound must include both cups')
         # Club corrections must restore Lookman's current La Liga metrics,
         # instead of attaching his 2026/27 appearances to Atalanta.
         page.locator('#search').fill('Ademola Lookman')
