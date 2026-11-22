@@ -2,7 +2,7 @@
 
 The model retains the full rolling 36-month tennis-style match score.
 For all players with sufficient observed minutes and coverage, a cautious
-45% cross-role percentile calibration makes an excellent wing-back and
+45% cross-role percentile calibration (60% for fullbacks whose defensive event feeds remain less comprehensive) makes an excellent wing-back and
 excellent winger comparable without a player-specific manual bonus.
 """
 def inject_role_calibration(html):
@@ -46,11 +46,15 @@ def inject_role_calibration(html):
     // Fixed beta anchor: 30..93 within the qualified peer distribution.
     // Blend rather than overwrite absolute 36-month performance.
     const peerTarget=30+63*percentile;
-    const blended=.55*original+.45*peerTarget;
+    // Fullback defensive event feeds are less comprehensive across
+    // tournaments. Rely more on qualified peer-relative performance for
+    // ALL LB/RB players, never on identity or headline reputation.
+    const peerWeight=role==='LB/RB'?0.60:0.45;
+    const blended=(1-peerWeight)*original+peerWeight*peerTarget;
     const score=Math.round(Math.max(1,Math.min(adjusted.ceiling,blended)));
     return {score,enabled:true,role,percentile:Math.round(percentile*100),
             peerCount:peers.length,baseline:original,
-            peerTarget:Math.round(peerTarget),weight:0.45};
+            peerTarget:Math.round(peerTarget),weight:peerWeight};
   }
 """
     html=html.replace(start,calibration+start,1)
