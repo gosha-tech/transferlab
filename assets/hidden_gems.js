@@ -168,7 +168,7 @@
     }
     byId('gemsAgeLabel').textContent=byId('gemsAge').value;
     byId('gemsPriceLabel').textContent='€'+byId('gemsPrice').value+' млн';
-    const rows=choices[activeTab];
+    const rows=activeTab==='preview'?choices.preliminary:choices.confirmed;
     const host=byId('gemsGrid');
     host.innerHTML=rows.slice(0,shown).map(renderCard).join('');
     for (const button of host.querySelectorAll('[data-gem-open]')) {
