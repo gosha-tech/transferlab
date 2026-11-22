@@ -213,10 +213,20 @@ def main():
     # Save the *source gap* list for the NEXT scheduled PitchAPI import.
     # The queue only sets request order. It never claims missing matches exist.
     priority=report['priority_statistics']
+    # Every competition should eventually be refreshed, even if its archived
+    # players were absent from the last-season top-1000 minute sample.
+    all_missing=Counter()
+    for p in root.get('players') or []:
+        season='2026' if p.get('league') in CALENDAR else '2026/27'
+        cur=(root.get('liveIndexStats') or {}).get(season,{})
+        if not fresh_current_row(p,cur.get(str(p['id']))):
+            all_missing[p.get('league') or 'Unknown']+=1
     priority_queue={'schema_version':1,'as_of':today.isoformat(),
       'cohort_count':priority['priority_count'],
       'current_verified':priority['current_verified'],
       'missing_by_league':priority['missing_by_league'],
+      'all_missing_by_league':dict(sorted(all_missing.items(),
+        key=lambda x:(-x[1],x[0]))),
       'missing_player_ids':priority['missing_player_ids']}
     queue_data=json.dumps(priority_queue,ensure_ascii=False,indent=2)+'\n'
     (ROOT/'data'/'priority_refresh_queue.json').write_text(
