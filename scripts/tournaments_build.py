@@ -121,7 +121,7 @@ def embed(html):
         evidence=(secondary.get('profiles') or {}).get(str(p.get('id'))) or {}
         if p.get('contractUntilCurrent') or p.get('contractThroughYear'):continue
         year=str(evidence.get('contractThroughYear') or '')
-        if (re.fullmatch(r'20\\d{2}',year) and
+        if (len(year)==4 and year.isdigit() and year.startswith('20') and
             int(year)>dt.date.today().year and
             evidence.get('team') and team_norm(evidence['team'])==team_norm(p.get('team'))):
             p['contractThroughYear']=year
