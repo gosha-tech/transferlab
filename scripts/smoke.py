@@ -3,6 +3,7 @@
 import functools
 import http.server
 import os
+import re
 import pathlib
 import shutil
 import threading
@@ -116,6 +117,18 @@ def main():
         }""")
         for target in targets:
             print('HIGH SCORE GEM DIAGNOSIS:',str(target)[:8000])
+            assert not target.get('missing'),('Missing gem regression player',target)
+            assert target.get('model'),('Missing rating evidence',target)
+            actual=target['model']
+            current=target['seasons']['2026/27']['stats'] or {}
+            previous=target['seasons']['2025/26']['stats'] or {}
+            if float(current.get('minutes') or 0)<450 and float(previous.get('minutes') or 0)<2000:
+                assert actual['score']<80,(
+                    'Insufficient recent evidence cannot justify elite rating',
+                    target['name'],actual)
+                assert actual['provisional'] is True
+                assert float(actual['evidenceFactor'])<1
+
 
         assert zonneveld and zonneveld['rating'], 'Zonneveld archival index absent'
         assert zonneveld['rating']['provisional'] is True
@@ -219,6 +232,12 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Hakimi' in page.locator('#pName').inner_text()
         assert page.locator('#pPosition').inner_text()=='RB','Achraf Hakimi must be right-back'
+        hakimi_badge=page.locator('#playerIndexBadge').inner_text()
+        hakimi_match=re.search(r'(\d+)\s*/\s*100',hakimi_badge)
+        assert hakimi_match and int(hakimi_match.group(1))>=85,(
+            'Reliability adjustment over-penalized consistently documented elite fullback',
+            hakimi_badge)
+
         # Official-source reconciliation as of 2026-11-22. Substitute
         # appearances count as a match, not only a starting XI.
         assert picker.locator('option[value="uefa-super-cup"]').count()==1
