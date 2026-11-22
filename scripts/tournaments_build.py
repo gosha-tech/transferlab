@@ -607,6 +607,11 @@ def embed(html):
         (ru?'Рыночные оценки до ':'Market observations through ')+
           (ROOT.marketHistoryLastObserved||'2026-06')+' ↗':
         (ru?'История рынка ↗':'Market history ↗');""")
+    # Show verified lower bounds (>=N) for matches whose confirmed XI is
+    # incomplete. Unknown starts must never be presented as zero.
+    html=patch(html,
+      "$('statStarts').textContent=nf(s?.starts);",
+      "$('statStarts').textContent=s?.starts!=null?nf(s.starts):s?.starts_min!=null?'≥'+nf(s.starts_min):'—';")
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
