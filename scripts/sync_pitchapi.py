@@ -47,7 +47,12 @@ TARGETS={
  'Coupe de France':['coupe de france'],
  'Taça de Portugal':['taca de portugal','taça de portugal'],
  'KNVB Cup':['knvb beker','knvb cup'],
- 'Eredivisie':['eredivisie']
+ 'Eredivisie':['eredivisie'],
+ 'Turkish Cup':['turkish cup','turkiye kupasi','türkiye kupası'],
+ 'Belgian Cup':['belgian cup','croky cup','coupe de belgique'],
+ 'Saudi King Cup':['saudi king cup','king cup of champions','king cup saudi arabia'],
+ 'Copa do Brasil':['copa do brasil','brazilian cup'],
+ 'KNVB Cup':['knvb cup','knvb beker','dutch cup']
 }
 # Directly mapped internal competition ids, no cross-league conflation.
 LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
@@ -55,7 +60,9 @@ LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
  'Saudi Pro League':307,'MLS':253,'Brasileirão':'br-league','Eredivisie':'nl-league','Taça de Portugal':'cup-portugal','UEFA Champions League':2,
  'UEFA Europa League':3,'UEFA Conference League':848,'FA Cup':45,
  'EFL Cup':48,'Copa del Rey':143,'Coppa Italia':137,'DFB Pokal':81,
- 'Coupe de France':66}
+ 'Coupe de France':66,'Turkish Cup':'cup-turkey',
+ 'Belgian Cup':'cup-belgium','Saudi King Cup':'cup-saudi',
+ 'Copa do Brasil':'cup-brazil','KNVB Cup':'cup-netherlands'}
 # PitchAPI documents grouped values with a metric key and a stat.value.
 METRICS={'goals':'goals','assists':'assists','minutes_played':'minutes',
  'total_shots':'shots','shots_on_target':'shots_on_target','key_passes':'key_passes',
@@ -137,7 +144,7 @@ def discover(catalogue):
         for canonical,variants in TARGETS.items():
             if name not in {norm(x) for x in variants} or not league.get('id'):
                 continue
-            calendar=canonical in ('MLS','Brasileirão')
+            calendar=canonical in ('MLS','Brasileirão','Copa do Brasil')
             requested=('2026','2025','2024') if calendar else (
                 '2026/2027','2025/2026','2024/2025')
             seasons=set(str(x) for x in (league.get('seasons') or []))
