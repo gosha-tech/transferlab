@@ -103,6 +103,13 @@
       candidate.archiveGap=sport-price;
       candidate.archiveScore=Math.round(100*Math.max(0,Math.min(1,.5+.5*candidate.archiveGap)));
     }
+    window.TransferLabGemsCoverage={
+      youthWithSeasonMinutes:data.filter(p=>p.age>=16&&p.age<=23&&p.eligible).length,
+      youthWithMeasuredIndex:data.filter(p=>p.age>=16&&p.age<=23&&p.eligible&&p.rated).length,
+      youthWithArchivedValueGap:data.filter(p=>p.age>=16&&p.age<=23&&p.archiveScore!==null).length,
+      youthWithVerifiedCurrentValueGap:data.filter(p=>p.age>=16&&p.age<=23&&p.score!==null).length,
+      archiveIsNotCurrent:true
+    };
     const leagues=[...new Set(data.map(p=>p.league).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
     const host=byId('gemsLeague');
     for (const league of leagues) {
