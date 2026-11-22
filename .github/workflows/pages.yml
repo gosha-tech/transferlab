@@ -157,7 +157,7 @@ jobs:
           python scripts/prepare.py
           python scripts/enrich_profiles.py --download
           python scripts/import_historical_appearances.py --download
-          python scripts/import_historical_starts.py --download
+          python scripts/import_historical_starts.py --download || echo 'Historical XI archive unavailable; retaining published statistics'
           python scripts/import_market_history.py --download
           python scripts/tournaments_build.py _site/index.html
           mkdir -p _site/assets _site/data
