@@ -253,3 +253,11 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
   .profile-source-details{margin-top:9px}
   .current-season-banner{margin-top:6px}
 }
+
+/* Show the last genuinely recorded season when current match logs are absent. */
+.archive-season-shortcut{display:inline-flex;vertical-align:baseline;align-items:center;
+  border:1px solid rgba(65,211,186,.52);background:rgba(13,82,83,.35);
+  border-radius:8px;padding:5px 9px;margin:5px 0 2px;color:#bffff0;
+  font:inherit;font-weight:650;line-height:1.25;cursor:pointer}
+.archive-season-shortcut:hover{background:rgba(20,120,118,.48)}
+.archive-season-shortcut:focus-visible{outline:2px solid #61f3d3;outline-offset:2px}
