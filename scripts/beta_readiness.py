@@ -175,6 +175,8 @@ footer{margin-top:24px;color:#9fb8c5;font-size:13px}
 Неполная статистика — не нулевые действия.
 Точные проверки доступны в <a href="data/beta_readiness.json">JSON-отчёте</a>,
 <a href="data/coverage.json">отчёте покрытия</a>,
+<a href="data/priority_refresh_queue.json">очереди обновления игроков</a>,
+<a href="data/source_health.json">состоянии источников</a>,
 <a href="data/hidden_gems_verification.json">очереди Hidden Gems</a> и
 <a href="data/forecast_backtest.json">оценке прошлых прогнозов</a>.</footer>
 </main></body></html>"""
@@ -222,6 +224,10 @@ def main():
     (SITE/'data'/'priority_refresh_queue.json').write_text(
       queue_data,encoding='utf-8')
 
+    source_path=SITE/'data'/'source_health.json'
+    if source_path.exists():
+        try:report['source_health']=json.loads(source_path.read_text(encoding='utf-8'))
+        except (OSError,ValueError):pass
     performance_path=SITE/'data'/'performance.json'
     if performance_path.exists():
         try:report['performance']=json.loads(performance_path.read_text(encoding='utf-8'))
