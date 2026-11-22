@@ -226,7 +226,8 @@
         '-й · это не общий индекс и не текущая недооценка' :
       p.rated ? 'Нет актуальных оценок или 25 сопоставимых игроков; число недооценённости не рассчитывается' :
       'Спортивный индекс пока не подтверждён по полноте показателей';
-    const tag=p.score!==null && p.performancePercentile>=.65 && p.gap>=.20 ?
+    const tag=p.score!==null && p.verification?.data_ready_for_market_comparison===true &&
+      p.performancePercentile>=.65 && p.gap>=.20 ?
       '<span class="gems-find">Выраженная недооценённость</span>' : '';
     const contract=p.contractCurrent ?
       'Контракт до '+esc(String(p.contractCurrent).slice(0,4))+' · опубликованные данные' :
@@ -255,7 +256,8 @@
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
     const club=esc(p.club)+(p.clubArchived?' · клуб по историческим данным, сейчас не подтверждён':'')+' · '+esc(p.league);
-    const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
+    const quality=p.score!==null?('Data Confidence: '+p.quality+
+      (p.verification?.data_ready_for_market_comparison?' · данные проверены':' · проверка клуба или матчей не завершена')):
       p.rated&&p.rating.provisional?'Data Confidence: C · предварительный индекс':
       p.rated?'Data Confidence: B · частичная статистика':
       'Data Confidence: C · индекс недоступен';
