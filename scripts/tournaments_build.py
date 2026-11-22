@@ -598,7 +598,12 @@ def embed(html):
       "return {estimate,rawEstimate,marketPriorValue,marketPriorAsOf,marketPriorWeight,carriedElitePerformance,index:idx,lo:")
     html=patch(html,
       "    extra+=rows.map(r=>",
-      """    if(model.marketPriorWeight>0)extra+=
+      """    if(model.carriedElitePerformance)extra+=
+      '<div class="model-row"><span>'+
+      (ru?'Элитная форма за 36 месяцев сохранена после смены лиги':
+          'Verified top-league output retained after transfer')+
+      '</span><strong>✓</strong></div>';
+    if(model.marketPriorWeight>0)extra+=
       '<div class="model-row"><span>'+
       (ru?'Реальная архивная оценка (не текущая цена)':'Historical market observation (not current)')+
       '</span><strong>€'+Number(model.marketPriorValue).toLocaleString(ru?'ru-RU':'en-GB')+
