@@ -10,6 +10,7 @@ import json
 import pathlib
 import re
 import sys
+from gems_verification import evidence as audit_candidates
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MARKET = ROOT / 'data' / 'current_market_values.json'
@@ -182,6 +183,7 @@ def patch_embedded(html, today):
                                if pid in player_ids}
     root['hiddenGemsModelVersion'] = '1.0-beta'
     root['hiddenGemsMarketAsOf'] = today.isoformat()
+    root['gemsVerification'] = audit_candidates(root.get('players') or [], root, today)
     payload = json.dumps(root, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     output = html[:match.start(2)] + payload + html[match.end(2):]
     return output, root, rejected + len(values)-len(root['hiddenGemsMarket'])
@@ -240,6 +242,7 @@ def summarize(root, today, rejected):
             for p in eligible_minutes),
         'rejected_market_records': rejected,
         'confirmed_score_calculated_in_browser': True,
+        'per_player_verification_coverage': (root.get('gemsVerification') or {}).get('coverage',{}),
         'note': 'Market prices are never inferred from archived values or model estimates.'
     }
 
@@ -267,6 +270,16 @@ def main():
     out = ROOT/'_site'/'data'/'hidden_gems_coverage.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    # Publish a source-attributed queue covering every default-filter youth.
+    # This is a verification checklist, not an assertion of market bargains.
+    updated = re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
+    if updated:
+        review = json.loads(updated.group(1)).get('gemsVerification') or {}
+        (out.parent/'hidden_gems_verification.json').write_text(
+            json.dumps(review,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+        print('Verified-source review queue:',len(review.get('players') or []),
+              'candidates; all three checks',
+              (review.get('coverage') or {}).get('all_three_data_checks',0))
     print('Hidden Gems integrated:', report['young_players_with_450_current_minutes'],
           'stat-qualified young players;',
           report['fresh_rights_reviewed_market_values'], 'fresh market valuations')
