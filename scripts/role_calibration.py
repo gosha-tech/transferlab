@@ -69,12 +69,19 @@ def inject_role_calibration(html):
     const confidence=Math.max(.25,Math.min(1,
       recentFactor*sampleFactor*metricFactor*coverageFactor));
     const provisional=confidence<.985;
-    const score=provisional?
+    // Missing advanced-event feeds reduce our CERTAINTY, not the player's
+    // estimated sporting class when regular match output is well evidenced.
+    // Only thin participation or low role-metric coverage shrinks the grade.
+    const performanceConfidence=Math.max(.25,Math.min(1,
+      recentFactor*sampleFactor*coverageFactor));
+    const score=performanceConfidence<.985?
       Math.min(calibrated.score,
-        Math.round(50+(calibrated.score-50)*confidence)):calibrated.score;
+        Math.round(50+(calibrated.score-50)*performanceConfidence)):
+      calibrated.score;
     return {score,provisional,confidence:Math.round(confidence*100)/100,
       baseline:calibrated.score,sampleMinutes,currentMinutes,
       previousMinutes,olderMinutes,metricObservedMinutes:recentMeasured,
+      performanceConfidence:Math.round(performanceConfidence*100)/100,
       reasons:['recent-season first-team minutes',
         '36-month sample size','observed advanced-metric minutes'],
       recentFactor,metricFactor,coverageFactor};
@@ -164,8 +171,8 @@ def inject_role_calibration(html):
     html=html.replace(marker, """    const roleIndex=projectedIndex(p);
     if(roleIndex.indexConfidence?.provisional){
       const confidence=roleIndex.indexConfidence;
-      facts.push(label('Индекс с поправкой на достоверность (β): ',
-                       'Evidence-adjusted index (beta): ')+
+      facts.push(label('Достоверность индекса (β): ',
+                       'Index reliability (beta): ')+
         confidence.baseline+' → '+roleIndex.score+'/100 · '+
         '×'+confidence.confidence.toFixed(2)+
         label(' консервативная поправка по недавним минутам и измеренным метрикам',
