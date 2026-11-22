@@ -163,6 +163,39 @@ def roster_match(name,team,roster):
                 (norm(name) in aliases(p.get('name')) or
                  norm(name) in aliases(p.get('web')))]
     return candidates[0] if len(candidates)==1 else None
+def build_roster_lookup(roster):
+    """Reusable O(1) verified identity lookup for 10k+ roster entries.
+
+    Abbreviations require matching the actual confirmed fixture team. Full
+    names can bridge club transfers only when unique across the whole roster.
+    """
+    by_id={}
+    club_candidates=defaultdict(list)
+    names=defaultdict(list)
+    for person in roster:
+        pid=str(person.get('id') or '')
+        if not pid:continue
+        by_id[pid]=person
+        club=team_norm(person.get('team'))
+        if club:
+            for spelling in (aliases(person.get('name')) |
+                             aliases(person.get('web'))):
+                if spelling:
+                    club_candidates[(club,spelling)].append(person)
+        full=norm(person.get('name'))
+        if full:names[full].append(person)
+    return {'by_id':by_id,
+            'by_club':{key:rows[0] if len(rows)==1 else None
+                       for key,rows in club_candidates.items()},
+            'by_full':{key:rows[0] if len(rows)==1 else None
+                       for key,rows in names.items()}}
+
+def indexed_fullname_match(name,lookup):
+    fullname=str(name or '').strip()
+    if len(fullname.split())<2 or re.search(r'(^|\\s)[A-Za-zÀ-ÿ]\\.',fullname):
+        return None
+    return lookup['by_full'].get(norm(fullname))
+
 def parse_groups(groups):
     data={}
     for group in groups or []:
@@ -223,10 +256,11 @@ def safe_fullname_match(fullname,roster):
     return matches[0] if len(matches)==1 else None
 
 def aggregate_match_rows(match_rows,teams,roster,known,detail_cache,api_key,
-                         can_request_details):
+                         can_request_details,lookup=None):
     """Only confirmed team + unique person; never infer missing stats."""
     processed=[]
     details_called=0
+    lookup=lookup or build_roster_lookup(roster)
     for entry in match_rows:
         if not isinstance(entry,dict):
             continue
@@ -235,11 +269,14 @@ def aggregate_match_rows(match_rows,teams,roster,known,detail_cache,api_key,
         team=teams.get(str(entry.get('team_id')))
         if not re.fullmatch(r'p_[A-Za-z0-9]{6}',pid) or not team:
             continue
-        current=next((p for p in roster if str(p.get('id'))==str(known.get(pid))),None) if known.get(pid) else None
+        current=lookup['by_id'].get(str(known.get(pid))) if known.get(pid) else None
         if current is None:
-            current=roster_match(player.get('name'),team,roster)
-        # Exact verified full name is sufficient across a historical transfer,
-        # unlike an initial+surname match (which is not identity proof).
+            current=lookup['by_club'].get((team_norm(team),norm(player.get('name'))))
+        # The match provider sometimes includes a complete legal name.
+        # Unique exact full names are sufficient even when the archive team
+        # is old; initials or ambiguous full names are never sufficient.
+        if current is None:
+            current=indexed_fullname_match(player.get('name'),lookup)
         if current is None:
             full=detail_cache.get(pid)
             if full is None and can_request_details():
@@ -250,7 +287,7 @@ def aggregate_match_rows(match_rows,teams,roster,known,detail_cache,api_key,
                     full={}
                 detail_cache[pid]=full if isinstance(full,dict) else {}
             if isinstance(full,dict):
-                current=safe_fullname_match(full.get('name'),roster)
+                current=indexed_fullname_match(full.get('name'),lookup)
         if current is None:
             continue
         sid=str(current['id'])
@@ -297,6 +334,7 @@ def sync():
     known=dict(prior.get('pitch_id_matches') or {})
     details=dict(prior.get('player_details') or {})
     roster=read_roster()
+    lookup=build_roster_lookup(roster)
     leagues=discover(get('/leagues',key))
     if not leagues:
         raise RuntimeError('No provider-supported target seasons found; keeping cache')
@@ -394,7 +432,7 @@ def sync():
                 def detail_allowed():
                     return requests+detail_requests<budget and detail_requests<detail_budget
                 processed,spent=aggregate_match_rows(rows,teams,roster,known,
-                                                       details,key,detail_allowed)
+                                                       details,key,detail_allowed,lookup)
                 requests+=spent
                 detail_requests+=spent
                 cached[mid]={'id':mid,'date':match.get('date'),
@@ -475,6 +513,28 @@ def test():
     assert safe_fullname_match('Erling Haaland',roster) is None
     assert safe_fullname_match('K. De Bruyne',roster) is None
     assert safe_fullname_match('Phil Foden',roster)['id']=='10'
+    lookup=build_roster_lookup(roster)
+    assert indexed_fullname_match('Phil Foden',lookup)['id']=='10'
+    assert indexed_fullname_match('Erling Haaland',lookup) is None
+    assert lookup['by_club'][(team_norm('Man City'),norm('P. Foden'))]['id']=='10'
+    # An exact provider name can identify a new club after an archive transfer
+    # without guessing based on surname or old club data.
+    mapped,extra=aggregate_match_rows(
+      [{'player':{'id':'p_a12345','name':'Phil Foden'},
+        'team_id':'s_1',
+        'stats':[{'stats':{'minutes':{'key':'minutes',
+                          'stat':{'value':90}},
+                          'goals':{'key':'goals','stat':{'value':1}}}}]}],
+      {'s_1':'New Club'},roster,{}, {},'',lambda:False,lookup)
+    assert extra==0 and len(mapped)==1 and mapped[0]['player_id']=='10'
+    # Ambiguous names cannot be inferred from club changes.
+    ambiguous,extra=aggregate_match_rows(
+      [{'player':{'id':'p_b12345','name':'Erling Haaland'},
+        'team_id':'s_1',
+        'stats':[{'stats':{'minutes':{'key':'minutes',
+                          'stat':{'value':90}}}}]}],
+      {'s_1':'New Club'},roster,{}, {},'',lambda:False,lookup)
+    assert not ambiguous and extra==0
     print('PitchAPI unique club/player matches, three seasons, typed metrics PASS')
 if __name__=='__main__':
     import argparse
