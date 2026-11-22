@@ -56,6 +56,10 @@ class HiddenGemsTests(unittest.TestCase):
               'marketHistory5Y':{'p1':[['2026-06-08',12.0]]}}
         page=('<html><head></head><body><script id="embeddedData" type="application/json">'+
               json.dumps(root)+'</script>'+
+              '<aside class="sidebar"><nav class="nav">'+
+              '<button id="navCatalog" type="button"><span>Player database</span></button>'+
+              '<button id="navFavorites" type="button">Favorites</button>'+
+              '</nav></aside>'+
               gems.SECTION_ANCHOR+'catalog</section>'+
               '<script>function showView(){} \n'+gems.MARKER+' }</script></body></html>')
         with tempfile.TemporaryDirectory() as d:
@@ -65,6 +69,13 @@ class HiddenGemsTests(unittest.TestCase):
             with mock.patch.object(gems,'MARKET',path):
                 built,report=gems.inject(page,self.TODAY)
         self.assertIn('id="viewGems"',built)
+        # Hidden Gems is part of initial HTML, so users see the navigation
+        # without waiting for a deferred script or DOMContentLoaded.
+        self.assertIn('id="navGems"',built)
+        self.assertIn('class="nav-label">Hidden Gems</span>',built)
+        self.assertEqual(built.count('id="navGems"'),1)
+        self.assertLess(built.index('id="navCatalog"'),built.index('id="navGems"'))
+        self.assertLess(built.index('id="navGems"'),built.index('id="navFavorites"'))
         self.assertIn('window.TransferLabGemsBridge',built)
         self.assertIn('assets/hidden_gems.js',built)
         self.assertIn('assets/hidden_gems.css',built)
