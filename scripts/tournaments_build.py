@@ -853,10 +853,15 @@ def embed(html):
     if(p.contractUntilCurrent){
       facts.push(label('Контракт по опубликованному срезу: ','Contract (published snapshot): ')+
         p.contractUntilCurrent+' · '+(p.contractSourceAsOf||''));
+    }else if(p.contractThroughYear){
+      facts.push(label('Контракт минимум до лета ','Contract through summer ')+
+        p.contractThroughYear+' · '+(p.contractSourceAsOf||''));
     }else if(p.contractUntilArchive){
       facts.push(label('Контракт по архиву: ','Contract (archived): ')+
         p.contractUntilArchive+' · '+(p.contractArchiveAsOf||'2026-07'));
     }
+    if(p.clubSource && p.clubSourceAsOf)
+      facts.push(label('Клуб подтверждён: ','Club verified: ')+p.clubSourceAsOf);
     if(p.marketValueArchiveEUR!=null){
       facts.push(label('Архивная стоимость: €','Archived value: €')+
         Number(p.marketValueArchiveEUR).toLocaleString(ru?'ru-RU':'en-GB'));
