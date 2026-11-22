@@ -16,3 +16,7 @@ for term in ['function attachPhoto(', 'function photoCandidates(', 'function res
   at=html.find(term)
   print('IMAGE FUNC',term,at)
   if at>=0: print(html[at:at+6200])
+
+for term in ['statStarts','Старты','Starts','statGoals']:
+  at=html.find(term)
+  print('UI STAT LABEL',term,at,repr(html[max(0,at-500):at+480]))
