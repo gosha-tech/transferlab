@@ -1,17 +1,17 @@
-"""Fair cross-role index calibration using verified empirical peer distributions.
+"""Cross-role calibration plus conservative reliability of a 36-month rating.
 
-The model retains the full rolling 36-month tennis-style match score.
-For all players with sufficient observed minutes and coverage, a cautious
-45% cross-role percentile calibration (75% for fullbacks whose defensive event feeds remain less comprehensive) makes an excellent wing-back and
-excellent winger comparable without a player-specific manual bonus.
+Do not change any observed match stat, manufacture an advanced metric, or
+adjust sporting quality because of the player's identity or market value.
+Only the displayed index is shrunk toward a neutral prior when recent sample
+size and measured advanced-metric denominators cannot support an elite grade.
+The calibration parameters are experimental and require out-of-sample tests.
 """
 def inject_role_calibration(html):
     start="  function projectedIndex(p,_unused){"
     if html.count(start)!=1:
         raise RuntimeError('Unique projectedIndex not found')
-    calibration=r"""  // Empirical shrinkage for archived-only, limited-metric 36-month profiles.
-  // A small historic sample can have extreme goals/90 (particularly in cups)
-  // without proving the same ability in a current full league campaign.
+    calibration=r"""  // Data-evidence shrinkage across ALL 36-month player histories.
+  // One burst of cup goals or a partial feed must not guarantee an elite grade.
   // Never use market value or player identity to modify sporting ability.
   function indexEvidenceConfidence(p,actual,calibrated){
     // Never discount sporting ability because of market value, nationality,
@@ -148,12 +148,12 @@ def inject_role_calibration(html):
     html=html.replace(marker, """    const roleIndex=projectedIndex(p);
     if(roleIndex.indexConfidence?.provisional){
       const confidence=roleIndex.indexConfidence;
-      facts.push(label('Архивный индекс (предварительно): ',
-                       'Provisional archived index: ')+
+      facts.push(label('Индекс с поправкой на достоверность (β): ',
+                       'Evidence-adjusted index (beta): ')+
         confidence.baseline+' → '+roleIndex.score+'/100 · '+
         '×'+confidence.confidence.toFixed(2)+
-        label(' коэффициент консервативной поправки; нет текущих подтверждённых матчей',
-              ' conservative shrinkage factor; no verified current-season matches'));
+        label(' консервативная поправка по недавним минутам и измеренным метрикам',
+              ' conservative adjustment for recent minutes and observed metrics'));
     }
     if(roleIndex.roleCalibration?.enabled)
       facts.push(label('Поправка сопоставимости позиций (β): ',
