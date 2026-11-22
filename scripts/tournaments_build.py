@@ -540,6 +540,32 @@ def embed(html):
                       "chartDateString(dayAsOf(),ru)+', €'+asM(modelValue)+'M'")
     # The history contains only known observations; do not infer 2026-11
     # market values from frozen June 2026 data.
+    # A top-five-league elite season remains within the 36-month window after
+    # a move. Only a confirmed new-season output allows portability relief.
+    html=patch(html,
+      "const tier=MONETARY_MODEL.club_tiers[clubLevel(p)]||1.15;",
+      """const baselineTier=MONETARY_MODEL.club_tiers[clubLevel(p)]||1.15;
+    const top5IDs=new Set(['39','140','78','135','61','tm-GB1','tm-ES1',
+                          'tm-L1','tm-IT1','tm-FR1']);
+    const currentEliteLeague=['Premier League','La Liga','Bundesliga','Serie A','Ligue 1'].includes(p.league);
+    const topFiveTrackRecord=['2024/25','2025/26'].some(year=>
+      (ROOT.liveTournamentStats?.[year]?.[String(p.id)]||[]).some(r=>
+         top5IDs.has(String(r.id))&&Number(r.stats?.minutes||0)>=1500&&
+         (Number(r.stats?.goals||0)>=12||Number(r.stats?.assists||0)>=12)));
+    const now2026=ROOT.liveIndexStats?.['2026/27']?.[String(p.id)];
+    const currentForm=now2026 && Number(now2026.minutes||0)>=650 &&
+      Number(now2026.goals||0)*90/Number(now2026.minutes)>=0.45;
+    const carriedElitePerformance=!currentEliteLeague&&topFiveTrackRecord&&
+       currentForm&&!idx.proxy&&idx.score>=80;
+    const tier=carriedElitePerformance?Math.max(baselineTier,2.45):baselineTier;""")
+    html=patch(html,
+      "    const contractInfo=contract(p);let contractFactor=1;",
+      """    if(carriedElitePerformance&&age!=null&&age>=33&&age<=35)
+      ageFactor=Math.min(.88,ageFactor+.28);
+    const contractInfo=contract(p);let contractFactor=1;""")
+    html=patch(html,
+      "const elitePremium=(!idx.proxy && eliteLeagues.has(p.league))",
+      "const elitePremium=(!idx.proxy && (eliteLeagues.has(p.league)||carriedElitePerformance))")
     # The beta monetary model initially priced the world's best fullbacks
     # using a positional base 36% below a striker. Recalibrate every role
     # without naming or overriding any particular footballer.
@@ -561,12 +587,12 @@ def embed(html):
     const hasReliableIndex=!idx.proxy&&evidenceMinutes>=450&&idx.coverage>=40;
     const marketPriorWeight=hasReliableIndex&&marketPriorValue>0&&
       marketAgeDays>=0&&marketAgeDays<=365?
-      0.85*Math.max(0.15,Math.min(1,(365-marketAgeDays)/190)):0;
+      0.65*Math.max(0.15,Math.min(1,(365-marketAgeDays)/190))*(carriedElitePerformance?0.45:1):0;
     const estimate=clamp(rawEstimate*(1-marketPriorWeight)+
        (marketPriorValue||0)*marketPriorWeight,0.4,260);""")
     html=patch(html,
       "return {estimate,index:idx,lo:",
-      "return {estimate,rawEstimate,marketPriorValue,marketPriorAsOf,marketPriorWeight,index:idx,lo:")
+      "return {estimate,rawEstimate,marketPriorValue,marketPriorAsOf,marketPriorWeight,carriedElitePerformance,index:idx,lo:")
     html=patch(html,
       "    extra+=rows.map(r=>",
       """    if(model.marketPriorWeight>0)extra+=
