@@ -22,11 +22,14 @@ permissions:
 
 concurrency:
   group: transferlab-pages-${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
-  cancel-in-progress: false
+  # Code releases cancel obsolete builds, including long-running provider
+  # backfills. Scheduled/manual refreshes can continue when no release occurs.
+  cancel-in-progress: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[refresh-pitch]') && !contains(github.event.head_commit.message, '[refresh-lineups]') }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,6 +91,10 @@ jobs:
       # Import all supported leagues, persist snapshots before HTML tests and
       # continue incomplete seasons during the next scheduled daily run.
       - name: Refresh PitchAPI player match analytics for 2024/25–2026/27
+        # Never block site publication indefinitely when provider backfill
+        # is slow/unavailable. Keep the last verified snapshot if it fails.
+        timeout-minutes: 30
+        continue-on-error: true
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-pitch]')
         env:
           PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
