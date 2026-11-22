@@ -225,6 +225,13 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Al-Hilal' in page.locator('#pClub').inner_text()
         compare=page.locator('#transferComparison')
+        print('SUMMERVILLE_UI_DIAGNOSTIC',page.evaluate("""() => {
+            const root=JSON.parse(document.querySelector('#embeddedData').textContent);
+            const p=root.players.find(x=>x.name==='Crysencio Summerville');
+            return {player:p?.id,coverage:root.transferEvidenceCoverage,
+              transfer:root.verifiedTransfersByPlayer?.[p?.id],
+              panel:document.querySelector('#transferComparison')?.outerHTML?.slice(0,800)};
+        }"""),'JS errors:',errors)
         assert compare.is_visible(), 'Missing sourced Summerville transfer card'
         transfer_text=compare.inner_text()
         assert '70' in transfer_text and 'West Ham United' in transfer_text
