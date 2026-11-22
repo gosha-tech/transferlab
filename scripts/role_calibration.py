@@ -111,7 +111,11 @@ def inject_role_calibration(html):
         raise RuntimeError('Unique projectedIndex return marker not found')
     html=html.replace(old,new,1)
     # Make the source and beta status of relative calibration visible.
-    marker="    if(roleIndex.indexConfidence?.provisional){
+    marker="    const standing=relativeRoleRank(p);"
+    if html.count(marker)!=1:
+        raise RuntimeError('Profile role-rank disclosure marker not found')
+    html=html.replace(marker, """    const roleIndex=projectedIndex(p);
+    if(roleIndex.indexConfidence?.provisional){
       const confidence=roleIndex.indexConfidence;
       facts.push(label('Архивный индекс (предварительно): ',
                        'Provisional archived index: ')+
@@ -120,10 +124,6 @@ def inject_role_calibration(html):
         label(' уверенности модели; без текущих подтверждённых матчей',
               ' model confidence; no verified current-season matches'));
     }
-    const standing=relativeRoleRank(p);"
-    if html.count(marker)!=1:
-        raise RuntimeError('Profile role-rank disclosure marker not found')
-    html=html.replace(marker, """    const roleIndex=projectedIndex(p);
     if(roleIndex.roleCalibration?.enabled)
       facts.push(label('Поправка сопоставимости позиций (β): ',
                        'Cross-position index calibration (beta): ')+
