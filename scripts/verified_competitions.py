@@ -63,7 +63,7 @@ def add_verified_competitions(players,by_season,manifest):
                  'team_verified':True,'is_complete':False,'as_of':manifest.get('as_of'),
                  'last_match_date':item.get('last_match_date') or manifest.get('as_of'),
                  'matches_loaded':int(stats['matches']),
-                 'source_url':manifest.get('source_primary'),
+                 'source_url':item.get('source_url') or entry.get('source_primary') or manifest.get('source_primary'),
                  'verification':'published season-by-competition aggregate, not inferred fixture list'}
             if current is None:rows.append(row)
             else:current.update(row)
