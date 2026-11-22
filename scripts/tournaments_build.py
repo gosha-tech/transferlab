@@ -10,6 +10,7 @@ from player_competitions import add_choices,choices_for
 from sync_pitchapi import team_norm, LEAGUE_IDS as PITCH_COMPETITION_IDS
 from roster_freshness import apply_verified
 from uniform_cards import inject_uniform_cards
+from verified_competitions import add_verified_competitions, CUP_IDS
 from role_calibration import inject_role_calibration
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -230,7 +231,7 @@ def embed(html):
                     continue
                 # Real UEFA match evidence can add Europa/Conference, even if
                 # the pre-season club qualification catalogue did not list it.
-                if ident not in allowed and ident not in ('2','3','848'):
+                if ident not in allowed and ident not in CUP_IDS:
                     continue
             pitch_groups[(season,pid,ident,str(match.get('league') or 'Турнир'))].append((mid,row['stats'],str(match.get('date') or '')[:10]))
     for (season,pid,ident,name),data in pitch_groups.items():
@@ -370,6 +371,13 @@ def embed(html):
                 cur.append({'id':str(record['id']),'name':str(record.get('name') or 'Турнир'),
                             'source':'thesportsdb_sample','is_complete':False,
                             'stats':record.get('stats') or {}})
+    # Additional documented season-level player totals cover source gaps such
+    # as one-off super cups. Reconcile by player AND current club, and do not
+    # double-count those matches if PitchAPI already has the same competition.
+    confirmed_path=ROOT/'data'/'verified_competition_totals.json'
+    confirmed=json.loads(confirmed_path.read_text(encoding='utf-8')) if confirmed_path.exists() else {}
+    verified_totals=add_verified_competitions(original,by_season,confirmed)
+    root['verifiedCompetitionImports']=verified_totals
     # Feed competition totals into the existing 36-month index only when actual
     # minutes are available; never supply zeroes for unknown metrics.
     index_stats={}
@@ -445,6 +453,25 @@ def embed(html):
     root['historicalStartsCoverage']=starts_cache.get('matched_player_seasons',0)
     root['liveCompetitionCatalog']=[{'id':cid,'name':name} for cid,name in COMPETITIONS]
     add_choices(root)
+    # Every *verified* official cup appearance automatically makes that cup
+    # selectable, without listing unrelated leagues. This also works for new
+    # super cups discovered by PitchAPI on a subsequent daily update.
+    for season in ('2026/27','2026'):
+        for pid,rows in by_season.get(season,{}).items():
+            choices=root['currentCompetitionByPlayer'].get(str(pid),[])
+            allowed={str(x['id']) for x in choices}
+            for row in rows:
+                code=str(row.get('id') or '')
+                if code not in CUP_IDS or code in allowed:continue
+                if row.get('source') not in ('pitchapi_partial',
+                   'externally_verified_competition_total'):continue
+                if row.get('team_verified') is not True or int(row.get('stats',{}).get('matches') or 0)<1:
+                    continue
+                choices.append({'id':code,'name':row.get('name') or code,
+                    'reason':'подтверждено выступление игрока',
+                    'source':row.get('source_url') or 'https://pitchapi.dev/',
+                    'data_available':True})
+                allowed.add(code)
     root['leagueCatalog']=list(dict.fromkeys(root.get('leagueCatalog',[])+[p.get('league') for p in original if p.get('league')]))
     # Write embedded JSON before modifying the runtime script.
     content=json.dumps(root,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')
