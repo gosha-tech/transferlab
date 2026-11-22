@@ -490,6 +490,62 @@ def embed(html):
                       "chartDateString(dayAsOf(),ru)+', €'+asM(modelValue)+'M'")
     # The history contains only known observations; do not infer 2026-11
     # market values from frozen June 2026 data.
+    # The beta monetary model initially priced the world's best fullbacks
+    # using a positional base 36% below a striker. Recalibrate every role
+    # without naming or overriding any particular footballer.
+    html=patch(html,
+      '"LB/RB":3.6,"CB":4.1,"GK":3.4',
+      '"LB/RB":5.5,"CB":4.7,"GK":4.1')
+    html=patch(html,
+      "    const manualFloor=0;\n    const estimate=rawEstimate;",
+      """    const manualFloor=0;
+    // An observed, precisely dated market valuation is a valuable weak prior,
+    // not a claim that the same price still holds months later. Use it only
+    // when genuine match data support a personalized index. This is applied
+    // consistently across every position and player.
+    const observed=ROOT.marketHistory5Y?.[String(p.id)]||[];
+    const last=observed.length?observed[observed.length-1]:null;
+    const marketPriorValue=last?Number(last[1]):null;
+    const marketPriorAsOf=last?.[0]||null;
+    const marketAgeDays=last?(Date.parse(dayAsOf())-Date.parse(last[0]))/86400000:Infinity;
+    const hasReliableIndex=!idx.proxy&&evidenceMinutes>=450&&idx.coverage>=40;
+    const marketPriorWeight=hasReliableIndex&&marketPriorValue>0&&
+      marketAgeDays>=0&&marketAgeDays<=365?
+      0.85*Math.max(0.15,Math.min(1,(365-marketAgeDays)/190)):0;
+    const estimate=clamp(rawEstimate*(1-marketPriorWeight)+
+       (marketPriorValue||0)*marketPriorWeight,0.4,260);""")
+    html=patch(html,
+      "return {estimate,index:idx,lo:",
+      "return {estimate,rawEstimate,marketPriorValue,marketPriorAsOf,marketPriorWeight,index:idx,lo:")
+    html=patch(html,
+      "    extra+=rows.map(r=>",
+      """    if(model.marketPriorWeight>0)extra+=
+      '<div class="model-row"><span>'+
+      (ru?'Реальная архивная оценка (не текущая цена)':'Historical market observation (not current)')+
+      '</span><strong>€'+Number(model.marketPriorValue).toLocaleString(ru?'ru-RU':'en-GB')+
+      ' млн · '+model.marketPriorAsOf+'</strong></div>'+
+      '<div class="model-row"><span>'+
+      (ru?'Вес архивной привязки в прогнозе':'Weight of observed market prior')+
+      '</span><strong>'+Math.round(model.marketPriorWeight*100)+'%</strong></div>';
+    extra+=rows.map(r=>""")
+    # International tournaments are evidence of strength: players with
+    # confirmed Champions League minutes should not be penalized entirely
+    # as if they competed only against their domestic league.
+    html=patch(html,
+      "function competitionAdjustedIndex(raw,league){",
+      "function competitionAdjustedIndex(raw,league,player){")
+    html=patch(html,
+      "const adjusted=raw>=50?50+(raw-50)*setting.factor:raw*setting.factor;",
+      """const ucl=player?(ROOT.liveTournamentStats?.['2026/27']?.[String(player.id)]||[]).
+        find(x=>String(x.id)==='2'&&Number(x.stats?.minutes)>0):null;
+      const uclMins=Number(ucl?.stats?.minutes||0);
+      const leagueFactor=setting.factor+(1-setting.factor)*Math.min(0.65,uclMins/600*0.65);
+      const adjusted=raw>=50?50+(raw-50)*leagueFactor:raw*leagueFactor;""")
+    html=patch(html,
+      "const adjusted=competitionAdjustedIndex(actual.score,p.league||'Premier League');",
+      "const adjusted=competitionAdjustedIndex(actual.score,p.league||'Premier League',p);")
+    # If no archive exists, keep the original beta model without a fabricated
+    # price observation.
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
