@@ -188,6 +188,10 @@ def main():
         # Advanced match metrics survive the Python aggregation and JS
         # tournamentSum conversion rather than disappearing from indices.
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
+        assert d['liveIndexStats']['2026/27'][pid]['metricMinutes']['xg']==80, (
+            'xG denominator must exclude EPL, UCL and Community Shield minutes without xG')
+        assert 'result.metricMinutes[metric]' in result
+        assert 'const measured=s?.metricMinutes?.[k];' in result
         assert 'eligibleRows(p,state.season)' in result
         assert 'verifiedProfileMeta' in result
         # The 8-role index must not equate a fullback's quality with only
