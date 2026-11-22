@@ -341,7 +341,7 @@ def sync():
     # Fair-use guard, not a billed API quota. Incrementally backfill all 3
     # seasons across every league while revisiting newer games daily.
     budget=max(50,min(int(os.getenv('PITCHAPI_REQUEST_BUDGET','2400')),5000))
-    detail_budget=max(0,min(int(os.getenv('PITCHAPI_DETAIL_BUDGET','160')),1000))
+    detail_budget=max(0,min(int(os.getenv('PITCHAPI_DETAIL_BUDGET','350')),1000))
     max_report_size=max(50,min(int(os.getenv('PITCHAPI_MAX_CACHE_MATCHES','50000')),100000))
     requests=1
     detail_requests=0
