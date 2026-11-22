@@ -142,7 +142,22 @@ def inject_role_calibration(html):
         raise RuntimeError('Unique projectedIndex return marker not found')
     html=html.replace(old,new,1)
     # Make the source and beta status of relative calibration visible.
-    marker="    const standing=relativeRoleRank(p);"
+    marker="    // Show exactly how much of the 36-month defender rating is measured by
+    // complete advanced-event sources. This is confidence, not a new bonus.
+    if(roleIndex.role==='LB/RB'&&roleIndex.rolling?.weightedMinutes>0){
+      const total=Number(roleIndex.rolling.weightedMinutes);
+      const observed=Number(roleIndex.rolling.sampleMinutes?.defense||0);
+      const coverage=Math.max(0,Math.min(1,observed/total));
+      facts.push(label('Покрытие оборонительных событий: ',
+                       'Defensive-event coverage: ')+
+        Math.round(coverage*100)+'% · '+
+        Math.round(observed)+'/'+Math.round(total)+
+        label(' минут за 36 месяцев',' minutes across 36 months'));
+      if(coverage<0.30)
+        facts.push(label('Сравнение крайних защитников предварительное: история защитных и прогрессивных событий неполная',
+                         'Fullback comparisons remain provisional: defensive and progressive-event history is incomplete'));
+    }
+    const standing=relativeRoleRank(p);"
     if html.count(marker)!=1:
         raise RuntimeError('Profile role-rank disclosure marker not found')
     html=html.replace(marker, """    const roleIndex=projectedIndex(p);
