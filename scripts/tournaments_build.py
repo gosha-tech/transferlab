@@ -84,11 +84,6 @@ def embed(html):
         'profiles':len(root['marketHistory5Y']),
         'two_or_more':sum(len(x)>=2 for x in root['marketHistory5Y'].values())}
     original=root['players']
-    root['verifiedTransfersByPlayer'],root['transferEvidenceCoverage']=attach_verified_transfers(
-        original,
-        load_transfer_file(ROOT/'data'/'verified_transfers.json'),
-        load_transfer_file(ROOT/'data'/'valuation_forecast_snapshots.json'),
-        load_transfer_file(ROOT/'data'/'profile_enrichment.json'))
 
     for p in original:
         photo=(commons.get('photos') or {}).get(str(p.get('id')))
@@ -133,6 +128,12 @@ def embed(html):
     corrected=apply_verified(original,pitch.get('matches') or {},config)
     root['rosterCorrections']=corrected
     root['rosterEvidenceAsOf']=config.get('as_of')
+    root['verifiedTransfersByPlayer'],root['transferEvidenceCoverage']=attach_verified_transfers(
+        original,
+        load_transfer_file(ROOT/'data'/'verified_transfers.json'),
+        load_transfer_file(ROOT/'data'/'valuation_forecast_snapshots.json'),
+        load_transfer_file(ROOT/'data'/'profile_enrichment.json'))
+
     # Verified cross-provider contract YEAR only; provider did not supply a
     # precise expiration date. Do not override an official or published date.
     secondary_path=ROOT/'data'/'contract_enrichment.json'
