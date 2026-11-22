@@ -1,0 +1,74 @@
+/* TransferLab Hidden Gems — additive styling that does not alter existing profiles. */
+#viewGems { width:100%; padding-bottom:42px; }
+.gems-head { display:flex; align-items:center; justify-content:space-between; gap:22px;
+  padding:30px; margin:8px 0 18px; border:1px solid rgba(53,213,188,.19);
+  background:linear-gradient(125deg,rgba(16,73,77,.65),rgba(12,25,44,.78) 58%,rgba(11,22,36,.88));
+  border-radius:20px; color:#eef9fa; }
+.gems-head h1 { margin:6px 0 8px; font-size:clamp(27px,4vw,39px); line-height:1.15;
+  letter-spacing:-.045em; font-weight:800; color:#fff; }
+.gems-head h1 span,.gems-head-mark { color:#58e3cb; }
+.gems-head p { max-width:640px; color:#bdcdd5; line-height:1.6; margin:0; font-size:14px; }
+.gems-head-mark { font-size:68px; opacity:.75; line-height:1; }
+.gems-eyebrow { font-size:10px; letter-spacing:.19em; font-weight:800; color:#5de7cb; }
+.gems-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px; padding:17px; border-radius:16px; border:1px solid rgba(132,162,181,.2);
+  background:rgba(11,26,42,.85); margin-bottom:15px; }
+.gems-controls label { display:flex; flex-direction:column; justify-content:flex-start; gap:9px;
+  color:#c9d7e0; font-size:12px; font-weight:650; min-width:0; }
+.gems-controls output { color:#69e4d1; font-weight:800; }
+.gems-controls select { min-height:37px; width:100%; max-width:100%; color:#edf6f9;
+  border:1px solid rgba(132,162,181,.27); border-radius:9px; padding:7px 9px;
+  background:#10283b; font:inherit; cursor:pointer; }
+.gems-controls input[type=range] { width:100%; accent-color:#3bcdb4; cursor:pointer; min-height:28px; }
+.gems-tabs { display:flex; flex-wrap:wrap; gap:9px; margin:17px 0 12px; }
+.gems-tab { border:1px solid rgba(132,162,181,.25); border-radius:10px;
+  padding:11px 15px; color:#c7d7e0; font-weight:700; background:rgba(21,39,57,.75); cursor:pointer; }
+.gems-tab.active { border-color:rgba(62,218,190,.65); background:rgba(29,105,98,.3); color:#e8fffa; }
+.gems-tab span { margin-left:7px; opacity:.8; }
+.gems-tab:focus-visible,.gems-more:focus-visible,.gems-card-open:focus-visible { outline:2px solid #63e9d1; outline-offset:3px; }
+.gems-info { color:#b5c7d3; font-size:13px; line-height:1.65; margin:10px 0 19px; }
+.gems-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.gems-card { border:1px solid rgba(120,156,174,.19); border-radius:15px;
+  background:linear-gradient(145deg,rgba(24,43,60,.95),rgba(10,24,41,.97));
+  overflow:hidden; min-width:0; }
+.gems-card:hover { border-color:rgba(71,218,187,.45); }
+.gems-card-open { width:100%; display:flex; align-items:flex-start; gap:13px;
+  padding:17px; background:transparent; border:0; text-align:left; color:#ebf2f6; cursor:pointer; font:inherit; }
+.gems-avatar { flex:0 0 54px; width:54px; height:68px; border-radius:10px;
+  background:linear-gradient(135deg,#1a4c5b,#1b334d); display:flex;
+  justify-content:center; align-items:center; overflow:hidden; position:relative; }
+.gems-avatar-fallback { color:#a2e8e0; font-size:15px; font-weight:800; }
+.gems-avatar img { position:absolute; width:100%; height:100%; object-fit:cover; inset:0; }
+.gems-card-main { min-width:0; flex:1; display:flex; flex-direction:column; gap:5px; }
+.gems-player { font-size:16px; font-weight:800; line-height:1.3; }
+.gems-meta { color:#a8becd; font-size:11px; line-height:1.55; overflow-wrap:anywhere; }
+.gems-price { color:#e5f7f2; font-size:13px; font-weight:750; margin-top:4px; }
+.gems-price small { font-size:10px; font-weight:500; color:#9eb7c6; }
+.gems-explain { font-size:11px; line-height:1.5; color:#a4b9c7; margin-top:4px; }
+.gems-find { color:#67e8c8; font-size:11px; font-weight:800; padding-top:3px; }
+.gems-card-stats { border-left:1px solid rgba(122,159,174,.17); display:flex;
+  flex:0 0 112px; flex-direction:column; gap:6px; padding-left:12px; align-self:stretch; }
+.gems-card-stats strong { color:#66e6cd; font-size:22px; line-height:1.1; white-space:nowrap; }
+.gems-stat-label { color:#9eb5c3; font-size:10px; margin-top:5px; }
+.gems-score { color:#f0c67f !important; }
+.gems-unrated { color:#c1cfd7; font-size:11px; line-height:1.5; }
+.gems-quality { color:#aec3cf; font-size:10px; margin-top:auto; }
+.gems-more-wrap { display:flex; justify-content:center; margin:24px 0 14px; }
+.gems-more { color:#e8fff8; background:#17544f; border:1px solid #287e71;
+  border-radius:11px; padding:12px 24px; cursor:pointer; font-weight:700; }
+.gems-more[hidden] { display:none; }
+.gems-method { color:#8ca6b8; line-height:1.6; font-size:11px; margin:20px 0 5px; }
+@media(max-width:970px) {
+  .gems-controls { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .gems-grid { grid-template-columns:1fr; }
+}
+@media(max-width:540px) {
+  .gems-head { padding:20px; margin-top:5px; }
+  .gems-head-mark { display:none; }
+  .gems-controls { grid-template-columns:1fr 1fr; padding:12px; gap:11px; }
+  .gems-card-open { padding:12px; gap:9px; }
+  .gems-avatar { flex-basis:42px; width:42px; height:55px; }
+  .gems-card-stats { flex-basis:94px; padding-left:8px; }
+  .gems-card-stats strong { font-size:18px; }
+  .gems-player { font-size:14px; }
+}
