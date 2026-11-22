@@ -65,8 +65,12 @@ def priority_coverage(root,target=1000):
               'reason':'no verified current-season match, minutes and G+A together'}
               for r in cohort if not fresh_current_row(r[2],r[3])]
     pct=round(100*len(verified)/len(cohort),1) if cohort else 0
+    missing_by_league=dict(sorted(Counter(x['league'] or 'Unknown'
+        for x in missing).items(),key=lambda x:(-x[1],x[0])))
     return {'priority_count':len(cohort),'current_verified':len(verified),
         'current_verified_pct':pct,'missing_count':len(missing),
+        'missing_by_league':missing_by_league,
+        'missing_player_ids':[x['id'] for x in missing],
         'method':'Top 1000 by observed minutes of most recently completed season, all leagues',
         'missing_examples':missing[:25]}
 
@@ -192,6 +196,8 @@ def selftest():
           '2026/27':{str(i):{'matches':1,'minutes':85,'goals':0,'assists':0,
                                'source':'official'} for i in range(900)}}}
     assert priority_coverage(rows)['current_verified_pct']==90
+    assert priority_coverage(rows)['missing_by_league']['Premier League']==100
+    assert len(priority_coverage(rows)['missing_player_ids'])==100
     print('Beta readiness gates and priority coverage tests PASS')
 
 def main():
@@ -202,6 +208,20 @@ def main():
     try:history=json.loads(HISTORY.read_text(encoding='utf-8')).get('days') or []
     except (OSError,ValueError,AttributeError):history=[]
     report=assess(root,market,history,today)
+    # Save the *source gap* list for the NEXT scheduled PitchAPI import.
+    # The queue only sets request order. It never claims missing matches exist.
+    priority=report['priority_statistics']
+    priority_queue={'schema_version':1,'as_of':today.isoformat(),
+      'cohort_count':priority['priority_count'],
+      'current_verified':priority['current_verified'],
+      'missing_by_league':priority['missing_by_league'],
+      'missing_player_ids':priority['missing_player_ids']}
+    queue_data=json.dumps(priority_queue,ensure_ascii=False,indent=2)+'\\n'
+    (ROOT/'data'/'priority_refresh_queue.json').write_text(
+      queue_data,encoding='utf-8')
+    (SITE/'data'/'priority_refresh_queue.json').write_text(
+      queue_data,encoding='utf-8')
+
     performance_path=SITE/'data'/'performance.json'
     if performance_path.exists():
         try:report['performance']=json.loads(performance_path.read_text(encoding='utf-8'))
