@@ -80,6 +80,31 @@ def summarize(root):
     market=root.get('marketHistory5Y') or {}
     market_count=len(market)
     profile=root.get('profileCoverage') or {}
+    photo_candidates={
+      'api_football_id':sum(bool(p.get('apiPhoto')) for p in players),
+      'wikimedia_commons_licensed':sum(bool(p.get('commonsPhoto')) for p in players),
+      'sofascore_matched_id':sum(bool(p.get('sofaId')) for p in players),
+      'premier_league_identity_candidate':sum(bool(str(p.get('id') or '').isdigit()) and
+          p.get('league')=='Premier League' for p in players),
+    }
+    any_photo_candidate=sum(any((
+      bool(p.get('apiPhoto')),bool(p.get('commonsPhoto')),
+      bool(p.get('sofaId')),
+      bool(str(p.get('id') or '').isdigit()) and p.get('league')=='Premier League'
+    )) for p in players)
+    current_year={'2026/27':set(), '2026':set()}
+    previous_year={'2025/26':set(), '2025':set()}
+    for group,target in ((current_year,current_year),(previous_year,previous_year)):
+      for season in group:
+        for pid,rows in (events.get(season) or {}).items():
+          if str(pid) in expected and any(isinstance(r,dict) and
+             isinstance(r.get('stats'),dict) and
+             any(r['stats'].get(k) is not None for k in ('goals','assists','minutes','matches'))
+             for r in rows):
+            group[season].add(str(pid))
+    any_current=len(current_year['2026/27']|current_year['2026'])
+    any_last_two=len(current_year['2026/27']|current_year['2026']|
+                     previous_year['2025/26']|previous_year['2025'])
     result={
       'built_at_utc':datetime.now(timezone.utc).isoformat(timespec='seconds'),
       'source':'TransferLab built site: embedded, provider-backed player statistics',
@@ -88,6 +113,18 @@ def summarize(root):
       'leagues':{key:{'players':v['players'],'seasons':dict(v['seasons'])}
                  for key,v in sorted(leagues.items())},
       'profiles':profile,
+      'photo_candidate_coverage':{
+        'candidates_by_provider':photo_candidates,
+        'players_with_id_backed_candidates':any_photo_candidate,
+        'players_without_id_backed_candidates':len(players)-any_photo_candidate,
+        'note':'These are portrait URL candidates, NOT confirmed loaded or licensed images. Generic verified photographs may be available for additional players.'
+      },
+      'catalog_stat_coverage':{
+        'players_with_verified_current_season':any_current,
+        'players_with_current_or_explicit_previous_season':any_last_two,
+        'players_with_neither':len(players)-any_last_two,
+        'note':'Previous-season stats are labeled archive; missing current-season values are never replaced with zero.'
+      },
       'competition_coverage':competitions,
       'five_year_market_values':{
         'players_with_actual_observations':market_count,
