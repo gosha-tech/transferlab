@@ -27,32 +27,41 @@
 .gems-tab span { margin-left:7px; opacity:.8; }
 .gems-tab:focus-visible,.gems-more:focus-visible,.gems-card-open:focus-visible { outline:2px solid #63e9d1; outline-offset:3px; }
 .gems-info { color:#b5c7d3; font-size:13px; line-height:1.65; margin:10px 0 19px; }
-.gems-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.gems-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:stretch; }
 .gems-card { border:1px solid rgba(120,156,174,.19); border-radius:15px;
   background:linear-gradient(145deg,rgba(24,43,60,.95),rgba(10,24,41,.97));
   overflow:hidden; min-width:0; }
 .gems-card:hover { border-color:rgba(71,218,187,.45); }
-.gems-card-open { width:100%; display:flex; align-items:flex-start; gap:13px;
-  padding:17px; background:transparent; border:0; text-align:left; color:#ebf2f6; cursor:pointer; font:inherit; }
-.gems-avatar { flex:0 0 54px; width:54px; height:68px; border-radius:10px;
+.gems-card-open { width:100%; height:100%; display:grid; align-items:start;
+  grid-template-columns:64px minmax(0,1fr); grid-template-areas:'avatar details' 'metrics metrics';
+  column-gap:15px; row-gap:15px; padding:18px; background:transparent;
+  border:0; text-align:left; color:#ebf2f6; cursor:pointer; font:inherit; }
+.gems-avatar { grid-area:avatar; width:64px; height:80px; border-radius:10px;
   background:linear-gradient(135deg,#1a4c5b,#1b334d); display:flex;
   justify-content:center; align-items:center; overflow:hidden; position:relative; }
 .gems-avatar-fallback { color:#a2e8e0; font-size:15px; font-weight:800; }
 .gems-avatar img { position:absolute; width:100%; height:100%; object-fit:cover; inset:0; }
-.gems-card-main { min-width:0; flex:1; display:flex; flex-direction:column; gap:5px; }
+.gems-card-main { grid-area:details; min-width:0; display:flex; flex-direction:column; gap:5px; }
 .gems-player { font-size:16px; font-weight:800; line-height:1.3; }
 .gems-meta { color:#a8becd; font-size:11px; line-height:1.55; overflow-wrap:anywhere; }
 .gems-price { color:#e5f7f2; font-size:13px; font-weight:750; margin-top:4px; }
 .gems-price small { font-size:10px; font-weight:500; color:#9eb7c6; }
 .gems-explain { font-size:11px; line-height:1.5; color:#a4b9c7; margin-top:4px; }
 .gems-find { color:#67e8c8; font-size:11px; font-weight:800; padding-top:3px; }
-.gems-card-stats { border-left:1px solid rgba(122,159,174,.17); display:flex;
-  flex:0 0 112px; flex-direction:column; gap:6px; padding-left:12px; align-self:stretch; }
-.gems-card-stats strong { color:#66e6cd; font-size:22px; line-height:1.1; white-space:nowrap; }
-.gems-stat-label { color:#9eb5c3; font-size:10px; margin-top:5px; }
+.gems-card-stats { grid-area:metrics; min-width:0; display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:16px; row-gap:4px;
+  border-top:1px solid rgba(122,159,174,.2); padding-top:12px; align-items:start; }
+.gems-card-stats > :nth-child(1) { grid-column:1; grid-row:1; }
+.gems-card-stats > :nth-child(2) { grid-column:1; grid-row:2; }
+.gems-card-stats > :nth-child(3) { grid-column:2; grid-row:1; }
+.gems-card-stats > :nth-child(4) { grid-column:2; grid-row:2; }
+.gems-card-stats > .gems-archival-score { grid-column:1/-1; grid-row:3; }
+.gems-card-stats > .gems-quality { grid-column:1/-1; grid-row:4; }
+.gems-card-stats strong { color:#66e6cd; font-size:22px; line-height:1.2; white-space:nowrap; }
+.gems-stat-label { color:#9eb5c3; font-size:11px; margin-top:0; line-height:1.3; }
 .gems-score { color:#f0c67f !important; }
 .gems-unrated { color:#c1cfd7; font-size:11px; line-height:1.5; }
-.gems-quality { color:#aec3cf; font-size:10px; margin-top:auto; }
+.gems-quality { color:#aec3cf; font-size:11px; margin-top:5px; line-height:1.35; }
 .gems-more-wrap { display:flex; justify-content:center; margin:24px 0 14px; }
 .gems-more { color:#e8fff8; background:#17544f; border:1px solid #287e71;
   border-radius:11px; padding:12px 24px; cursor:pointer; font-weight:700; }
@@ -66,9 +75,9 @@
   .gems-head { padding:20px; margin-top:5px; }
   .gems-head-mark { display:none; }
   .gems-controls { grid-template-columns:1fr 1fr; padding:12px; gap:11px; }
-  .gems-card-open { padding:12px; gap:9px; }
-  .gems-avatar { flex-basis:42px; width:42px; height:55px; }
-  .gems-card-stats { flex-basis:94px; padding-left:8px; }
+  .gems-card-open { padding:13px; grid-template-columns:48px minmax(0,1fr); column-gap:11px; row-gap:11px; }
+  .gems-avatar { width:48px; height:62px; }
+  .gems-card-stats { column-gap:9px; }
   .gems-card-stats strong { font-size:18px; }
   .gems-player { font-size:14px; }
 }
@@ -76,6 +85,5 @@
 /* Archive-aware player discovery: distinguish sourced sports from current prices. */
 .gems-contract { display:block; color:#9cb9c3; font-size:10px; line-height:1.45; }
 .gems-archival-score { display:block; color:#d9bd8c; font-size:11px; line-height:1.4;
-  margin-top:7px; padding:6px 7px; border:1px solid rgba(217,189,140,.3);
-  border-radius:7px; background:rgba(217,189,140,.07); }
+  margin-top:6px; padding-top:9px; border-top:1px solid rgba(217,189,140,.22); }
 .gems-card .gems-unrated { overflow-wrap:anywhere; }
