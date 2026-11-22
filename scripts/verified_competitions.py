@@ -60,7 +60,11 @@ def add_verified_competitions(players,by_season,manifest):
                 current.clear()
             row={'id':item['id'],'name':item.get('name') or code,
                  'stats':dict(stats),'source':'externally_verified_competition_total',
-                 'team_verified':True,'is_complete':False,'as_of':manifest.get('as_of'),
+                 'team_verified':True,'is_complete':False,
+                 # One-off super cups have a verified individual appearance
+                 # total even when advanced events remain incomplete.
+                 'matches_complete':code in SUPER_CUP_IDS,
+                 'as_of':manifest.get('as_of'),
                  'last_match_date':item.get('last_match_date') or manifest.get('as_of'),
                  'matches_loaded':int(stats['matches']),
                  'source_url':item.get('source_url') or entry.get('source_primary') or manifest.get('source_primary'),
