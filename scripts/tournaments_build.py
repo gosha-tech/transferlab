@@ -749,8 +749,32 @@ def embed(html):
     if(season==='2026/27'||season==='2026')return null;
     return statsBySeason[season]?.[p.id]||null;
   }""")
+    # A single deterministic, identity-backed headshot source per player.
+    # Previously images raced in parallel across providers, so each reload
+    # could display a different pose (or a full-body candid shot). Official
+    # portrait sizes are preferred, followed by verified ID-backed images.
     html=patch(html,"const urls=[];\n    const custom=storedPhoto(code);",
-               "const urls=[];\n    if(p.apiPhoto)urls.push({url:p.apiPhoto,source:'API-Football / ID'});\n    if(p.commonsPhoto)urls.push({url:p.commonsPhoto,source:'Wikimedia Commons',artist:p.commonsArtist,licence:p.commonsLicense,licence_url:p.commonsLicenseUrl,file_page:p.commonsSourcePage});\n    const custom=storedPhoto(code);")
+               """const urls=[];
+    if(/^\\d+$/.test(String(code)) && p.league==='Premier League'){
+      urls.push({url:'https://media.premierleague.com/photos/players/250x250/p'+code+'.png',
+                 source:'Premier League ID portrait'});
+      urls.push({url:'https://resources.premierleague.com/premierleague/photos/players/250x250/p'+code+'.png',
+                 source:'Premier League ID portrait'});
+    }
+    if(p.apiPhoto)urls.push({url:p.apiPhoto,source:'API-Football / ID'});
+    if(p.sofaId)urls.push({url:'https://img.sofascore.com/api/v1/player/'+
+        encodeURIComponent(p.sofaId)+'/image',source:'SofaScore / ID'});
+    const custom=storedPhoto(code);
+    if(custom)urls.push({url:custom,source:'User supplied'});
+    if(p.commonsPhoto)urls.push({url:p.commonsPhoto,source:'Wikimedia Commons',
+      artist:p.commonsArtist,licence:p.commonsLicense,
+      licence_url:p.commonsLicenseUrl,file_page:p.commonsSourcePage});""")
+    # Sequential fallback keeps source consistent between page loads. A first
+    # finished network request should not randomly decide which face/pose is
+    # displayed. The next candidate is tried only after the first failed.
+    html=patch(html,"const batch=options.slice(0,Math.min(options.length,4));",
+               "const batch=options.slice(0,1);")
+
     controls=r"""  function localizeComp(id,name,ru){
     const code=String(id);
     const rus={
