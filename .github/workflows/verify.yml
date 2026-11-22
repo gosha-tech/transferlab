@@ -33,6 +33,7 @@ jobs:
           python scripts/sync_pitchapi.py --self-test
           python scripts/sync_lineups.py --self-test
           python scripts/sync_contracts.py --self-test
+          python scripts/verified_current_contracts.py
           python scripts/roster_freshness.py
           python scripts/import_historical_starts.py --self-test
           python scripts/enrich_profiles.py --self-test
