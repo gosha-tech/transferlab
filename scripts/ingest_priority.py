@@ -24,9 +24,15 @@ def load_queue(path=QUEUE):
     try:
         record=json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
         gaps=record.get('missing_by_league') or {}
-        if not isinstance(gaps,dict):return {}
-        return {str(k):max(0,min(int(v),1000)) for k,v in gaps.items()
-                if isinstance(v,(int,float)) and not isinstance(v,bool)}
+        all_gaps=record.get('all_missing_by_league') or {}
+        if not isinstance(gaps,dict) or not isinstance(all_gaps,dict):return {}
+        leagues=set(gaps)|set(all_gaps)
+        def count(x):
+            return max(0,min(int(x),10000)) if isinstance(x,(int,float)) and not isinstance(x,bool) else 0
+        # Five times priority for the most active 1000 profiles, while
+        # retaining nonzero queue weight for unsupported leagues (e.g. RPL).
+        return {str(k):5*count(gaps.get(k))+count(all_gaps.get(k))//20
+                for k in leagues}
     except (ValueError,OSError,TypeError):return {}
 
 def current_season(canonical,season):
@@ -88,6 +94,14 @@ def selftest():
     assert scheduled[1]['canonical']=='Premier League'
     assert scheduled[3]['season']=='2025/2026'
     assert len(scheduled)==len(jobs)
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory() as folder:
+        q=pathlib.Path(folder)/'queue.json'
+        q.write_text(json.dumps({'missing_by_league':{'Premier League':40},
+            'all_missing_by_league':{'Russian Premier League':652}}))
+        weights=load_queue(q)
+        assert weights['Premier League']==200
+        assert weights['Russian Premier League']==32
     now=datetime(2026,11,22,tzinfo=timezone.utc)
     sample={'players':[{'player_id':'p'}],'roster_profiles':3000,
             'checked_at':'2026-11-15T00:00:00+00:00'}
