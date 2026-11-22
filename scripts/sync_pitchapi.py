@@ -52,7 +52,19 @@ TARGETS={
  'Belgian Cup':['belgian cup','croky cup','coupe de belgique'],
  'Saudi King Cup':['saudi king cup','king cup of champions','king cup saudi arabia'],
  'Copa do Brasil':['copa do brasil','brazilian cup'],
- 'KNVB Cup':['knvb cup','knvb beker','dutch cup']
+ 'KNVB Cup':['knvb cup','knvb beker','dutch cup'],
+ 'UEFA Super Cup':['uefa super cup','uefa supercup','super cup uefa'],
+ 'Trophée des Champions':['trophee des champions','trophée des champions','french super cup','supercoupe de france'],
+ 'Supercopa de España':['supercopa de espana','supercopa de españa','spanish super cup'],
+ 'Supercoppa Italiana':['supercoppa italiana','italian super cup'],
+ 'DFL-Supercup':['dfl-supercup','dfl supercup','german super cup'],
+ 'Supertaça Cândido de Oliveira':['supertaca candido de oliveira','supertaça cândido de oliveira','portuguese super cup'],
+ 'Turkish Super Cup':['turkish super cup','turkiye super kupasi','türkiye süper kupası'],
+ 'Belgian Super Cup':['belgian super cup','supercoupe de belgique'],
+ 'Saudi Super Cup':['saudi super cup'],
+ 'Johan Cruyff Shield':['johan cruyff shield','johan cruyff schaal','dutch super cup'],
+ 'FIFA Intercontinental Cup':['fifa intercontinental cup'],
+ 'FIFA Club World Cup':['fifa club world cup']
 }
 # Directly mapped internal competition ids, no cross-league conflation.
 LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
@@ -62,7 +74,14 @@ LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
  'EFL Cup':48,'Copa del Rey':143,'Coppa Italia':137,'DFB Pokal':81,
  'Coupe de France':66,'Turkish Cup':'cup-turkey',
  'Belgian Cup':'cup-belgium','Saudi King Cup':'cup-saudi',
- 'Copa do Brasil':'cup-brazil','KNVB Cup':'cup-netherlands'}
+ 'Copa do Brasil':'cup-brazil','KNVB Cup':'cup-netherlands',
+ 'UEFA Super Cup':'uefa-super-cup','Trophée des Champions':'fr-super-cup',
+ 'Supercopa de España':'es-super-cup','Supercoppa Italiana':'it-super-cup',
+ 'DFL-Supercup':'de-super-cup','Supertaça Cândido de Oliveira':'pt-super-cup',
+ 'Turkish Super Cup':'tr-super-cup','Belgian Super Cup':'bel-super-cup',
+ 'Saudi Super Cup':'sa-super-cup','Johan Cruyff Shield':'nl-super-cup',
+ 'FIFA Intercontinental Cup':'fifa-intercontinental',
+ 'FIFA Club World Cup':'fifa-club-world-cup'}
 # PitchAPI documents grouped values with a metric key and a stat.value.
 METRICS={'goals':'goals','assists':'assists','minutes_played':'minutes',
  'total_shots':'shots','shots_on_target':'shots_on_target','key_passes':'key_passes',
