@@ -917,6 +917,12 @@ def embed(html):
     if(p.foot)facts.push(label('Рабочая нога: ','Foot: ')+
       ({left:label('левая','left'),right:label('правая','right'),
         both:label('обе','both')}[p.foot]||p.foot));
+    const standing=relativeRoleRank(p);
+    if(standing&&standing.total>=12)
+      facts.push(label('Ранг в базе среди игроков с проверенным индексом: №',
+                       'Rank among players with reliable indices: #')+
+        standing.rank+'/'+standing.total+' · '+standing.role+
+        label(' (модель β)',' (beta model)'));
     if(p.contractUntilCurrent){
       facts.push(label('Контракт по опубликованному срезу: ','Contract (published snapshot): ')+
         p.contractUntilCurrent+' · '+(p.contractSourceAsOf||''));
