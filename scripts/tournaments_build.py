@@ -709,11 +709,21 @@ def embed(html):
         (ru?'Рыночные оценки до ':'Market observations through ')+
           (ROOT.marketHistoryLastObserved||'2026-06')+' ↗':
         (ru?'История рынка ↗':'Market history ↗');""")
-    # Show verified lower bounds (>=N) for matches whose confirmed XI is
-    # incomplete. Unknown starts must never be presented as zero.
+    # Appearances, NOT starts. A substitute appearance counts as one match.
+    # A verified 0 is valid only when a whole competition has complete data.
     html=patch(html,
       "$('statStarts').textContent=nf(s?.starts);",
-      "$('statStarts').textContent=s?.starts!=null?nf(s.starts):s?.starts_min!=null?'≥'+nf(s.starts_min):'—';")
+      """$('statStarts').textContent=nf(s?.matches);
+    const appearancesCell=$('statStarts')?.parentElement;
+    if(appearancesCell){
+      for(const tag of appearancesCell.querySelectorAll('span,div,small,label')){
+        if(tag.children.length===0 && /^(Старты|Starts|Матчи|Matches)$/.test(tag.textContent.trim()))
+          tag.textContent=state.language==='ru'?'Матчи':'Matches';
+      }
+    }""")
+    # The original profile markup has a text label independent of the stat
+    # DOM ID. Translate it as well without renaming internal element IDs.
+    html=html.replace('>Старты<','>Матчи<').replace('>Starts<','>Matches<')
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
