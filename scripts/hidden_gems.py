@@ -91,7 +91,9 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
           rating={score:idx.score,proxy:!!idx.proxy,role:idx.role||p.scoutRole||p.pos,
             coverage:Number(idx.coverage||0),
             weightedMinutes:Number(idx.rolling?.weightedMinutes||0),
-            exact:!!idx.exact};
+            exact:!!idx.exact,
+            provisional:!!idx.indexConfidence?.provisional,
+            evidenceFactor:idx.indexConfidence?.provisional?idx.indexConfidence.confidence:null};
         }
         const contractCurrent=p.contractUntilCurrent||p.contractThroughYear||null;
         const contractArchived=p.contractUntilArchive||null;
