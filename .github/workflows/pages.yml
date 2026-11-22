@@ -55,6 +55,8 @@ jobs:
           python scripts/import_market_history.py --self-test
           python scripts/catalog_expansion.py --self-test
           python scripts/gems_verification.py
+          python scripts/gem_history.py
+          python scripts/capture_gems.py --self-test
           python scripts/forecast_backtest.py --self-test
           python scripts/beta_readiness.py --self-test
           python scripts/ingest_priority.py
@@ -88,7 +90,7 @@ jobs:
       - name: Find licensed Wikimedia Commons portraits by verified player identity
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-photos]')
         env:
-          WIKIMEDIA_BATCH: '60'
+          WIKIMEDIA_BATCH: '80'
         run: python scripts/commons_photos.py
       # Import all supported leagues, persist snapshots before HTML tests and
       # continue incomplete seasons during the next scheduled daily run.
@@ -233,7 +235,7 @@ jobs:
           node --check /tmp/transferlab.js
           node --check _site/assets/site.js
           node --check _site/assets/hidden_gems.js
-          python -m py_compile scripts/hidden_gems.py scripts/test_hidden_gems.py scripts/catalog_expansion.py scripts/gems_verification.py
+          python -m py_compile scripts/hidden_gems.py scripts/test_hidden_gems.py scripts/catalog_expansion.py scripts/gems_verification.py scripts/gem_history.py scripts/capture_gems.py
       - name: Validate generated provider-backed site
         run: |
           python scripts/test_tournaments.py
@@ -242,6 +244,11 @@ jobs:
         run: |
           python -m pip install --quiet playwright==1.56.0
           python scripts/smoke.py
+      - name: Archive current source-complete Hidden Gems decisions
+        # Never count a current price as a past discovery. The previous-day
+        # history is not rewritten by a new browser build.
+        if: github.event_name != 'pull_request'
+        run: python scripts/capture_gems.py
       - name: Publish evidence-based Beta release dashboard
         # A failed product gate is disclosed, not hidden by an artificially green build.
         # The daily QA history only counts builds that passed all smoke tests above.
@@ -268,7 +275,7 @@ jobs:
                       git checkout --ours -- "$p"
                       git add "$p"
                       ;;
-                    data/valuation_forecast_snapshots.json|data/historical_stats.json|data/historical_starts.json|data/market_history.json|data/profile_enrichment.json|data/pl_current.json|data/free_sources.json|data/pitchapi.json|data/catalog_expansion.json|data/commons_photos.json|data/contract_enrichment.json)
+                    data/valuation_forecast_snapshots.json|data/gem_discovery_snapshots.json|data/historical_stats.json|data/historical_starts.json|data/market_history.json|data/profile_enrichment.json|data/pl_current.json|data/free_sources.json|data/pitchapi.json|data/catalog_expansion.json|data/commons_photos.json|data/contract_enrichment.json)
                       git checkout --theirs -- "$p"
                       git add "$p"
                       ;;
