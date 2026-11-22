@@ -192,6 +192,7 @@ def main():
             'xG denominator must exclude EPL, UCL and Community Shield minutes without xG')
         assert 'result.metricMinutes[metric]' in result
         assert 'const measured=s?.metricMinutes?.[k];' in result
+        assert '0.80*Math.max(0.15' in result, 'Fresh independent market valuation must anchor uncertain predictions'
         assert 'eligibleRows(p,state.season)' in result
         assert 'verifiedProfileMeta' in result
         # The 8-role index must not equate a fullback's quality with only
