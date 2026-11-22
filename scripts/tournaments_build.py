@@ -1133,8 +1133,13 @@ def embed(html):
       // had goals or assists but no minute count, making 2026/27 look empty.
       const athlete=players.find(x=>String(x.id)===String(id));
       const calendar=athlete&&['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(athlete.league);
-      const archivedSeed=athlete?.origin==='transfermarkt_archived_2026';
-      state.season=archivedSeed?(athlete?.archiveReferenceSeason||athlete?.season||(calendar?'2025':'2025/26')):(calendar?'2026':'2026/27');""")
+      const currentSeason=calendar?'2026':'2026/27';
+      const currentRow=ROOT.liveIndexStats?.[currentSeason]?.[String(id)]||null;
+      const currentPlayerStats=currentRow&&Number(currentRow.minutes)>0&&
+        !['transfermarkt_historical','historical_appearances',
+          'club_fixture_unverified_player'].includes(String(currentRow.source||''));
+      const archivedSeed=athlete?.origin==='transfermarkt_archived_2026'&&!currentPlayerStats;
+      state.season=archivedSeed?(athlete?.archiveReferenceSeason||athlete?.season||(calendar?'2025':'2025/26')):currentSeason;""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
@@ -1153,9 +1158,18 @@ def embed(html):
     const ru=state.language==='ru';
     const label=(r,e)=>ru?r:e;
     const facts=[];
-    if(p.origin==='transfermarkt_archived_2026')
-      facts.push(label('Клуб из архивной базы (июль 2026), текущий клуб не подтверждён',
-                       'Club from July 2026 archive; current roster unverified'));
+    const clubDate=Date.parse(String(p.clubSourceAsOf||'').slice(0,10));
+    const clubFresh=Number.isFinite(clubDate)&&clubDate<=Date.now()&&
+      Date.now()-clubDate<=120*86400000;
+    if(p.origin==='transfermarkt_archived_2026'&&!clubFresh)
+      facts.push(label('Клуб '+(p.team||'—')+
+                       ' указан по историческому источнику; актуальный клуб не подтверждён',
+                       'Club '+(p.team||'—')+
+                       ' is historical; current team has not been verified'));
+    else if(clubFresh)
+      facts.push(label('Актуальный клуб подтверждён по матчам: ',
+                       'Current club verified through player matches: ')+
+                 p.team+' · '+p.clubSourceAsOf);
     if(p.displayPosition)facts.push(label('Амплуа: ','Role: ')+p.displayPosition+
       (p.positionAsOf?' ('+p.positionAsOf+')':''));
     if(p.foot)facts.push(label('Рабочая нога: ','Foot: ')+
@@ -1177,8 +1191,7 @@ def embed(html):
       facts.push(label('Контракт по архиву: ','Contract (archived): ')+
         p.contractUntilArchive+' · '+(p.contractArchiveAsOf||'2026-07'));
     }
-    if(p.clubSource && p.clubSourceAsOf)
-      facts.push(label('Клуб подтверждён: ','Club verified: ')+p.clubSourceAsOf);
+
     if(p.marketValueArchiveEUR!=null){
       facts.push(label('Архивная стоимость: €','Archived value: €')+
         Number(p.marketValueArchiveEUR).toLocaleString(ru?'ru-RU':'en-GB'));
