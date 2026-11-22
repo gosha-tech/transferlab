@@ -59,6 +59,7 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
 BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player objects as profiles.
   // Never infer current market prices from the archival history or the beta model.
   window.TransferLabGemsBridge = {
+    verification(){return ROOT.gemsVerification||null;},
     list(){
       const market=ROOT.hiddenGemsMarket||{};
       return players.map(p=>{
