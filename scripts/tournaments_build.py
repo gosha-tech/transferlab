@@ -1257,6 +1257,12 @@ def embed(html):
       "$('valueMain').textContent=model.index.proxy?(p.marketValueArchiveEUR!=null?euroM(p.marketValueArchiveEUR/1000000):(ru?'Нет данных':'No data')):euroM(model.estimate);")
     html=patch(html,"renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);",
                """renderChart(p,s);renderStrengths(s,p);renderAdvanced(s);renderTournamentSelector(p);renderVerifiedProfileMeta(p);
+    if(s?.matchesExact===false&&s?.matches!=null){
+      const note=$('competitionStatus');
+      if(note)note.textContent+=' · '+(state.language==='ru'?
+        'Матчи: показан подтверждённый минимум, статистика турниров неполная':
+        'Appearances: verified minimum shown; some competition counts incomplete');
+    }
     if(s?.source==='pitchapi_partial'){
       $('statsSourceCaption').textContent=state.language==='ru'?'PitchAPI · проверенные матчи, частичная статистика':'PitchAPI · verified games, partial season';
     }else if(s?.source==='pl_catalogue'){
