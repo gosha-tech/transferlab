@@ -77,6 +77,13 @@ def main():
         assert 'Контракт' in page.locator('.gems-card').first.inner_text()
         scored=page.locator('.gems-archival-score').count()
         print('Hidden Gems preview:',preview_count,'players; archive comparison visible:',scored)
+        measured=page.evaluate('() => window.TransferLabGemsCoverage')
+        assert measured and measured['youthWithSeasonMinutes']>=preview_count
+        assert measured['youthWithMeasuredIndex']>=50, measured
+        assert measured['youthWithArchivedValueGap']>=25, measured
+        assert measured['youthWithVerifiedCurrentValueGap']==0 or (
+            measured['youthWithVerifiedCurrentValueGap']>0)
+        print('HIDDEN GEMS COVERAGE:',measured)
 
         for card in page.locator('.gems-card').all()[:5]:
             assert card.locator('.gems-player').inner_text().strip()
