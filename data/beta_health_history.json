@@ -1,1 +1,12 @@
-{"schema_version":1,"days":[]}
+{
+  "schema_version": 1,
+  "days": [
+    {
+      "date": "2026-11-22",
+      "qa_passed": true,
+      "model_verified": false,
+      "priority_coverage_pct": 43.0,
+      "commit": "097f22dd85fb"
+    }
+  ]
+}
