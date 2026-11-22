@@ -2,7 +2,7 @@
 
 The model retains the full rolling 36-month tennis-style match score.
 For all players with sufficient observed minutes and coverage, a cautious
-45% cross-role percentile calibration (60% for fullbacks whose defensive event feeds remain less comprehensive) makes an excellent wing-back and
+45% cross-role percentile calibration (75% for fullbacks whose defensive event feeds remain less comprehensive) makes an excellent wing-back and
 excellent winger comparable without a player-specific manual bonus.
 """
 def inject_role_calibration(html):
@@ -43,13 +43,17 @@ def inject_role_calibration(html):
     }
     const percentile=Math.max(0,Math.min(1,
       (peers.length-higher-tied/2)/peers.length));
-    // Fixed beta anchor: 30..93 within the qualified peer distribution.
-    // Blend rather than overwrite absolute 36-month performance.
-    const peerTarget=30+63*percentile;
-    // Fullback defensive event feeds are less comprehensive across
-    // tournaments. Rely more on qualified peer-relative performance for
-    // ALL LB/RB players, never on identity or headline reputation.
-    const peerWeight=role==='LB/RB'?0.60:0.45;
+    // Fixed 30..93 beta anchor: monotone, symmetric rank calibration.
+    // A convex mapping rewards high-performance role specialists while
+    // separating the bottom quartile; the median remains unchanged.
+    // No player names or historical valuations enter the quality index.
+    const rankScaled=percentile<0.5?2*percentile*percentile:
+      1-2*(1-percentile)*(1-percentile);
+    const peerTarget=30+63*rankScaled;
+    // All LB/RB players face patchier three-season defensive tracking.
+    // Position-matched peer evidence therefore contributes 75% rather
+    // than 60%, with the absolute observed score retained at 25%.
+    const peerWeight=role==='LB/RB'?0.75:0.45;
     const blended=(1-peerWeight)*original+peerWeight*peerTarget;
     const score=Math.round(Math.max(1,Math.min(adjusted.ceiling,blended)));
     return {score,enabled:true,role,percentile:Math.round(percentile*100),
