@@ -76,7 +76,8 @@ def inject_uniform_cards(html):
   }
   function cardMarkup(p){
     const ru=state.language==='ru';
-    const year=cardCurrentSeason(p);
+    const year=p.origin==='transfermarkt_archived_2026'
+      ? (['MLS','Brasileirão'].includes(p.league)?'2025':'2025/26') : cardCurrentSeason(p);
     const stats=cardStatEvidence(p);
     const c=cardContractEvidence(p);
     const idx=projectedIndex(p);
@@ -105,7 +106,8 @@ def inject_uniform_cards(html):
           '" alt="" loading="lazy" decoding="async" hidden></span>'+
         '<span class="card-body-uniform">'+
           '<span class="card-name">'+esc(p.name)+'</span>'+
-          '<span class="card-meta">'+esc(p.team||'—')+'<br>'+esc(role)+'</span>'+
+          '<span class="card-meta">'+esc(p.team||'—')+
+            (p.origin==='transfermarkt_archived_2026'?' · архив клуба 2026':'')+'<br>'+esc(role)+'</span>'+
           '<span class="card-fixed-stats" title="'+esc(label)+'">'+esc(gs)+'</span>'+
           '<span class="card-fixed-contract '+c.status+'" title="'+esc(c.hint)+'">'+
             esc(c.text)+' <small>'+esc(c.hint)+'</small></span>'+

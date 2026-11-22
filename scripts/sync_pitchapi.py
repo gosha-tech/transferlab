@@ -48,6 +48,17 @@ TARGETS={
  'Taça de Portugal':['taca de portugal','taça de portugal'],
  'KNVB Cup':['knvb beker','knvb cup'],
  'Eredivisie':['eredivisie'],
+ 'Austrian Bundesliga':['austrian bundesliga','bundesliga austria'],
+ 'Danish Superliga':['danish superliga','superliga denmark'],
+ 'Swiss Super League':['swiss super league','swiss superleague'],
+ 'Greek Super League':['greek super league','super league greece'],
+ 'Scottish Premiership':['scottish premiership'],
+ 'EFL Championship':['efl championship','english championship'],
+ 'Segunda División':['segunda division','la liga 2','segunda división'],
+ '2. Bundesliga':['2 bundesliga','zweite bundesliga'],
+ 'Serie B':['italian serie b','serie b italy'],
+ 'Ligue 2':['french ligue 2','ligue 2'],
+
  'Turkish Cup':['turkish cup','turkiye kupasi','türkiye kupası'],
  'Belgian Cup':['belgian cup','croky cup','coupe de belgique'],
  'Saudi King Cup':['saudi king cup','king cup of champions','king cup saudi arabia'],
@@ -69,7 +80,12 @@ TARGETS={
 # Directly mapped internal competition ids, no cross-league conflation.
 LEAGUE_IDS={'Premier League':39,'La Liga':140,'Bundesliga':78,'Serie A':135,
  'Ligue 1':61,'Primeira Liga':94,'Belgian Pro League':144,'Süper Lig':203,
- 'Saudi Pro League':307,'MLS':253,'Brasileirão':'br-league','Eredivisie':'nl-league','Taça de Portugal':'cup-portugal','UEFA Champions League':2,
+ 'Saudi Pro League':307,'MLS':253,'Brasileirão':'br-league','Eredivisie':'nl-league',
+ 'Austrian Bundesliga':'at-league','Danish Superliga':'dk-league',
+ 'Swiss Super League':'ch-league','Greek Super League':'gr-league',
+ 'Scottish Premiership':'sco-league','EFL Championship':'eng-2',
+ 'Segunda División':'es-2','2. Bundesliga':'de-2','Serie B':'it-2','Ligue 2':'fr-2',
+ 'Taça de Portugal':'cup-portugal','UEFA Champions League':2,
  'UEFA Europa League':3,'UEFA Conference League':848,'FA Cup':45,
  'EFL Cup':48,'Copa del Rey':143,'Coppa Italia':137,'DFB Pokal':81,
  'Coupe de France':66,'Turkish Cup':'cup-turkey',
@@ -235,7 +251,20 @@ def read_roster():
         html=archive.read('index.html').decode('utf-8')
     m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
     if not m:raise RuntimeError('No embedded roster')
-    return json.loads(m.group(1))['players']
+    base=json.loads(m.group(1))['players']
+    # New records are match-backed but their clubs are archival. Matching current
+    # league fixtures still requires exact team identity, or a unique full name
+    # that the existing roster freshness checker can corroborate later.
+    try:
+        expansion=json.loads((ROOT/'data'/'catalog_expansion.json').read_text(encoding='utf-8'))
+        seen={norm(p.get('name')) for p in base}
+        for p in expansion.get('players') or []:
+            if p.get('name') and norm(p['name']) not in seen:
+                base.append(p)
+                seen.add(norm(p['name']))
+    except (OSError,ValueError):
+        pass
+    return base
 def sync():
     key=os.getenv('PITCHAPI_KEY','').strip()
     if not key:
@@ -297,6 +326,11 @@ def sync():
                 # Retry an empty player report: match stats sometimes arrive
                 # days after the final whistle. A cached empty result is not
                 # confirmation that every player recorded zero minutes.
+                if (season in ('2026/2027','2026') and
+                    int(previous.get('roster_profiles') or 0)<len(roster) and
+                    str(previous.get('date') or '')[:10]>='2026-08-01'):
+                    pending.append(m)
+                    continue
                 if not previous.get('players'):
                     try:
                         last_checked_at=dt.datetime.fromisoformat(
@@ -362,6 +396,7 @@ def sync():
                              'home_team_name':home.get('name'),
                              'away_team_name':away.get('name'),
                              'players':processed,'source':'PitchAPI',
+                             'roster_profiles':len(roster),
                              'checked_at':dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')}
                 fetched+=1
             except urllib.error.HTTPError as exc:

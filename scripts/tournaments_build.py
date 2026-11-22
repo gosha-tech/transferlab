@@ -26,6 +26,10 @@ COMPETITIONS=[
  (140,'Ла Лига'),(143,'Кубок Испании'),(78,'Бундеслига'),(81,'Кубок Германии'),
  (135,'Серия А'),(137,'Кубок Италии'),(61,'Лига 1'),(66,'Кубок Франции'),
  (94,'Португалия'),(144,'Бельгия'),(203,'Турция'),(307,'Саудовская лига'),
+ ('nl-league','Эредивизи'),('at-league','Австрия'),('dk-league','Дания'),
+ ('ch-league','Швейцария'),('gr-league','Греция'),('sco-league','Шотландия'),
+ ('eng-2','Чемпионшип'),('es-2','Сегунда'),('de-2','2. Бундеслига'),
+ ('it-2','Серия B'),('fr-2','Лига 2'),
  (253,'MLS'),(3,'Лига Европы'),(848,'Лига конференций'),
  ('eng-community-shield','Суперкубок Англии'),('uefa-super-cup','Суперкубок УЕФА'),('fr-super-cup','Суперкубок Франции'),
  ('es-super-cup','Суперкубок Испании'),('it-super-cup','Суперкубок Италии'),
@@ -52,6 +56,19 @@ def embed(html):
     snapshot=json.loads(DATA_PATH.read_text(encoding='utf-8')) if DATA_PATH.exists() else {}
     hist_path=ROOT/'data'/'historical_stats.json'
     historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
+    # Expanded archival players have their own exact Transfermarkt-ID match history.
+    # It is not a current-season record and must not change existing player rows.
+    expansion_path=ROOT/'data'/'catalog_expansion.json'
+    expansion=json.loads(expansion_path.read_text(encoding='utf-8')) if expansion_path.exists() else {}
+    expanded_ids={str(p.get('id')) for p in root.get('players',[]) if
+                  p.get('origin')=='transfermarkt_archived_2026'}
+    for season,extra_players in (expansion.get('by_season') or {}).items():
+        target=historical.setdefault('by_season',{}).setdefault(season,{})
+        for pid,rows in extra_players.items():
+            if str(pid) in expanded_ids and str(pid) not in target:
+                target[str(pid)]=rows
+    historical['covered_players']=len({p for y in
+        (historical.get('by_season') or {}).values() for p in y})
     starts_path=ROOT/'data'/'historical_starts.json'
     starts_cache=json.loads(starts_path.read_text(encoding='utf-8')) if starts_path.exists() else {}
     archived_lineups=starts_cache.get('by_season') or {}
@@ -1115,7 +1132,8 @@ def embed(html):
       // had goals or assists but no minute count, making 2026/27 look empty.
       const athlete=players.find(x=>String(x.id)===String(id));
       const calendar=athlete&&['MLS','Brasileirão'].includes(athlete.league);
-      state.season=calendar?'2026':'2026/27';""")
+      const archivedSeed=athlete?.origin==='transfermarkt_archived_2026';
+      state.season=archivedSeed?(calendar?'2025':'2025/26'):(calendar?'2026':'2026/27');""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
@@ -1134,6 +1152,9 @@ def embed(html):
     const ru=state.language==='ru';
     const label=(r,e)=>ru?r:e;
     const facts=[];
+    if(p.origin==='transfermarkt_archived_2026')
+      facts.push(label('Клуб из архивной базы (июль 2026), текущий клуб не подтверждён',
+                       'Club from July 2026 archive; current roster unverified'));
     if(p.displayPosition)facts.push(label('Амплуа: ','Role: ')+p.displayPosition+
       (p.positionAsOf?' ('+p.positionAsOf+')':''));
     if(p.foot)facts.push(label('Рабочая нога: ','Foot: ')+

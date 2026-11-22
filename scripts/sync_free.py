@@ -183,7 +183,14 @@ def licensed_photo(profile):
 def history_ids():
     try:data=json.loads(PROFILE_CACHE.read_text(encoding='utf-8'))
     except (OSError,ValueError):return {}
-    return {str(pid):str(info.get('tm_player_id') or '') for pid,info in data.get('profiles',{}).items()}
+    ids={str(pid):str(info.get('tm_player_id') or '') for pid,info in data.get('profiles',{}).items()}
+    try:
+        extra=json.loads((ROOT/'data'/'catalog_expansion.json').read_text(encoding='utf-8'))
+        ids.update({str(p['id']):str(p['tm_player_id']) for p in extra.get('players') or []
+                    if p.get('id') and p.get('tm_player_id')})
+    except (OSError,ValueError):
+        pass
+    return ids
 def source_profiles():
     from zipfile import ZipFile
     archive=ROOT/'TransferLab_RESTORED_2026-11-16.zip'
@@ -192,7 +199,17 @@ def source_profiles():
     m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',text,re.S)
     if not m:raise RuntimeError('No embedded players')
     data=json.loads(m.group(1))
-    return [p for p in data.get('players',[]) if p.get('name') and p.get('id')]
+    roster=[p for p in data.get('players',[]) if p.get('name') and p.get('id')]
+    try:
+        expanded=json.loads((ROOT/'data'/'catalog_expansion.json').read_text(encoding='utf-8'))
+        existing={norm(p.get('name')) for p in roster}
+        for p in expanded.get('players') or []:
+            if p.get('name') and norm(p['name']) not in existing:
+                roster.append(p)
+                existing.add(norm(p['name']))
+    except (OSError,ValueError):
+        pass
+    return roster
 def collect(today=None,batch=48):
     today=today or dt.datetime.now(dt.timezone.utc).date()
     previous=old_snapshot()
@@ -253,7 +270,7 @@ def collect(today=None,batch=48):
     players=source_profiles()
     playerids=history_ids()
     # Use a stable order. Never assume search result belongs to a player solely by name.
-    players=sorted(players,key=lambda p:str(p['id']))
+    players=sorted(players,key=lambda p:(p.get('origin')!='transfermarkt_archived_2026',str(p['id'])))
     cursor=int(result['rotation_cursor'])%max(1,len(players))
     batch=max(0,min(int(batch),100))
     done=0;matched=0;fresh_stats=0
