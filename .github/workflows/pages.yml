@@ -196,7 +196,7 @@ jobs:
           assert 'liveCompetitionCatalog' in root
           assert 'freeMatchResults' in root
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)
-          Path('/tmp/transferlab.js').write_text(scripts[-1],encoding='utf-8')
+          Path('/tmp/transferlab.js').write_text([x for x in scripts if x.strip()][-1],encoding='utf-8')
           print('Verified:',len(ids),'unique players')
           PY
           node --check /tmp/transferlab.js
