@@ -180,8 +180,13 @@
       return (b.score??b.scoutPercentile??b.archiveScore??-1)-(a.score??a.scoutPercentile??a.archiveScore??-1) ||
         bindex-aindex || a.name.localeCompare(b.name,'ru');
     }
+    const scouted=valid.filter(p=>p.scoutPercentile!==null)
+      // This category deliberately DOES NOT use archived "budget" as though
+      // it were a confirmed current market price.
+      .sort((a,b)=>b.scoutPercentile-a.scoutPercentile ||
+        b.rating.score-a.rating.score || a.age-b.age);
     confirmed.sort(sortFn); preliminary.sort(sortFn);
-    return {confirmed,preliminary};
+    return {confirmed,preliminary,scouted};
   }
   function renderCard(p) {
     const price=p.market ?
@@ -280,18 +285,21 @@
     if (reset) shown=30;
     const choices=filtered();
     byId('gemsConfirmedCount').textContent=fmt(choices.confirmed.length);
+    byId('gemsScoutCount').textContent=fmt(choices.scouted.length);
     byId('gemsPreviewCount').textContent=fmt(choices.preliminary.length);
-    if (firstRender && !choices.confirmed.length && activeTab==='confirmed' && choices.preliminary.length) {
-      activeTab='preview';
+    if (firstRender && !choices.confirmed.length && activeTab==='confirmed') {
+      activeTab=choices.scouted.length?'scouted':'preview';
     }
     firstRender=false;
-    for (const [tab,id] of [['confirmed','gemsConfirmedTab'],['preview','gemsPreviewTab']]) {
+    for (const [tab,id] of [['confirmed','gemsConfirmedTab'],
+      ['scouted','gemsScoutTab'],['preview','gemsPreviewTab']]) {
       byId(id).classList.toggle('active',activeTab===tab);
       byId(id).setAttribute('aria-pressed',String(activeTab===tab));
     }
     byId('gemsAgeLabel').textContent=byId('gemsAge').value;
     byId('gemsPriceLabel').textContent='€'+byId('gemsPrice').value+' млн';
-    const rows=activeTab==='preview'?choices.preliminary:choices.confirmed;
+    const rows=activeTab==='preview'?choices.preliminary:
+      activeTab==='scouted'?choices.scouted:choices.confirmed;
     const host=byId('gemsGrid');
     host.innerHTML=rows.slice(0,shown).map(renderCard).join('');
     for (const button of host.querySelectorAll('[data-gem-open]')) {
@@ -303,7 +311,11 @@
     connectPhotos(host);
     const more=byId('gemsMore');
     more.hidden=rows.length<=shown;
-    const note=activeTab==='confirmed' ?
+    const note=activeTab==='scouted' ?
+      (rows.length?
+       'Спортивный срез: индекс за 36 месяцев, минимум 450 минут текущего сезона, ровесники той же роли. Фильтр €15 млн здесь НЕ применяется: свежая цена неизвестна. Это не доказанная недооценка.' :
+       'Для выбранных параметров нет 12 сопоставимых футболистов с подтверждёнными текущими матчами.') :
+      activeTab==='confirmed' ?
       (rows.length ? 'Актуальные цены подтверждены. Индекс экспериментальный; дата цены указана в карточке.' :
       'Нет подтверждённых находок по выбранным фильтрам. Для расчёта нужны свежие оценки (не старше 120 дней) и минимум 25 аналогов по роли и возрасту.') :
       (rows.length ? 'Исследовательская подборка: текущая спортивная сила сверяется по ровесникам и позиции; архивный атакующий сигнал — отдельно по Г+А/90. Ни один показатель сам по себе не доказывает рыночную недооценку.' :
@@ -354,6 +366,7 @@
     }
     byId('gemsConfirmedTab').addEventListener('click',()=>{activeTab='confirmed';render();});
     byId('gemsPreviewTab').addEventListener('click',()=>{activeTab='preview';render();});
+    byId('gemsScoutTab').addEventListener('click',()=>{activeTab='scouted';render();});
     byId('gemsMore').addEventListener('click',()=>{shown+=30;render(false);});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',init);
