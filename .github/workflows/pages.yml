@@ -93,7 +93,7 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-contracts]')
         continue-on-error: true
         env:
-          SPORTSDB_CONTRACT_BATCH: ${{ vars.SPORTSDB_CONTRACT_BATCH || '45' }}
+          SPORTSDB_CONTRACT_BATCH: ${{ vars.SPORTSDB_CONTRACT_BATCH || '100' }}
           SPORTSDB_CONTRACT_PAUSE: '0.9'
         run: python scripts/sync_contracts.py
       - name: Add confirmed starting XI counts, including past seasons
