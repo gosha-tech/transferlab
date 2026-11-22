@@ -1,0 +1,67 @@
+{
+  "as_of": "2026-11-22",
+  "description": "Cross-checked player competition totals as of 2026-11-22. These supplement missing provider fixtures; not invented per-match events. Only player and club-verified rows, without double-counting. Future fresher authenticated data supersedes this snapshot.",
+  "source_primary": "https://www.besoccer.com/player/achraf-hakimi-mouh",
+  "source_secondary": "https://fbref.com/en/players/e42d61c7/all_comps/Achraf-Hakimi-Stats---All-Competitions",
+  "players": [
+    {
+      "name": "Achraf Hakimi",
+      "club": "Paris Saint-Germain",
+      "season": "2026/27",
+      "competition_totals": [
+        {
+          "id": 61,
+          "name": "Ligue 1",
+          "stats": {
+            "matches": 9,
+            "minutes": 659,
+            "goals": 3,
+            "assists": 3
+          },
+          "last_match_date": "2026-11-21"
+        },
+        {
+          "id": 2,
+          "name": "UEFA Champions League",
+          "stats": {
+            "matches": 4,
+            "minutes": 318,
+            "goals": 0,
+            "assists": 1
+          },
+          "last_match_date": "2026-11-03"
+        },
+        {
+          "id": "uefa-super-cup",
+          "name": "UEFA Super Cup",
+          "stats": {
+            "matches": 1,
+            "minutes": 90,
+            "goals": 0,
+            "assists": 0
+          },
+          "last_match_date": "2026-08-12",
+          "fixture": {
+            "opponent": "Aston Villa",
+            "result": "2-1"
+          }
+        },
+        {
+          "id": "fr-super-cup",
+          "name": "Trophée des Champions",
+          "stats": {
+            "matches": 1,
+            "minutes": 90,
+            "goals": 0,
+            "assists": 0
+          },
+          "last_match_date": "2026-08-16",
+          "fixture": {
+            "opponent": "Lens",
+            "result": "0-1"
+          }
+        }
+      ]
+    }
+  ]
+}
