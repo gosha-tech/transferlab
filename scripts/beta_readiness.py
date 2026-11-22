@@ -202,6 +202,10 @@ def main():
     try:history=json.loads(HISTORY.read_text(encoding='utf-8')).get('days') or []
     except (OSError,ValueError,AttributeError):history=[]
     report=assess(root,market,history,today)
+    performance_path=SITE/'data'/'performance.json'
+    if performance_path.exists():
+        try:report['performance']=json.loads(performance_path.read_text(encoding='utf-8'))
+        except (OSError,ValueError):pass
     outfile=SITE/'data'/'beta_readiness.json'
     outfile.parent.mkdir(parents=True,exist_ok=True)
     outfile.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
