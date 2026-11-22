@@ -43,7 +43,8 @@ jobs:
           python scripts/verify_current_sync.py --self-test
           python scripts/enrich_profiles.py --self-test
           python scripts/import_historical_appearances.py --self-test
-          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py scripts/audit_coverage.py scripts/verify_current_sync.py
+          python scripts/import_market_history.py --self-test
+          python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py scripts/import_market_history.py scripts/audit_coverage.py scripts/verify_current_sync.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
@@ -86,6 +87,8 @@ jobs:
       - name: Confirm fresh current-season player data
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[refresh-pitch]')
         run: python scripts/verify_current_sync.py
+      - name: Import observed five-year player market values (archived, non-live)
+        run: python scripts/import_market_history.py --download
       - name: Persist refreshed source data in GitHub
         # Persist provider snapshots BEFORE the site build/browser tests.
         # A UI regression must never discard 20 minutes of verified API data.
@@ -99,6 +102,7 @@ jobs:
           if [ -f data/pitchapi.json ]; then git add data/pitchapi.json; fi
           if [ -f data/profile_enrichment.json ]; then git add data/profile_enrichment.json; fi
           if [ -f data/historical_stats.json ]; then git add data/historical_stats.json; fi
+          if [ -f data/market_history.json ]; then git add data/market_history.json; fi
           if ! git diff --cached --quiet; then
             git commit -m "Cache verified football source snapshots [skip ci]"
             for attempt in 1 2 3; do
@@ -108,7 +112,7 @@ jobs:
                 # Resolve only machine-generated JSON cache conflicts, never code.
                 for p in $(git diff --name-only --diff-filter=U); do
                   case "$p" in
-                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/pitchapi.json|data/profile_enrichment.json|data/historical_stats.json)
+                    data/live.json|data/free_sources.json|data/pl_current.json|data/commons_photos.json|data/pitchapi.json|data/profile_enrichment.json|data/historical_stats.json|data/market_history.json)
                       git checkout --theirs -- "$p"
                       git add "$p"
                       ;;
@@ -137,6 +141,7 @@ jobs:
           python scripts/prepare.py
           python scripts/enrich_profiles.py --download
           python scripts/import_historical_appearances.py --download
+          python scripts/import_market_history.py --download
           python scripts/tournaments_build.py _site/index.html
           mkdir -p _site/assets _site/data
           cp assets/site.css assets/site.js _site/assets/
