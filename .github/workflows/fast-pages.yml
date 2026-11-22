@@ -1,0 +1,74 @@
+name: Publish verified TransferLab UI from cached statistics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/tournaments_build.py
+      - assets/site.css
+      - assets/site.js
+      - .github/workflows/fast-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# UI/index fixes must not be held back by a large scheduled API backfill.
+# The existing scheduled import publishes newer snapshots when complete.
+concurrency:
+  group: transferlab-quick-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Build from verified cached match snapshots (no provider calls)
+        run: |
+          python scripts/prepare.py
+          python scripts/enrich_profiles.py
+          python scripts/tournaments_build.py _site/index.html
+          mkdir -p _site/assets _site/data
+          cp assets/site.css assets/site.js _site/assets/
+          cp data/live.json data/free_sources.json _site/data/
+          for filename in pl_current.json commons_photos.json pitchapi.json; do
+            if [ -f "data/$filename" ]; then cp "data/$filename" _site/data/; fi
+          done
+          python scripts/audit_coverage.py
+          python scripts/test_tournaments.py
+      - name: Validate generated source syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          html=Path('_site/index.html').read_text(encoding='utf-8')
+          root=json.loads(re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S).group(1))
+          assert len(root['players'])>=1353
+          assert root['marketHistoryCoverage']['profiles']>=1100
+          assert '"LB/RB":{"goals":6,"xg":8,"creation":31,"minutes":25,"defense":30}' in html
+          Path('/tmp/transferlab-check.js').write_text(re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.S)[-1],encoding='utf-8')
+          PY
+          node --check /tmp/transferlab-check.js
+          node --check _site/assets/site.js
+      - name: Verify player indices in Chromium
+        run: |
+          python -m pip install --quiet playwright==1.56.0
+          python scripts/smoke.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deployment
+        uses: actions/deploy-pages@v4
