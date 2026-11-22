@@ -171,8 +171,9 @@ jobs:
           python scripts/import_historical_starts.py --download || echo 'Historical XI archive unavailable; retaining published statistics'
           python scripts/import_market_history.py --download
           python scripts/tournaments_build.py _site/index.html
+          python scripts/hidden_gems.py _site/index.html
           mkdir -p _site/assets _site/data
-          cp assets/site.css assets/site.js _site/assets/
+          cp assets/site.css assets/site.js assets/hidden_gems.css assets/hidden_gems.js _site/assets/
           cp data/live.json data/free_sources.json _site/data/
           if [ -f data/pl_current.json ]; then cp data/pl_current.json _site/data/; fi
           if [ -f data/commons_photos.json ]; then cp data/commons_photos.json _site/data/; fi
@@ -200,8 +201,12 @@ jobs:
           PY
           node --check /tmp/transferlab.js
           node --check _site/assets/site.js
+          node --check _site/assets/hidden_gems.js
+          python -m py_compile scripts/hidden_gems.py scripts/test_hidden_gems.py
       - name: Validate generated provider-backed site
-        run: python scripts/test_tournaments.py
+        run: |
+          python scripts/test_tournaments.py
+          python scripts/test_hidden_gems.py
       - name: Browser smoke test
         run: |
           python -m pip install --quiet playwright==1.56.0
