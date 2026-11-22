@@ -93,3 +93,8 @@
   border:1px solid rgba(116,174,191,.30);border-radius:8px;
   background:rgba(8,30,44,.60);color:#b9d8df;font-size:11px;
   line-height:1.55;overflow-wrap:anywhere}
+
+/* Transparent source audit and Beta gate access. */
+.gems-beta-link{margin:0 0 14px;font-size:12px}
+.gems-beta-link a{color:#65e4d4;text-decoration:underline;text-underline-offset:3px}
+.gems-beta-link a:focus-visible{outline:2px solid #65e4d4;outline-offset:4px;border-radius:3px}
