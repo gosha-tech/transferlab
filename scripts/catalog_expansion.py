@@ -18,8 +18,8 @@ ROOT=Path(__file__).resolve().parents[1]
 CACHE=ROOT/'data'/'catalog_expansion.json'
 BASE='https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/'
 SOURCE='dcaribou/transfermarkt-datasets; last observed appearances 2026-06-28'
-CACHE_VERSION=3
-TARGET_TOTAL=10500
+CACHE_VERSION=4
+TARGET_TOTAL=10800
 MAX_NEW=12500
 MIN_MINUTES=1
 MIN_SOLID_MINUTES=450
@@ -242,15 +242,26 @@ def seed_identifiers():
     return len(base),names,tmids
 
 def download():
+    previous={}
     if CACHE.exists():
-        cached=json.loads(CACHE.read_text(encoding='utf-8'))
-        if cached.get('version')==CACHE_VERSION and cached.get('players'):
-            print('Reusing archival expansion cache:',len(cached['players']))
-            return cached
+        try:previous=json.loads(CACHE.read_text(encoding='utf-8'))
+        except (OSError,ValueError):previous={}
+        if previous.get('version')==CACHE_VERSION and previous.get('players'):
+            print('Reusing archival expansion cache:',len(previous['players']))
+            return previous
     base_size,names,tmids=seed_identifiers()
-    data=build(stream('players.csv.gz'),stream('appearances.csv.gz'),
-               limit=max(0,TARGET_TOTAL-base_size),
-               exclude_tm=tmids,exclude_names=names)
+    try:
+        data=build(stream('players.csv.gz'),stream('appearances.csv.gz'),
+                   limit=max(0,TARGET_TOTAL-base_size),
+                   exclude_tm=tmids,exclude_names=names)
+    except (OSError,TimeoutError,EOFError) as error:
+        # Provider outages must not wipe the previous verified catalogue.
+        # A saved old revision is honest archive data, never "fresh" data.
+        if previous.get('players'):
+            print('Archive provider unavailable; preserving',len(previous['players']),
+                  'verified archival profiles:',type(error).__name__)
+            return previous
+        raise
     data['seed_count']=base_size
     data['target_total']=TARGET_TOTAL
     print('SOURCE ELIGIBLE:',len(data['players']),'previous-only candidates:',data['possible_previous_season_only'],
