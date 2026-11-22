@@ -57,7 +57,11 @@ def match_identity(results,player,tm_id):
         by_tm=bool(tm_id and tm==str(tm_id))
         dob=parse_birth(r.get('dateBorn'))
         by_birth=bool(player.get('birth') and parse_birth(player['birth'])==dob)
-        if by_tm or by_birth:confirmed.append(r)
+        # Some public profiles have no DOB/TM ID. A UNIQUE exact full name
+        # and exact verified current team is sufficiently strong identity
+        # evidence for a year-only contract lookup (never name alone).
+        by_club=len(candidates)==1 and r.get('strTeam') and team_norm(r['strTeam'])==team_norm(player.get('team'))
+        if by_tm or by_birth or by_club:confirmed.append(r)
     return confirmed[0] if len(confirmed)==1 else None
 
 def parse_contract(payload,player,player_id,today):
@@ -166,7 +170,8 @@ def selftest():
     profile={'idPlayer':'34152565','strPlayer':'Lucas Digne','dateBorn':'1993-07-20',
              'strSport':'Soccer','idTransferMkt':'126664'}
     assert match_identity([profile],p,'126664')==profile
-    assert match_identity([dict(profile,dateBorn='1988-01-01',idTransferMkt='')],p,'126664') is None
+    assert match_identity([dict(profile,dateBorn='1988-01-01',idTransferMkt='',strTeam='Chelsea')],p,'126664') is None
+    assert match_identity([dict(profile,dateBorn='',idTransferMkt='',strTeam='Aston Villa')],p,None) is not None
     payload={'contracts':[{'idPlayer':'34152565','strTeam':'Aston Villa',
                            'strSport':'Soccer','strYearStart':'2025','strYearEnd':'2028'}]}
     c=parse_contract(payload,p,'34152565',dt.date(2026,11,22))
