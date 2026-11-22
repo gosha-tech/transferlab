@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
-"""Expand TransferLab with uniquely identified, match-backed ARCHIVAL players.
+"""Source-linked archival profiles for a 7,000+ player TransferLab catalogue.
 
-The upstream transfermarkt-datasets snapshot stops in June/July 2026. This is
-NOT a 2026/27 roster source. A new player is included only after real appearances
-with at least 450 minutes in 2025/26 (or 2025/2026 calendar season) and exact
-TM-ID linkage. No image_url from the archive is used: portraits need separate
-display rights. Duplicate or ambiguously identified player names are rejected.
+Each addition needs an exact provider player ID, DOB, position, dated roster
+source and real match appearances. Higher-minute players come first; low-minute
+players remain labelled as limited-evidence rather than receiving fabricated
+statistics or full-confidence indices. Market values and contract expiries from
+the archive do not prove a current valuation or valid 2026/27 contract.
 """
 from __future__ import annotations
 from collections import defaultdict
 from datetime import date,datetime,timezone
 from pathlib import Path
 import argparse,csv,gzip,io,json,re,unicodedata,urllib.request
+from zipfile import ZipFile
 
 ROOT=Path(__file__).resolve().parents[1]
 CACHE=ROOT/'data'/'catalog_expansion.json'
 BASE='https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data/'
 SOURCE='dcaribou/transfermarkt-datasets; last observed appearances 2026-06-28'
-MAX_NEW=6000
-MIN_MINUTES=450
+CACHE_VERSION=2
+TARGET_TOTAL=7200
+MAX_NEW=12500
+MIN_MINUTES=1
+MIN_SOLID_MINUTES=450
 # Transfermarkt competition IDs. A league label is assigned ONLY from a
 # stable, known ID; unsupported IDs are skipped rather than guessed.
 LEAGUES={
@@ -128,9 +132,13 @@ def aggregate(profiles, rows):
                         ('red_cards','red_cards')):
             stats[dst]+=numeric(a.get(src))
     return totals
-def select(profiles, totals, limit=MAX_NEW):
+def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None):
     eligible=[]
+    known_tm=set(str(x) for x in (exclude_tm or set()))
+    known_names=set(exclude_names or set())
     for tm,p in profiles.items():
+        if tm in known_tm or norm(p['name']) in known_names:
+            continue
         stats=totals.get(tm,{})
         # For calendar championships use the last actual full campaign 2025.
         # A 2026-only partial set cannot certify a complete 2026 season.
@@ -138,36 +146,79 @@ def select(profiles, totals, limit=MAX_NEW):
         minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
                     if season==reference and comp in LEAGUES)
         if minutes<MIN_MINUTES:continue
+        # Prefer actually observed substantial minutes over a very short
+        # substitute appearance. Youth becomes a tiebreaker WITHIN evidence tier.
+        tier=0 if minutes>=450 else 1 if minutes>=180 else 2 if minutes>=90 else 3
         age=2026-int(p['birth'][:4])
-        eligible.append((int(age>23),int(age>27),-minutes,tm,p,stats))
-    eligible.sort(key=lambda r:r[:4])
-    chosen=eligible[:limit]
+        p['archiveLastSeasonMinutes']=minutes
+        p['archiveStatEvidence']='regular' if tier==0 else (
+            'limited' if tier<=2 else 'very_limited')
+        eligible.append((tier,int(age>23),int(age>27),-minutes,tm,p,stats))
+    eligible.sort(key=lambda r:r[:5])
+    chosen=[]
+    for item in eligible:
+        tm,p=item[4],item[5]
+        key=norm(p['name'])
+        if key in known_names:continue
+        known_names.add(key)
+        chosen.append(item)
+        if len(chosen)>=limit:break
     result_players=[]
     by_season=defaultdict(lambda:defaultdict(list))
-    for _,_,_,tm,p,history in chosen:
+    for _,_,_,_,tm,p,history in chosen:
         result_players.append(p)
         for (season,comp),row in sorted(history.items()):
             by_season[season][p['id']].append(row)
     return result_players,{k:dict(v) for k,v in by_season.items()}
-def build(profiles_rows,appearance_rows,limit=MAX_NEW):
+def build(profiles_rows,appearance_rows,limit=MAX_NEW,exclude_tm=None,exclude_names=None):
     profiles={}
     for row in profiles_rows:
         p=profile(row)
         if p:profiles[p['tm_player_id']]=p
     totals=aggregate(profiles,appearance_rows)
-    players,by_season=select(profiles,totals,limit)
-    return {'version':1,'source':SOURCE,'archived_through':'2026-06-28',
+    players,by_season=select(profiles,totals,limit,exclude_tm,exclude_names)
+    return {'version':CACHE_VERSION,'source':SOURCE,'archived_through':'2026-06-28',
             'players':players,'by_season':by_season,'profiles_eligible':len(profiles),
-            'stat_verified_profiles':len(players)}
+            'stat_verified_profiles':len(players),
+            'evidence':{
+                'last_season_minutes_450':sum(p['archiveLastSeasonMinutes']>=450 for p in players),
+                'last_season_minutes_180':sum(p['archiveLastSeasonMinutes']>=180 for p in players),
+                'last_season_minutes_90':sum(p['archiveLastSeasonMinutes']>=90 for p in players),
+                'last_season_minutes_under_90':sum(p['archiveLastSeasonMinutes']<90 for p in players)
+            }}
+def seed_identifiers():
+    # Do not spend slots on profiles already in the site's seed or enriched
+    # identities. Keep their existing IDs, contracts and indexed statistics.
+    with ZipFile(ROOT/'TransferLab_RESTORED_2026-11-16.zip') as archive:
+        html=archive.read('index.html').decode('utf-8')
+    m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
+    if not m:raise RuntimeError('Cannot load original TransferLab catalogue')
+    base=json.loads(m.group(1)).get('players') or []
+    names={norm(p.get('name')) for p in base if p.get('name')}
+    tmids={str(p['tm_player_id']) for p in base if p.get('tm_player_id')}
+    try:
+        enrichment=json.loads((ROOT/'data'/'profile_enrichment.json').read_text(encoding='utf-8'))
+        tmids.update(str(v['tm_player_id']) for v in
+            (enrichment.get('profiles') or {}).values() if v.get('tm_player_id'))
+    except (OSError,ValueError):pass
+    return len(base),names,tmids
+
 def download():
     if CACHE.exists():
         cached=json.loads(CACHE.read_text(encoding='utf-8'))
-        if cached.get('version')==1 and cached.get('players'):
+        if cached.get('version')==CACHE_VERSION and cached.get('players'):
             print('Reusing archival expansion cache:',len(cached['players']))
             return cached
-    data=build(stream('players.csv.gz'),stream('appearances.csv.gz'))
-    if len(data['players'])<600:
-        raise RuntimeError('Refusing tiny, malformed historical expansion; minimum 600 players')
+    base_size,names,tmids=seed_identifiers()
+    data=build(stream('players.csv.gz'),stream('appearances.csv.gz'),
+               limit=max(0,TARGET_TOTAL-base_size),
+               exclude_tm=tmids,exclude_names=names)
+    data['seed_count']=base_size
+    data['target_total']=TARGET_TOTAL
+    if base_size+len(data['players'])<7000:
+        raise RuntimeError('Verified source-backed candidates below 7000 target: '+
+            str(base_size+len(data['players']))+
+            '; do not publish a fabricated 7k catalogue')
     data['built_at_utc']=datetime.now(timezone.utc).isoformat(timespec='seconds')
     CACHE.parent.mkdir(parents=True,exist_ok=True)
     tmp=CACHE.with_suffix('.tmp')
@@ -205,6 +256,9 @@ def inject(page):
     root['players'].extend(fresh)
     root['catalogueExpansion']={
         'added':len(fresh),'source':SOURCE,'archive_as_of':'2026-07',
+        'archive_minimum_real_minutes':MIN_MINUTES,
+        'archive_evidence':cache.get('evidence') or {},
+        'target_total':cache.get('target_total'),
         'source_profiles':len(cache.get('players') or []),
         'note':'Historical roster, never independently verified as November 2026 current club'
     }
@@ -214,6 +268,8 @@ def inject(page):
     page.write_text(content[:match.start(2)]+payload+content[match.end(2):],encoding='utf-8')
     print('Expanded visible TransferLab roster by',len(fresh),
           'to',len(root['players']),'profiles')
+    if len(root['players'])<7000:
+        raise RuntimeError('Expanded published catalogue below requested 7000 profiles')
     return len(fresh)
 def selftest():
     def test_profile(i,age=2003,league='NL1',club='Ajax'):
@@ -241,6 +297,16 @@ def selftest():
     assert season['stats']['goals']==2
     assert season['stats']['matches']==6
     assert len({p['id'] for p in data['players']})==len(data['players'])
+    assert data['players'][0]['archiveLastSeasonMinutes']==540
+    assert data['players'][0]['archiveStatEvidence']=='regular'
+    data_small=build([one,test_profile(2)],[{'player_id':'2','game_id':'201',
+        'date':'2025-11-08','competition_id':'NL1','minutes_played':'65'}])
+    assert len(data_small['players'])==1
+    assert data_small['players'][0]['archiveStatEvidence']=='very_limited'
+    assert data_small['players'][0]['archiveLastSeasonMinutes']==65
+    data_excluded=build([one,test_profile(2)],appearances,exclude_names={norm(one['name'])})
+    assert not data_excluded['players']
+    assert data['version']==CACHE_VERSION
     print('Historical expansion exact-ID joins, minutes and dedup PASS')
 def main():
     parser=argparse.ArgumentParser()
