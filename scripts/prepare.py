@@ -42,7 +42,7 @@ s=change(s,'</body>','<script src="assets/site.js" defer></script>\n</body>')
 s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog" class="hidden"><div class="quality-note">Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.</div>')
 s=change(s,'<span class="pill" id="visibleCount">0</span>','<select id="sortBy" class="filter" aria-label="Сортировка"><option value="name">По алфавиту</option><option value="position">По позиции</option><option value="minutes">По минутам</option></select><span class="pill" id="visibleCount">0</span>')
 # Describe the actual number of leagues instead of the older five-league scope.
-s=change(s,"directoryDesc:'Пять лиг: поиск, позиции, контракты и статистика по сезонам.'","directoryDesc:'11 лиг: поиск, позиции, контракты и статистика по доступным сезонам.'")
+s=change(s,"directoryDesc:'Пять лиг: поиск, позиции, контракты и статистика по сезонам.'","directoryDesc:'Чемпионаты разных стран: проверенные матчи и архивные сезоны.'")
 s=change(s,"sideFoot:'Статистика пяти ведущих лиг. Без выдуманных оценок.'","sideFoot:'Архивные данные 11 лиг. Недостающие показатели не придуманы.'")
 s=change(s,"sideFoot:'Statistics from five major leagues. No invented valuations.'","sideFoot:'Historical data from 11 leagues. Missing data is not fabricated.'")
 s=change(s,"$('dataState').textContent=players.length+' · '+(masterReady?'Top 5':'offline');","$('dataState').textContent=players.length+' профилей · архив';")
