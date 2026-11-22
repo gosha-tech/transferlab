@@ -506,7 +506,8 @@ def main():
         for comp,minutes in [('uefa-super-cup','74'),('fr-super-cup','26')]:
             assert picker.locator('option[value="'+comp+'"]').count()==1
             picker.select_option(comp)
-            assert page.locator('#statStarts').inner_text().strip()=='1'
+            assert page.locator('#statStarts').inner_text().strip() in ('1','≥1'), (
+                'Verified cup appearance must be present, completeness shown honestly',comp)
             assert page.locator('#statMinutes').inner_text().strip()==minutes
             assert page.locator('#statGoals').inner_text().strip()=='0'
             assert page.locator('#statAssists').inner_text().strip()=='0'
