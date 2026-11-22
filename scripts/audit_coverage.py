@@ -10,8 +10,8 @@ from datetime import datetime,timezone
 import json,pathlib,re,sys
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-SEASONS=('2024/25','2025/26','2026/27')
-CALENDAR_SEASONS=('2024','2025','2026')
+SEASONS=('2023/24','2024/25','2025/26','2026/27')
+CALENDAR_SEASONS=('2023','2024','2025','2026')
 
 def load_site(path):
     txt=path.read_text(encoding='utf-8')
@@ -112,7 +112,7 @@ def summarize(root):
     # positive-minute season row with a dated, named provider.
     def recorded_archival_matches(p):
         pid=str(p['id'])
-        years=('2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2024/25','2025/26')
+        years=('2023','2024','2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2023/24','2024/25','2025/26')
         return any(isinstance(r,dict) and
             r.get('source')=='historical_appearances' and
             (r.get('stats') or {}).get('matches',0)>0 and
