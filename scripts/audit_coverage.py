@@ -129,7 +129,10 @@ def summarize(root):
     # positive-minute season row with a dated, named provider.
     def recorded_archival_matches(p):
         pid=str(p['id'])
-        years=('2023','2024','2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2023/24','2024/25','2025/26')
+        # Player identity is stable across transfers between calendar-year and
+        # European-season leagues. Their legitimate archived matches may use
+        # either date convention, irrespective of the CURRENT club's league.
+        years=('2023','2024','2025','2026','2023/24','2024/25','2025/26')
         return any(isinstance(r,dict) and
             r.get('source')=='historical_appearances' and
             (r.get('stats') or {}).get('matches',0)>0 and
