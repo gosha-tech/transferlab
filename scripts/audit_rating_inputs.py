@@ -15,7 +15,7 @@ for player in ('Nuno Mendes','Achraf Hakimi'):
             {k:x.get(k) for k in ('minutes','matches','goals','assists','xg','xa','recoveries',
               'tackles','interceptions','source','advancedPartial')},ensure_ascii=False))
 script=html[m.end():]
-for phrase in ('function calcDraftIndex(', 'function projectedIndex(', 'function monetaryModel(',
+for phrase in ('function rollingEvidence(', 'function benchmarkScore(', 'function calcDraftIndex(', 'function projectedIndex(', 'function monetaryModel(',
                'const MONETARY_MODEL=', 'function buildFormula('):
     i=script.find(phrase)
     if i>=0:
