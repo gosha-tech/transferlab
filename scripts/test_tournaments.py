@@ -33,6 +33,7 @@ def main():
         original=json.loads(seed.group(1))
         foden_id=next(str(p['id']) for p in original['players'] if p['name']=='Phil Foden' and p['team']=='Manchester City')
         mbappe_id=next(str(p['id']) for p in original['players'] if 'Mbapp' in p['name'] and p['team']=='Real Madrid')
+        hakimi_id=next(str(p['id']) for p in original['players'] if p['name']=='Achraf Hakimi' and p['team']=='Paris Saint-Germain')
         (root/'data').mkdir(exist_ok=True)
         (root/'data'/'free_sources.json').write_text(json.dumps({
             'last_success_at':'2026-11-17T00:00:00Z','profiles_verified':1,
@@ -95,6 +96,20 @@ def main():
                 'players':[{'player_id':foden_id,'pitch_id':'p_xx0aB1',
                             'team':'Manchester City','stats':{'minutes':80,'goals':1,'xg':0.38}}]
             }}}),encoding='utf-8')
+        # A trusted external season total can supply the single-match 2026
+        # UEFA/French super cups, even if PitchAPI does not index the cups.
+        (root/'data'/'verified_competition_totals.json').write_text(json.dumps({
+          'as_of':'2026-11-22','source_primary':'https://www.besoccer.com/player/achraf-hakimi-mouh',
+          'players':[{'name':'Achraf Hakimi','club':'Paris Saint-Germain',
+          'season':'2026/27','competition_totals':[
+            {'id':61,'name':'Ligue 1','stats':{'matches':9,'minutes':659,'goals':3,'assists':3}},
+            {'id':2,'name':'UEFA Champions League',
+             'stats':{'matches':4,'minutes':318,'goals':0,'assists':1}},
+            {'id':'uefa-super-cup','name':'UEFA Super Cup',
+             'stats':{'matches':1,'minutes':90,'goals':0,'assists':0}},
+            {'id':'fr-super-cup','name':'Trophée des Champions',
+             'stats':{'matches':1,'minutes':90,'goals':0,'assists':0}}
+          ]}]}),encoding='utf-8')
         old=tournaments_build.DATA_PATH
         old_root=tournaments_build.ROOT
         try:
@@ -116,6 +131,16 @@ def main():
         assert next(x for x in loaded if x['id']==45)['stats']['minutes']==80
         assert next(x for x in loaded if x['id']==2)['stats']['goals']==2
         assert not any(str(x['id'])=='78' for x in loaded), 'Foden must not show Bundesliga'
+        hakimi=d['liveTournamentStats']['2026/27'][hakimi_id]
+        assert {str(x['id']) for x in hakimi}=={'61','2','uefa-super-cup','fr-super-cup'},hakimi
+        assert sum(x['stats']['matches'] for x in hakimi)==15,hakimi
+        assert sum(x['stats']['minutes'] for x in hakimi)==1157,hakimi
+        assert {str(x['id']) for x in hakimi if x['stats']['matches']==1}=={'uefa-super-cup','fr-super-cup'}
+        assert {str(x['id']) for x in d['currentCompetitionByPlayer'][hakimi_id]}>=
+          {'61','2','uefa-super-cup','fr-super-cup'}
+        assert "$('statStarts').textContent=nf(s?.matches)" in result
+        assert "'uefa-super-cup':'Суперкубок УЕФА'" in result
+        assert "'fr-super-cup':'Суперкубок Франции'" in result
         madrid=d['liveTournamentStats']['2026/27'][mbappe_id]
         assert {x['id'] for x in madrid}=={2,140},madrid
         assert next(x for x in madrid if x['id']==2)['stats']['goals']==1
