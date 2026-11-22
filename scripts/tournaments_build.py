@@ -250,6 +250,7 @@ def embed(html):
             continue
         totals={}
         valid=set()
+        metric_coverage={}
         for mid,stats,day in data:
             if mid in valid:continue
             valid.add(mid)
@@ -257,6 +258,12 @@ def embed(html):
                 if isinstance(v,(float,int)) and not isinstance(v,bool):
                     totals[k]=round(totals.get(k,0)+v,3)
         if not totals:continue
+        # Track exact event coverage by loaded match; the feed is not complete.
+        for metric in ('recoveries','interceptions','tackles','clearances',
+                       'blocks','xg','xa','key_passes'):
+            metric_coverage[metric]=len({mid for mid,stats,day in data
+                if isinstance(stats.get(metric),(int,float)) and
+                   not isinstance(stats.get(metric),bool)})
         # A start flag comes only from a confirmed starting XI. If even one
         # played match lacks that XI, known starts are a LOWER BOUND, not a
         # complete season total. Never display it as a definitive number.
@@ -294,10 +301,12 @@ def embed(html):
             overlapping['as_of']=pitch.get('updated_at')
             overlapping['base_as_of']=pl_rows.get(pid,{}).get('as_of')
             overlapping['last_match_date']=last_game
+            overlapping['advanced_metric_coverage']=metric_coverage
             continue
         cur.append({'id':int(ident) if ident.isdigit() else ident,'name':name,
                     'source':'pitchapi_partial','is_complete':False,'stats':totals,
-                    'matches_loaded':len(valid),'as_of':pitch.get('updated_at'),
+                    'matches_loaded':len(valid),'advanced_metric_coverage':metric_coverage,
+                    'as_of':pitch.get('updated_at'),
                     'team_verified':True,'last_match_date':last_game,
                     'source_url':'https://pitchapi.dev/'})
     # Archive up to June 2026: authentic minutes/goals/assists, separately
@@ -534,7 +543,7 @@ def embed(html):
           ' · некоммерческое использование · источник обновляется еженедельно.</div>')
     html=html.replace('<details class="free-scoreboard"',note+'<details class="free-scoreboard"',1)
     anchor='<div class="stat-grid">'
-    toolbar='<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div><div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
+    toolbar='<div class="current-season-banner" id="currentSeasonBanner" aria-live="polite"></div><div class="competition-toolbar"><label for="competitionSelect">Турнир</label><select id="competitionSelect" class="chart-switch" aria-label="Выбор турнира"><option value="all">Все загруженные турниры</option></select><span id="competitionStatus" class="competition-status">Статистика турниров пока не загружена</span><span id="advancedCoverageNote" class="competition-status"></span></div><div class="verified-profile-meta" id="verifiedProfileMeta" aria-live="polite"></div>'
     html=patch(html,anchor,toolbar+anchor)
     # Tennis-style rolling window: every confirmed match contributes 100%
     # until it exits the 36-month period, not a fractional age multiplier.
@@ -835,7 +844,7 @@ def embed(html):
     # finished network request should not randomly decide which face/pose is
     # displayed. The next candidate is tried only after the first failed.
     html=patch(html,"const batch=options.slice(0,Math.min(options.length,4));",
-               "const batch=options.slice(0,Math.min(options.length,2));")
+               "const batch=options.slice(0,1);")
 
     controls=r"""  function localizeComp(id,name,ru){
     const code=String(id);
@@ -923,6 +932,25 @@ def embed(html):
     if(select.value!==state.competition){state.competition='all';select.value='all';return renderProfile();}
     select.onchange=()=>{state.competition=select.value;renderProfile()};
     const items=state.competition==='all'?rows:rows.filter(x=>String(x.id)===state.competition);
+    const advanced=$('advancedCoverageNote');
+    if(advanced){
+      const available=items.filter(x=>x.stats?.recoveries!=null);
+      if(!available.length){advanced.textContent='';}
+      else{
+        const notes=available.map(x=>{
+          const covered=x.advanced_metric_coverage?.recoveries ??
+            x.advanced_matches_loaded ?? x.matches_loaded;
+          const recorded=x.stats?.matches;
+          const name=localizeComp(x.id,x.name,ru);
+          if(Number.isFinite(Number(covered)) && covered!=null && Number(covered)>0)
+            return name+': '+covered+(Number.isFinite(Number(recorded))&&recorded!=null?
+              '/'+recorded:'')+' '+(ru?'матч.':'matches');
+          return name+': '+(ru?'покрытие не подтверждено':'coverage unknown');
+        });
+        advanced.textContent=(ru?'Возвраты — выборка источника: ':'Recoveries — provider sample: ')+
+          notes.join('; ')+(ru?' · не гарантирован полный сезон':' · not necessarily full-season coverage');
+      }
+    }
     const missingCurrent=state.competition!=='all'&&!items.length&&current &&
       choices.some(x=>String(x.id)===state.competition);
     const title=state.competition==='all'?(ru?'Все турниры':'All competitions'):(allNames.get(state.competition)||state.competition);
