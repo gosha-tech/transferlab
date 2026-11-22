@@ -17,7 +17,7 @@ def inject_role_calibration(html):
     // Never discount sporting ability because of market value, nationality,
     // player name or membership in Hidden Gems.
     const id=String(p.id);
-    const calendar=['MLS','Brasileirão'].includes(p.league);
+    const calendar=['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league);
     const currentSeason=calendar?'2026':'2026/27';
     const previousSeason=calendar?'2025':'2025/26';
     const olderSeason=calendar?'2024':'2024/25';
