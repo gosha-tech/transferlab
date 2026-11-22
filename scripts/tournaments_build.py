@@ -900,11 +900,16 @@ def embed(html):
       const startsMin=stat.starts_min==null?0:Number(stat.starts_min);
       const fixtureMin=stat.matches_min==null?0:Number(stat.matches_min);
       const minutes=Number(stat.minutes||0);
+      // Each football appearance can contain at most about 130 observed
+      // minutes (including extra time and stoppage). If one source reports
+      // 1,040 minutes and four games, it is mathematically incomplete.
+      // Show an independently defensible MINIMUM rather than four games.
+      const minutesFloor=Number.isFinite(minutes)&&minutes>0?
+        Math.ceil(minutes/130):0;
       const lower=Math.max(0,Number.isFinite(n)?n:0,
         Number.isFinite(starts)?starts:0,
         Number.isFinite(startsMin)?startsMin:0,
-        Number.isFinite(fixtureMin)?fixtureMin:0,
-        minutes>0?1:0);
+        Number.isFinite(fixtureMin)?fixtureMin:0,minutesFloor);
       const exact=n!=null&&Number.isFinite(n)&&n>=lower &&
         (row.matches_complete===true||row.is_complete!==false);
       return {lower,exact,source:row.source||'unknown'};
