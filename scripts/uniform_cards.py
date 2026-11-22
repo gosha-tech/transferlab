@@ -16,7 +16,7 @@ def inject_uniform_cards(html):
     }
   },{rootMargin:'140px'}):null;
   function cardCurrentSeason(p){
-    return ['MLS','Brasileirão'].includes(p.league)?'2026':'2026/27';
+    return ['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league)?'2026':'2026/27';
   }
   function cardStatEvidence(p){
     const year=cardCurrentSeason(p),id=String(p.id);
@@ -82,7 +82,7 @@ def inject_uniform_cards(html):
   function cardMarkup(p){
     const ru=state.language==='ru';
     const year=p.origin==='transfermarkt_archived_2026'
-      ? (['MLS','Brasileirão'].includes(p.league)?'2025':'2025/26') : cardCurrentSeason(p);
+      ? (['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league)?'2025':'2025/26') : cardCurrentSeason(p);
     const stats=cardStatEvidence(p);
     const c=cardContractEvidence(p);
     const idx=projectedIndex(p);
