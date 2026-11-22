@@ -250,7 +250,13 @@ jobs:
               if ! git rebase origin/main; then
                 for p in $(git diff --name-only --diff-filter=U); do
                   case "$p" in
-                    data/valuation_forecast_snapshots.json|data/historical_stats.json|data/historical_starts.json|data/market_history.json|data/profile_enrichment.json|data/pl_current.json|data/free_sources.json|data/pitchapi.json)
+                    data/beta_health_history.json)
+                      # A concurrent successful build already recorded this
+                      # calendar day on origin/main. Keep its QA audit history.
+                      git checkout --ours -- "$p"
+                      git add "$p"
+                      ;;
+                    data/valuation_forecast_snapshots.json|data/historical_stats.json|data/historical_starts.json|data/market_history.json|data/profile_enrichment.json|data/pl_current.json|data/free_sources.json|data/pitchapi.json|data/catalog_expansion.json|data/commons_photos.json|data/contract_enrichment.json)
                       git checkout --theirs -- "$p"
                       git add "$p"
                       ;;
