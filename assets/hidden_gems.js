@@ -45,37 +45,69 @@
     data = bridge.list().map(p => {
       const age = ageAt(p.birth, stamp);
       const r = p.rating;
-      const reliable = !!p.positionEvidence && !!r && !r.proxy && r.coverage >= 60 &&
-        r.weightedMinutes >= 450 && Number.isFinite(r.score) &&
-        p.minutes >= 450 && ['Goalkeeper','Defender','Midfielder','Forward'].includes(p.position);
-      const fresh = p.market && asDate(p.market.as_of) &&
-        (asDate(stamp) - asDate(p.market.as_of)) / 86400000 >= 0 &&
-        (asDate(stamp) - asDate(p.market.as_of)) / 86400000 <= marketMaxAgeDays;
-      return {...p, age, reliable, market: fresh ? p.market : null,
-        marketStale: !fresh && !!p.market, score: null, peers: 0, gap: null,
-        performancePercentile: null, pricePercentile: null, quality: 'C'};
+      const eligible = !!p.positionEvidence && p.minutes !== null &&
+        Number.isFinite(p.minutes) && p.minutes >= 450 &&
+        ['Goalkeeper','Defender','Midfielder','Forward'].includes(p.position);
+      // A limited archive supports exploration, not a current verified rating.
+      const rated = !!r && !r.proxy && Number.isFinite(r.score) &&
+        r.weightedMinutes >= 450 && r.coverage >= 30;
+      const reliable = eligible && rated && p.currentEvidence &&
+        r.coverage >= 60;
+      const marketDate = p.market && asDate(p.market.as_of);
+      const ageDays = marketDate ? (asDate(stamp) - marketDate) / 86400000 : NaN;
+      const fresh = !!marketDate && ageDays >= 0 && ageDays <= marketMaxAgeDays;
+      return {...p, age, eligible, rated, reliable, market:fresh?p.market:null,
+        marketStale:!fresh && !!p.market,
+        score:null, archiveScore:null, peers:0, archivePeers:0,
+        gap:null, archiveGap:null, performancePercentile:null,
+        pricePercentile:null, archivePerformancePercentile:null,
+        archivePricePercentile:null, quality:'C'};
     }).filter(p => p.age !== null && p.age >= 0 && p.age <= 35);
+
+    // Current market comparisons use only contemporaneously verified data.
     const known = data.filter(p => p.reliable && p.market && p.market.value_eur > 0);
     for (const candidate of known) {
       const peers = known.filter(p => p.rating.role === candidate.rating.role &&
-        Math.abs(p.age - candidate.age) <= 3);
+        Math.abs(p.age-candidate.age) <= 3);
       candidate.peers = peers.length;
       if (peers.length < 25) continue;
-      const performance = percentile(peers.map(p => p.rating.score), candidate.rating.score);
-      const price = percentile(peers.map(p => p.market.value_eur), candidate.market.value_eur);
+      const performance = percentile(peers.map(p=>p.rating.score),candidate.rating.score);
+      const price = percentile(peers.map(p=>p.market.value_eur),candidate.market.value_eur);
       candidate.performancePercentile = performance;
       candidate.pricePercentile = price;
-      candidate.gap = performance - price;
-      candidate.score = Math.round(100 * Math.max(0,Math.min(1,0.5 + 0.5*candidate.gap)));
+      candidate.gap = performance-price;
+      candidate.score = Math.round(100*Math.max(0,Math.min(1,.5+.5*candidate.gap)));
       candidate.quality = candidate.rating.coverage >= 80 &&
-        !candidate.statsPartial && candidate.rating.exact ? 'A' : 'B';
+        !candidate.statsPartial && candidate.rating.exact ? 'A':'B';
     }
-    const leagues = [...new Set(data.map(p => p.league).filter(Boolean))]
-      .sort((a,b) => a.localeCompare(b,'ru'));
-    const host = byId('gemsLeague');
+
+    // Separate retrospective comparison. It is NEVER called a current bargain.
+    // Require the same 2025/26 (or 2025) season and comparable *archive* prices.
+    const archiveKnown = data.filter(p => p.eligible && p.rated && !p.currentEvidence &&
+      p.archive && Number.isFinite(p.archive.eur) && p.archive.eur > 0 &&
+      ['2025/26','2025'].includes(p.statPeriod));
+    const byRole = new Map();
+    for (const p of archiveKnown) {
+      if (!byRole.has(p.rating.role)) byRole.set(p.rating.role,[]);
+      byRole.get(p.rating.role).push(p);
+    }
+    for (const candidate of archiveKnown) {
+      const peers=(byRole.get(candidate.rating.role)||[]).filter(p=>
+        Math.abs(p.age-candidate.age)<=3 && p.statPeriod===candidate.statPeriod);
+      candidate.archivePeers=peers.length;
+      if (peers.length<25) continue;
+      const sport=percentile(peers.map(p=>p.rating.score),candidate.rating.score);
+      const price=percentile(peers.map(p=>p.archive.eur),candidate.archive.eur);
+      candidate.archivePerformancePercentile=sport;
+      candidate.archivePricePercentile=price;
+      candidate.archiveGap=sport-price;
+      candidate.archiveScore=Math.round(100*Math.max(0,Math.min(1,.5+.5*candidate.archiveGap)));
+    }
+    const leagues=[...new Set(data.map(p=>p.league).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+    const host=byId('gemsLeague');
     for (const league of leagues) {
-      const opt = document.createElement('option');
-      opt.value = league; opt.textContent = league; host.append(opt);
+      const option=document.createElement('option');
+      option.value=league; option.textContent=league; host.append(option);
     }
   }
   function filtered() {
@@ -84,58 +116,84 @@
     const minMinutes=Number(byId('gemsMinutes').value);
     const position=byId('gemsPosition').value;
     const league=byId('gemsLeague').value;
-    const valid=data.filter(p => p.age <= maxAge && p.reliable && p.minutes >= minMinutes &&
-      (position==='all'||p.position===position) && (league==='all'||p.league===league));
-    const confirmed=valid.filter(p => p.score !== null && p.market.value_eur<=maxPrice);
-    const preliminary=valid.filter(p => {
-      if (p.score !== null) return false;
-      if (p.market) return p.market.value_eur <= maxPrice;
-      // Historical values do not prove today's price, but can narrow previews.
-      if (p.archive && Number.isFinite(p.archive.eur) && p.archive.eur > maxPrice) return false;
+    const valid=data.filter(p => p.age <= maxAge && p.eligible &&
+      p.minutes >= minMinutes && (position==='all'||p.position===position) &&
+      (league==='all'||p.league===league));
+    const confirmed=valid.filter(p=>p.score!==null && p.market?.value_eur<=maxPrice);
+    const preliminary=valid.filter(p=>{
+      if (p.score!==null && p.market?.value_eur<=maxPrice) return false;
+      // A dated archive valuation is a FILTER ON THE ARCHIVE, not today's price.
+      // Players with unknown price stay visible as clearly labelled candidates.
+      if (p.archive && Number.isFinite(p.archive.eur) && p.archive.eur>maxPrice) return false;
+      if (p.market && p.market.value_eur>maxPrice) return false;
       return true;
     });
-    const sortBy=byId('gemsSort').value;
-    const sortFn=(a,b) => {
-      if (sortBy==='index') return b.rating.score-a.rating.score || a.name.localeCompare(b.name);
-      if (sortBy==='age') return a.age-b.age || b.rating.score-a.rating.score;
-      if (sortBy==='price') return (a.market?.value_eur??a.archive?.eur??Infinity)-
-          (b.market?.value_eur??b.archive?.eur??Infinity) || b.rating.score-a.rating.score;
-      if (sortBy==='minutes') return b.minutes-a.minutes || b.rating.score-a.rating.score;
-      return (b.score??-1)-(a.score??-1) || b.rating.score-a.rating.score ||
-        a.name.localeCompare(b.name);
-    };
+    const sort=byId('gemsSort').value;
+    function sortFn(a,b) {
+      const aindex=a.rated?a.rating.score:-1, bindex=b.rated?b.rating.score:-1;
+      const avalue=a.market?.value_eur??a.archive?.eur??Infinity;
+      const bvalue=b.market?.value_eur??b.archive?.eur??Infinity;
+      if (sort==='index') return bindex-aindex || a.name.localeCompare(b.name,'ru');
+      if (sort==='age') return a.age-b.age || bindex-aindex;
+      if (sort==='price') return avalue-bvalue || bindex-aindex;
+      if (sort==='minutes') return b.minutes-a.minutes || bindex-aindex;
+      // First compare current validated rank, then separately the historical score.
+      return (b.score??b.archiveScore??-1)-(a.score??a.archiveScore??-1) ||
+        bindex-aindex || a.name.localeCompare(b.name,'ru');
+    }
     confirmed.sort(sortFn); preliminary.sort(sortFn);
     return {confirmed,preliminary};
   }
   function renderCard(p) {
-    const price=p.market ? money(p.market.value_eur)+' <small>· '+esc(p.market.as_of)+' · '+esc(p.market.source)+'</small>' :
+    const price=p.market ?
+      money(p.market.value_eur)+' <small>от '+esc(p.market.as_of)+' · '+esc(p.market.source)+'</small>' :
       p.archive && Number.isFinite(p.archive.eur) ?
-        money(p.archive.eur) + ' <small>архив · '+esc(p.archive.as_of)+' · Transfermarkt</small>' :
-        'Нет проверенной стоимости';
-    const rating=p.score!==null ?
+      money(p.archive.eur)+' <small>архив · '+esc(p.archive.as_of)+' · не текущая стоимость</small>' :
+      'Актуальная стоимость неизвестна';
+    const ratio=p.score!==null ?
       '<strong class="gems-score">'+p.score+'/100</strong>' :
-      '<span class="gems-unrated">Недостаточно данных для оценки цены</span>';
+      '<span class="gems-unrated">Нет проверенной текущей оценки</span>';
+    const archiveRatio=p.archiveScore!==null ?
+      '<span class="gems-archival-score">Архивный Value Gap: '+p.archiveScore+'/100 · '+
+        p.archivePeers+' аналогов</span>' : '';
+    const explanation=p.score!==null ?
+      'По эффективности '+Math.round(p.performancePercentile*100)+'-й процентиль, по цене '+
+      Math.round(p.pricePercentile*100)+'-й · '+p.peers+' аналогов' :
+      p.archiveScore!==null ?
+      'Архивная выборка: эффективность '+Math.round(p.archivePerformancePercentile*100)+
+        '-й процентиль, архивная цена '+Math.round(p.archivePricePercentile*100)+
+        '-й · не прогноз текущей стоимости' :
+      p.rated ? 'Нет актуальных оценок или 25 сопоставимых игроков; число недооценённости не рассчитывается' :
+      'Спортивный индекс пока не подтверждён по полноте показателей';
     const tag=p.score!==null && p.performancePercentile>=.65 && p.gap>=.20 ?
       '<span class="gems-find">Выраженная недооценённость</span>' : '';
-    const explanation=p.score!==null ?
-      'Эффективность: '+Math.round(p.performancePercentile*100)+'-й процентиль · '+
-      'стоимость: '+Math.round(p.pricePercentile*100)+'-й · аналогов: '+p.peers :
-      (p.market ? 'Недостаточно сопоставимых игроков с актуальной стоимостью' :
-      'Актуальная стоимость не подтверждена; рейтинг недооценённости не рассчитывается');
-    const meta=esc(p.club)+' · '+esc(p.league);
+    const contract=p.contractCurrent ?
+      'Контракт до '+esc(String(p.contractCurrent).slice(0,4))+' · опубликованные данные' :
+      p.contractArchived ?
+      'Контракт до '+esc(String(p.contractArchived).slice(0,4))+
+      ' · архив '+esc(p.contractArchivedAt||'2026-07') :
+      'Контракт: нет подтверждения';
+    const index=p.rated?(p.rating.exact?'':'≈')+p.rating.score+'/100':'—';
+    const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
+      'Архивный сезон '+p.statPeriod;
+    const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
+    const quality=p.score!==null?'Данные '+p.quality:
+      p.rated?'Спорт: частичное покрытие':'Спорт: индекс недоступен';
     return '<article class="gems-card"><button class="gems-card-open" type="button" data-gem-open="'+esc(p.id)+'">'+
       '<span class="gems-avatar"><span class="gems-avatar-fallback" data-gem-fallback="'+esc(p.id)+'">'+
       esc(p.name.split(/\s+/).slice(0,2).map(s=>s[0]||'').join(''))+'</span>'+
       '<img data-gem-photo="'+esc(p.id)+'" alt="" loading="lazy" decoding="async" hidden></span>'+
       '<span class="gems-card-main"><span class="gems-player">'+esc(p.name)+'</span>'+
-      '<span class="gems-meta">'+meta+'</span><span class="gems-meta">'+p.age+' лет · '+
-      esc(p.precisePosition||p.position)+' · '+fmt(p.minutes)+' минут · '+fmt(p.matches??'—')+' матчей</span>'+
-      '<span class="gems-meta">Статистика: '+esc(p.statsAsOf||'дата не подтверждена')+' · '+esc(p.statsSource||'источник не указан')+'</span>'+ 
+      '<span class="gems-meta">'+club+'</span><span class="gems-meta">'+p.age+' лет · '+
+      esc(p.precisePosition||p.position)+' · '+fmt(p.minutes)+' минут · '+fmt(p.matches)+' матчей</span>'+
+      '<span class="gems-meta">'+esc(period)+' · '+esc(p.statsSource||'источник не указан')+
+      ' · срез '+esc(p.statsAsOf||'не указан')+'</span>'+
       '<span class="gems-price">'+price+'</span>'+
+      '<span class="gems-contract">'+contract+'</span>'+
       '<span class="gems-explain">'+esc(explanation)+'</span>'+tag+'</span>'+
       '<span class="gems-card-stats"><span class="gems-stat-label">TransferLab Index</span>'+
-      '<strong>'+p.rating.score+'/100</strong><span class="gems-stat-label">Hidden Gem Score</span>'+
-      rating+'<span class="gems-quality">Данные: '+p.quality+'</span></span>'+
+      '<strong>'+index+'</strong><span class="gems-stat-label">Hidden Gem Score</span>'+
+      ratio+archiveRatio+'<span class="gems-quality">'+esc(quality)+'</span></span>'+
       '</button></article>';
   }
   function connectPhotos(host) {
