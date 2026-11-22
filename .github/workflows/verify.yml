@@ -34,6 +34,8 @@ jobs:
           python scripts/sync_lineups.py --self-test
           python scripts/sync_contracts.py --self-test
           python scripts/verified_current_contracts.py
+          python scripts/transfer_history.py
+          python scripts/transfer_ui.py
           python scripts/european_exposure.py
           python scripts/roster_freshness.py
           python scripts/import_historical_starts.py --self-test
