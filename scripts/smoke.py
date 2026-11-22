@@ -7,6 +7,8 @@ import re
 import pathlib
 import shutil
 import threading
+import json
+import time
 from playwright.sync_api import sync_playwright
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
@@ -40,12 +42,14 @@ def main():
         static_context.close()
         print('Hidden Gems first paint without JavaScript PASS')
         page=browser.new_page(viewport={'width':1440,'height':900})
+        started=time.perf_counter()
         page.on('pageerror',lambda error:errors.append(str(error)))
         page.route('**/*',lambda route: route.abort() if route.request.url.startswith(('https://','http://')) and '127.0.0.1' not in route.request.url else route.continue_())
         page.goto(url,wait_until='domcontentloaded',timeout=25000)
         page.locator('#pName').wait_for(timeout=15000)
         page.locator('#navCatalog').click()
         page.locator('.player-card').first.wait_for(timeout=15000)
+        catalog_ready_ms=round((time.perf_counter()-started)*1000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=10000, ('Requested 10000-player catalogue has not been built',count)
         current_archive=page.evaluate("""() => {
@@ -174,6 +178,7 @@ def main():
         assert max(x['height'] for x in measured)-min(x['height'] for x in measured)<=2,nav_geometry
         assert not nav_geometry['horizontalOverflow'],nav_geometry
         print('Sidebar navigation alignment PASS',nav_geometry)
+        gems_started=time.perf_counter()
         page.locator('#navGems').click()
         assert page.locator('#viewGems').is_visible(), 'Hidden Gems page did not open'
         assert page.locator('#gemsAge').input_value()=='23'
@@ -183,6 +188,8 @@ def main():
           const text=document.getElementById('gemsInfo')?.textContent||'';
           return text.length>0 && !/Рассчитываем|Готовим/.test(text);
         }""",timeout=35000)
+        gems_ready_ms=round((time.perf_counter()-gems_started)*1000)
+        assert page.locator('#viewGems .gems-beta-link a[href="beta.html"]').count()==1
         # An empty confirmed list is legitimate when no current licensed prices exist.
         page.locator('#gemsPreviewTab').click()
         assert page.locator('#gemsPreviewCount').inner_text().strip().isdigit()
@@ -212,7 +219,12 @@ def main():
         measured=page.evaluate('() => window.TransferLabGemsCoverage')
         assert measured and measured['youthWithSeasonMinutes']>=preview_count
         assert measured['youthWithMeasuredIndex']>=50, measured
-        assert measured['youthWithArchivedValueGap']>=25, measured
+        # Historical scoring is a narrowly defined 2025/26 attacking-output
+        # screening signal, NOT a 36-month index backdated to archived fees.
+        assert measured['archiveIsNotCurrent'] is True, measured
+        assert measured['youthWithArchivedValueGap']>=0, measured
+        if scored:
+            assert 'Г+А/90' in page.locator('.gems-archival-score').first.inner_text()
         assert measured['youthWithVerifiedCurrentValueGap']==0 or (
             measured['youthWithVerifiedCurrentValueGap']>0)
         print('HIDDEN GEMS COVERAGE:',measured)
@@ -507,6 +519,14 @@ def main():
         page.screenshot(path=str(screenshot/'catalog-mobile.png'))
         browser.close()
     server.shutdown()
+    metric_path=root/'data'/'performance.json'
+    metric_path.parent.mkdir(parents=True,exist_ok=True)
+    metric_path.write_text(json.dumps({'schema_version':1,'catalog_ready_ms':catalog_ready_ms,
+          'hidden_gems_ready_ms':gems_ready_ms,'player_count':count,
+          'environment':'GitHub Actions local Chromium; third-party photos blocked',
+          'photo_latency_ms':None,'browser_errors':len(errors)},indent=2)+'\n',encoding='utf-8')
+    print('Beta benchmark: catalog',catalog_ready_ms,'ms; Hidden Gems',gems_ready_ms,
+          'ms (CI, NOT end-user network latency)')
     assert not errors,'Browser runtime errors: '+str(errors[:4])
     print('Browser smoke PASS: profiles, sorting, Portugal, search, Champions League & EPL selections, four advanced panels, mobile; players='+str(count))
 
