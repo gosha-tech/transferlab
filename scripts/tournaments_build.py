@@ -8,6 +8,7 @@ import json, pathlib, re, unicodedata, datetime as dt
 from collections import defaultdict
 from player_competitions import add_choices,choices_for
 from sync_pitchapi import team_norm, LEAGUE_IDS as PITCH_COMPETITION_IDS
+from roster_freshness import apply_verified
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -91,6 +92,17 @@ def embed(html):
                       'Defender' if precise in ('RB','LB','CB') else
                       'Forward' if precise in ('RW','LW','ST') else 'Midfielder')
             p['position_source']=live['source']
+    config_path=ROOT/'data'/'verified_roster.json'
+    config=json.loads(config_path.read_text(encoding='utf-8')) if config_path.exists() else {}
+    corrected=apply_verified(original,pitch.get('matches') or {},config)
+    root['rosterCorrections']=corrected
+    root['rosterEvidenceAsOf']=config.get('as_of')
+    current_by_id={str(p['id']):p for p in original}
+    # Do not assign a fresh Premier League snapshot to footballers who have
+    # moved away (Salah to Trabzonspor, etc). Archived EPL years are untouched.
+    pl_rows={pid:row for pid,row in pl_rows.items()
+             if current_by_id.get(str(pid),{}).get('league')=='Premier League'}
+    print('Current club, position and contract corrections:',corrected)
     match_by_name_club=defaultdict(list)
     for player in original:
         match_by_name_club[(norm(player.get('name')),norm(player.get('team')))].append(player)
