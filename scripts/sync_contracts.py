@@ -105,7 +105,7 @@ def process(players,cache,today,lookup,limit):
         pid=str(p['id'])
         archived=ix.get(pid) or {}
         tm=archived.get('tm_player_id')
-        if not tm and not p.get('birth'):continue
+        # A unique exact player name plus verified current club can also establish identity.
         record=profiles.get(pid) or {}
         stamp=record.get('checked_at')
         try:date=dt.date.fromisoformat(str(stamp)[:10])
