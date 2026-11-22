@@ -48,6 +48,26 @@ def inject_uniform_cards(html):
     return {text:ru?'Контракт: не подтверждён':'Contract: unverified',
             status:'missing',hint:ru?'Данные уточняются':'Awaiting source'};
   }
+  let roleRankCache=null;
+  function relativeRoleRank(p){
+    const rated=projectedIndex(p);
+    if(rated.proxy||rated.coverage<60||(rated.rolling?.weightedMinutes||0)<450)
+      return null;
+    if(roleRankCache===null){
+      roleRankCache={};
+      for(const athlete of players){
+        const r=projectedIndex(athlete);
+        if(r.proxy||r.coverage<60||(r.rolling?.weightedMinutes||0)<450)
+          continue;
+        (roleRankCache[r.role]??=[]).push({id:String(athlete.id),score:r.score});
+      }
+      for(const values of Object.values(roleRankCache))
+        values.sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id));
+    }
+    const group=roleRankCache[rated.role]||[];
+    const rank=group.findIndex(x=>x.id===String(p.id))+1;
+    return rank>0?{rank,total:group.length,role:rated.role}:null;
+  }
   function cardMarkup(p){
     const ru=state.language==='ru';
     const year=cardCurrentSeason(p);
