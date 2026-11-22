@@ -62,6 +62,40 @@
           }
         }
       ]
+    },
+    {
+      "name": "Nuno Mendes",
+      "club": "Paris Saint-Germain",
+      "season": "2026/27",
+      "source_primary": "https://fbref.com/en/players/f20e4cc9/matchlogs/2026-2027/Nuno-Mendes-Match-Logs",
+      "competition_totals": [
+        {
+          "id": "uefa-super-cup",
+          "name": "UEFA Super Cup",
+          "stats": {
+            "matches": 1,
+            "starts": 1,
+            "minutes": 74,
+            "goals": 0,
+            "assists": 0
+          },
+          "last_match_date": "2026-08-12",
+          "source_url": "https://www.uefa.com/uefasupercup/news/02a8-215538a51719-2eeabf96b5c7-1000%E2%80%93paris-2-1-aston-villa-european-champions-win-back-to-back/"
+        },
+        {
+          "id": "fr-super-cup",
+          "name": "Trophée des Champions",
+          "stats": {
+            "matches": 1,
+            "starts": 0,
+            "minutes": 26,
+            "goals": 0,
+            "assists": 0
+          },
+          "last_match_date": "2026-08-16",
+          "source_url": "https://www.rclens.fr/fr/rclens-parissg-trophee-des-champions-compte-rendu-20260816"
+        }
+      ]
     }
   ]
 }
