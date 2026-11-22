@@ -52,6 +52,55 @@ def main():
         catalog_ready_ms=round((time.perf_counter()-started)*1000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=10000, ('Requested 10000-player catalogue has not been built',count)
+        # Full roster regression: explicit role AM/CM/DM must never render as
+        # Defender. Wirtz is a sentinel, but reconciliation covers everyone.
+        positions=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const expected={GK:'Goalkeeper',CB:'Defender',RB:'Defender',
+            LB:'Defender',AM:'Midfielder',CM:'Midfielder',DM:'Midfielder',
+            LW:'Forward',RW:'Forward',ST:'Forward'};
+          const contradictions=root.players.filter(p=>
+            expected[String(p.displayPosition||'').toUpperCase()]&&
+            expected[String(p.displayPosition||'').toUpperCase()]!==p.pos);
+          const w=root.players.find(p=>p.name==='Florian Wirtz');
+          const rows=root.liveTournamentStats?.['2026/27']?.[w?.id]||[];
+          return {contradictions:contradictions.slice(0,12).map(p=>p.name),
+            total:contradictions.length,wirtz:w&&
+              {id:w.id,pos:w.pos,role:w.displayPosition,team:w.team,league:w.league},
+            wirtzTournamentRows:rows.map(r=>({name:r.name,id:r.id,
+              source:r.source,is_complete:r.is_complete,
+              stats:{matches:r.stats?.matches,matches_min:r.stats?.matches_min,
+                starts:r.stats?.starts,minutes:r.stats?.minutes,
+                goals:r.stats?.goals,assists:r.stats?.assists}}))};
+        }""")
+        print('POSITION/MATCH-SOURCE AUDIT:',positions)
+        assert positions['total']==0,positions
+        assert positions['wirtz'] and positions['wirtz']['pos']=='Midfielder',positions
+        assert positions['wirtz']['role']=='AM',positions
+        page.locator('#search').fill('Florian Wirtz')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert page.locator('#pPosition').inner_text()=='AM'
+        matches_display=page.locator('#statStarts').inner_text().strip()
+        minutes_text=page.locator('#statMinutes').inner_text()
+        displayed_minutes=int(re.sub(r'[^0-9]','',minutes_text) or '0')
+        # 4 matches and 1,040 minutes must not masquerade as a complete total.
+        if matches_display.isdigit():
+            assert displayed_minutes<=int(matches_display)*130,(
+                'Full-season minutes exceed feasible minutes per reported match',
+                matches_display,minutes_text,positions)
+        else:
+            assert matches_display.startswith('≥') or matches_display=='—',matches_display
+        assert page.locator('#profileEvidenceLabel').is_visible()
+        assert page.locator('#profileEvidence').evaluate('(e)=>!e.open')
+        page.locator('#profileEvidenceLabel').click()
+        assert page.locator('#verifiedProfileMeta p').count()>0
+        assert 'T10:' not in page.locator('#currentSeasonBanner').inner_text()
+        assert len(page.locator('#currentSeasonBanner').inner_text())<170
+        assert len(page.locator('#advancedCoverageNote').inner_text())<170
+        print('WIRTZ PROFILE PASS:',matches_display,'matches,',
+              minutes_text,'minutes; correctly categorized as AM/Midfielder')
+
         current_archive=page.evaluate("""() => {
           const root=JSON.parse(document.getElementById('embeddedData').textContent);
           const live=root.liveIndexStats?.['2026/27']||{};
