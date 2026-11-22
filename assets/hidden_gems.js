@@ -60,7 +60,7 @@
       return {...p, age, eligible, rated, reliable, market:fresh?p.market:null,
         verification:verification.get(String(p.id))||null,
         marketStale:!fresh && !!p.market,
-        score:null, archiveScore:null, peers:0, archivePeers:0,
+        score:null, archiveScore:null, scoutPercentile:null, scoutPeers:0, peers:0, archivePeers:0,
         gap:null, archiveGap:null, performancePercentile:null,
         pricePercentile:null, archivePerformancePercentile:null,
         archivePricePercentile:null, quality:'C'};
@@ -81,6 +81,23 @@
       candidate.score = Math.round(100*Math.max(0,Math.min(1,.5+.5*candidate.gap)));
       candidate.quality = candidate.rating.coverage >= 80 &&
         !candidate.statsPartial && candidate.rating.exact ? 'A':'B';
+    }
+
+    // Current sporting scout percentile, independent of market prices. Never
+    // call this "undervalued": source-backed play does not establish a deal fee.
+    const scoutPool=data.filter(p=>p.reliable&&p.age<=25);
+    const currentByRole=new Map();
+    for(const p of scoutPool){
+      if(!currentByRole.has(p.rating.role))currentByRole.set(p.rating.role,[]);
+      currentByRole.get(p.rating.role).push(p);
+    }
+    for(const p of scoutPool){
+      const peers=(currentByRole.get(p.rating.role)||[]).filter(other=>
+        Math.abs(other.age-p.age)<=4);
+      p.scoutPeers=peers.length;
+      if(peers.length<12)continue;
+      p.scoutPercentile=Math.round(100*percentile(
+        peers.map(other=>other.rating.score),p.rating.score));
     }
 
     // Dated archival screening. A CURRENT rolling index cannot be used as
@@ -121,6 +138,7 @@
       youthWithSeasonMinutes:data.filter(p=>p.age>=16&&p.age<=23&&p.eligible).length,
       youthWithMeasuredIndex:data.filter(p=>p.age>=16&&p.age<=23&&p.eligible&&p.rated).length,
       youthWithArchivedValueGap:data.filter(p=>p.age>=16&&p.age<=23&&p.archiveScore!==null).length,
+      youthWithContemporaneousScoutingScore:data.filter(p=>p.age>=16&&p.age<=23&&p.scoutPercentile!==null).length,
       youthWithVerifiedCurrentValueGap:data.filter(p=>p.age>=16&&p.age<=23&&p.score!==null).length,
       archiveIsNotCurrent:true
     };
@@ -159,7 +177,7 @@
       if (sort==='price') return avalue-bvalue || bindex-aindex;
       if (sort==='minutes') return b.minutes-a.minutes || bindex-aindex;
       // First compare current validated rank, then separately the historical score.
-      return (b.score??b.archiveScore??-1)-(a.score??a.archiveScore??-1) ||
+      return (b.score??b.scoutPercentile??b.archiveScore??-1)-(a.score??a.scoutPercentile??a.archiveScore??-1) ||
         bindex-aindex || a.name.localeCompare(b.name,'ru');
     }
     confirmed.sort(sortFn); preliminary.sort(sortFn);
@@ -177,9 +195,15 @@
     const archiveRatio=p.archiveScore!==null ?
       '<span class="gems-archival-score">Архивный атакующий сигнал (Г+А/90): '+p.archiveScore+'/100 · '+
         p.archivePeers+' аналогов</span>' : '';
+    const scouting=p.scoutPercentile!==null?
+      '<span class="gems-scout-score">Уровень среди сверстников: '+p.scoutPercentile+
+      '-й процентиль · '+p.scoutPeers+
+      ' аналогов. Не рыночная недооценка.</span>' : '';
     const explanation=p.score!==null ?
       'По эффективности '+Math.round(p.performancePercentile*100)+'-й процентиль, по цене '+
       Math.round(p.pricePercentile*100)+'-й · '+p.peers+' аналогов' :
+      p.scoutPercentile!==null ?
+      'Сверено с игроками той же позиции и близкого возраста при наличии текущих матчей. Для доказательства рыночной недооценённости нужна внешняя цена.' :
       p.archiveScore!==null ?
       'Сезон 2025/26: Г+А/90 '+p.archiveProduction.toFixed(2)+
         ', атакующий вклад '+Math.round(p.archivePerformancePercentile*100)+
@@ -230,7 +254,7 @@
       '<span class="gems-meta">'+esc(period)+' · '+esc(p.statsSource||'источник не указан')+
       ' · срез '+esc(p.statsAsOf||'не указан')+'</span>'+
       '<span class="gems-price">'+price+'</span>'+
-      '<span class="gems-contract">'+contract+'</span>'+auditLine+
+      '<span class="gems-contract">'+contract+'</span>'+auditLine+scouting+
       '<span class="gems-explain">'+esc(explanation)+'</span>'+tag+'</span>'+
       '<span class="gems-card-stats"><span class="gems-stat-label">TransferLab Index</span>'+
       '<strong>'+index+'</strong><span class="gems-stat-label">Hidden Gem Score</span>'+
@@ -282,7 +306,7 @@
     const note=activeTab==='confirmed' ?
       (rows.length ? 'Актуальные цены подтверждены. Индекс экспериментальный; дата цены указана в карточке.' :
       'Нет подтверждённых находок по выбранным фильтрам. Для расчёта нужны свежие оценки (не старше 120 дней) и минимум 25 аналогов по роли и возрасту.') :
-      (rows.length ? 'Исследовательская подборка: исторический сигнал основан только на Г+А/90 за 2025/26 и архивной цене. Он не измеряет защитную игру и не подтверждает актуальную недооценку.' :
+      (rows.length ? 'Исследовательская подборка: текущая спортивная сила сверяется по ровесникам и позиции; архивный атакующий сигнал — отдельно по Г+А/90. Ни один показатель сам по себе не доказывает рыночную недооценку.' :
       'Нет кандидатов с достаточным количеством подтверждённых минут. Попробуйте изменить фильтры.');
     const check=bridge.verification()?.coverage||{};
     const reviewCount=Number(check.review_candidates||0);
