@@ -81,7 +81,11 @@ def main():
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
         available=picker.locator('option').evaluate_all('(nodes)=>nodes.map(x=>x.value)')
-        assert available==['all','39','45','48','2'],('Foden competition list is incorrect',available)
+        assert available==['all','39','45','48','2','eng-community-shield'],('Foden competition list is incorrect',available)
+        picker.select_option('eng-community-shield')
+        assert page.locator('#statStarts').inner_text().strip()=='1', 'Foden played Community Shield'
+        assert page.locator('#statGoals').inner_text().strip()=='0'
+        assert page.locator('#statAssists').inner_text().strip()=='0'
         banner=page.locator('#currentSeasonBanner').inner_text()
         assert '2026/27' in banner,('Foden must open current season, not archive',banner)
         assert 'PitchAPI' in banner,('Current data synchronization date must be visible',banner)
