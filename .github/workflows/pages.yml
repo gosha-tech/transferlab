@@ -52,6 +52,8 @@ jobs:
           python scripts/import_market_history.py --self-test
           python scripts/catalog_expansion.py --self-test
           python scripts/gems_verification.py
+          python scripts/forecast_backtest.py --self-test
+          python scripts/beta_readiness.py --self-test
           python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/sync_lineups.py scripts/sync_contracts.py scripts/roster_freshness.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py scripts/import_historical_starts.py scripts/import_market_history.py scripts/audit_coverage.py scripts/verify_current_sync.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -181,6 +183,7 @@ jobs:
           python scripts/import_market_history.py --download
           python scripts/tournaments_build.py _site/index.html
           python scripts/hidden_gems.py _site/index.html
+          python scripts/forecast_backtest.py _site/index.html
           mkdir -p _site/assets _site/data
           cp assets/site.css assets/site.js assets/hidden_gems.css assets/hidden_gems.js _site/assets/
           cp data/live.json data/free_sources.json _site/data/
@@ -220,6 +223,10 @@ jobs:
         run: |
           python -m pip install --quiet playwright==1.56.0
           python scripts/smoke.py
+      - name: Publish evidence-based Beta release dashboard
+        # A failed product gate is disclosed, not hidden by an artificially green build.
+        # The daily QA history only counts builds that passed all smoke tests above.
+        run: python scripts/beta_readiness.py
       - name: Capture dated TransferLab forecasts for future transfers
         # Every published build contributes a real pricedPlayer() snapshot.
         # Never reverse-engineer a July 2026 quote from November data.
