@@ -31,6 +31,7 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
     </div>
     <div class="gems-head-mark">✦</div>
   </div>
+  <p class="gems-beta-link"><a href="beta.html">Проверка качества данных и готовность TransferLab к Beta</a></p>
   <div class="gems-controls" aria-label="Фильтры Hidden Gems">
     <label>Возраст до <output id="gemsAgeLabel">23</output> лет
       <input id="gemsAge" type="range" min="16" max="35" value="23"></label>
@@ -113,6 +114,10 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
             (!p.clubSourceAsOf||!Number.isFinite(Date.parse(p.clubSourceAsOf))||
              (Date.now()-Date.parse(p.clubSourceAsOf)>120*86400000))),
           statPeriod:season,currentEvidence:!!liveVerified,
+          archiveSeason,archiveStats:historic ? {
+             minutes:historic.minutes,goals:historic.goals,assists:historic.assists,
+             matches:historic.matches,source:historic.source
+          } : null,
           minutes, matches:stats?.matches??null,
           statsAsOf:stats?.as_of||(liveVerified?null:'2026-06-28'),
           statsSource:stats?.source||null,
