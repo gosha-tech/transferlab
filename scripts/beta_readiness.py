@@ -175,6 +175,7 @@ footer{margin-top:24px;color:#9fb8c5;font-size:13px}
 Неполная статистика — не нулевые действия.
 Точные проверки доступны в <a href="data/beta_readiness.json">JSON-отчёте</a>,
 <a href="data/coverage.json">отчёте покрытия</a>,
+<a href="data/player_data_gaps.json">пробелах статистики для всей базы</a>,
 <a href="data/priority_refresh_queue.json">очереди обновления игроков</a>,
 <a href="data/source_health.json">состоянии источников</a>,
 <a href="data/hidden_gems_verification.json">очереди Hidden Gems</a> и
@@ -210,6 +211,14 @@ def main():
     try:history=json.loads(HISTORY.read_text(encoding='utf-8')).get('days') or []
     except (OSError,ValueError,AttributeError):history=[]
     report=assess(root,market,history,today)
+    player_report_path=SITE/'data'/'player_data_gaps.json'
+    if player_report_path.exists():
+        try:
+            gaps=json.loads(player_report_path.read_text(encoding='utf-8'))
+            report['all_player_stats']={key:gaps.get(key) for key in
+              ('players','current_season_basics_verified','current_season_partial',
+               'historical_only','no_measured_minutes')}
+        except (OSError,ValueError):pass
     # Save the *source gap* list for the NEXT scheduled PitchAPI import.
     # The queue only sets request order. It never claims missing matches exist.
     priority=report['priority_statistics']
