@@ -128,6 +128,21 @@ def main():
         assert pl_after['stats'].get('starts') is None,pl_after
         assert pl_after['stats']['starts_min']==3,pl_after
         assert 'localizeComp(id,name,ru)' in result
+        # A missing present-season stat can show a clearly dated previous
+        # season, but never a fabricated zero or mislabeled current season.
+        assert "stats?.archived" in result and "Архив " in result
+        assert "function cardStatEvidence(p)" in result
+        # Position normalization is global, sample-gated and never a
+        # player-specific fixed index.
+        assert "function peerNormalizedIndex(p,actual,adjusted)" in result
+        assert "peers.length<25" in result
+        assert "Number(actual.coverage||0)<60" in result
+        assert "score:calibrated.score" in result
+        # Official portraits have deterministic precedence; retries do not
+        # race photographic styles between page loads.
+        assert "const batch=options.slice(0,1);" in result
+        assert "Premier League ID portrait" in result
+
         # Advanced match metrics survive the Python aggregation and JS
         # tournamentSum conversion rather than disappearing from indices.
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
