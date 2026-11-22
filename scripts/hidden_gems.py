@@ -52,8 +52,9 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
       <option value="price">Самые доступные</option>
       <option value="minutes">Больше минут</option></select></label>
   </div>
-  <div class="gems-tabs" role="group" aria-label="Достоверность рыночной оценки">
+  <div class="gems-tabs" role="group" aria-label="Режим аналитики">
     <button id="gemsConfirmedTab" type="button" class="gems-tab active" aria-pressed="true">Подтверждённые находки <span id="gemsConfirmedCount">0</span></button>
+    <button id="gemsScoutTab" type="button" class="gems-tab" aria-pressed="false">Лучшие по игре <span id="gemsScoutCount">0</span></button>
     <button id="gemsPreviewTab" type="button" class="gems-tab" aria-pressed="false">Кандидаты и архив <span id="gemsPreviewCount">0</span></button>
   </div>
   <p class="gems-info" id="gemsInfo" role="status">Готовим выборку проверенных игроков…</p>
