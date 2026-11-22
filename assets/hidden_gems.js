@@ -306,25 +306,10 @@
   function init() {
     bridge=window.TransferLabGemsBridge;
     const catalogue=byId('navCatalog');
-    if (!bridge || !catalogue || !byId('viewGems')) return;
-    const nav=catalogue.cloneNode(false);
-    nav.id='navGems';
-    nav.removeAttribute('data-view');
-    nav.removeAttribute('onclick');
-    nav.classList.remove('active');
-    // The original navigation uses a separate icon column. A raw text node
-    // changed the button's alignment and made the sidebar look uneven.
-    const sym=document.createElement('span');
-    sym.className='sym';
-    sym.setAttribute('aria-hidden','true');
-    sym.textContent='✦';
-    const label=document.createElement('span');
-    label.className='nav-label';
-    label.textContent='Hidden Gems';
-    nav.replaceChildren(sym,label);
-    nav.setAttribute('aria-current','false');
-    nav.setAttribute('aria-label','Hidden Gems — недооценённые игроки');
-    catalogue.insertAdjacentElement('afterend',nav);
+    // The nav is rendered as static HTML by the build pipeline. Only attach
+    // behaviour here; never wait for this deferred script to create the tab.
+    const nav=byId('navGems');
+    if (!bridge || !catalogue || !nav || !byId('viewGems')) return;
     nav.addEventListener('click',show);
     for (const id of ['gemsAge','gemsPrice','gemsPosition','gemsLeague','gemsMinutes','gemsSort']) {
       byId(id).addEventListener('input',()=>render());
