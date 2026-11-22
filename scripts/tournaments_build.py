@@ -18,6 +18,7 @@ from verified_current_contracts import apply as attach_current_contracts
 from transfer_history import attach as attach_verified_transfers,load as load_transfer_file
 from transfer_ui import inject_transfer_ui
 from opponent_strength import evaluate as evaluate_opponents
+from profile_consistency import reconcile as reconcile_positions
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -490,6 +491,8 @@ def embed(html):
     root['opponentStrengthCoverage']=len(root['opponentStrengthByPlayer'])
     root['opponentStrengthSource']=uefa_coeff.get('source')
 
+    root['positionConsistency']=reconcile_positions(original)
+    print('Global position corrections:',root['positionConsistency']['repaired_broad_positions'])
     root['profileCoverage']={
         'total':len(original),
         'with_precise_position':sum(bool(p.get('displayPosition')) for p in original),
