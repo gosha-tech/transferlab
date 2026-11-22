@@ -59,6 +59,8 @@ jobs:
           PY
       - name: Check market chart template and current price model
         run: python scripts/diagnose_source.py
+      - name: Inspect catalog card data and contract wiring
+        run: python scripts/inspect_cards.py
       - name: Inspect defender price inputs and five-year history
         run: python scripts/diagnose_source.py
       - name: Check current-season player profiles in Chromium
