@@ -35,6 +35,26 @@ def main():
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=1353, ('Unexpected shrinkage of player registry',count)
+        # Expansion entries are archive-only, have a source identity and real
+        # 2025/26 stats. Their previous-season totals must open in the profile.
+        expanded = page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const row=root.players.find(p=>p.origin==='transfermarkt_archived_2026' &&
+            Number(root.liveIndexStats?.['2025/26']?.[String(p.id)]?.minutes||0)>=450);
+          return {total:root.players.length, expanded:root.catalogueExpansion?.added||0,
+                  player:row?.name||null};
+        }""")
+        assert expanded['total']==count
+        assert expanded['expanded']>=1000, expanded
+        assert expanded['player'], 'No expanded profile with sourced 2025/26 minutes'
+        page.locator('#search').fill(expanded['player'])
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert expanded['player'] in page.locator('#pName').inner_text()
+        assert page.locator('#statMinutes').inner_text().replace(' ','').strip() not in ('0','—',''), (
+            'Expanded player historical performance missing',expanded['player'])
+        page.locator('#navCatalog').click()
+
 
         # Hidden Gems is a separate page, backed by current player model and verified valuations.
         page.locator('#navGems').click()
