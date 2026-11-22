@@ -26,6 +26,10 @@ COMPETITIONS=[
  (140,'Ла Лига'),(143,'Кубок Испании'),(78,'Бундеслига'),(81,'Кубок Германии'),
  (135,'Серия А'),(137,'Кубок Италии'),(61,'Лига 1'),(66,'Кубок Франции'),
  (94,'Португалия'),(144,'Бельгия'),(203,'Турция'),(307,'Саудовская лига'),
+ ('nl-league','Эредивизи'),('at-league','Австрия'),('dk-league','Дания'),
+ ('ch-league','Швейцария'),('gr-league','Греция'),('sco-league','Шотландия'),
+ ('eng-2','Чемпионшип'),('es-2','Сегунда'),('de-2','2. Бундеслига'),
+ ('it-2','Серия B'),('fr-2','Лига 2'),
  (253,'MLS'),(3,'Лига Европы'),(848,'Лига конференций'),
  ('eng-community-shield','Суперкубок Англии'),('uefa-super-cup','Суперкубок УЕФА'),('fr-super-cup','Суперкубок Франции'),
  ('es-super-cup','Суперкубок Испании'),('it-super-cup','Суперкубок Италии'),
@@ -1128,7 +1132,8 @@ def embed(html):
       // had goals or assists but no minute count, making 2026/27 look empty.
       const athlete=players.find(x=>String(x.id)===String(id));
       const calendar=athlete&&['MLS','Brasileirão'].includes(athlete.league);
-      state.season=calendar?'2026':'2026/27';""")
+      const archivedSeed=athlete?.origin==='transfermarkt_archived_2026';
+      state.season=archivedSeed?(calendar?'2025':'2025/26'):(calendar?'2026':'2026/27');""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
