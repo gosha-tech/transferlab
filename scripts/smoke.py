@@ -187,7 +187,7 @@ def main():
             assert page.locator('#statGoals').inner_text().strip()=='0'
             assert page.locator('#statAssists').inner_text().strip()=='0'
         picker.select_option('all')
-        assert page.locator('#statStarts').inner_text().strip()=='8'
+        assert int(page.locator('#statStarts').inner_text().strip())>=8, 'New live matches may increase current season total'
         # Club corrections must restore Lookman's current La Liga metrics,
         # instead of attaching his 2026/27 appearances to Atalanta.
         page.locator('#search').fill('Ademola Lookman')
