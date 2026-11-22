@@ -14,6 +14,18 @@ import hidden_gems as gems
 class HiddenGemsTests(unittest.TestCase):
     TODAY = dt.date(2026, 11, 22)
 
+    def test_archived_market_signal_cannot_use_future_index(self):
+        js=(pathlib.Path(__file__).resolve().parents[1]/'assets'/'hidden_gems.js').read_text(encoding='utf-8')
+        start=js.index('    // Dated archival screening.')
+        end=js.index('    window.TransferLabGemsCoverage=',start)
+        archival=js[start:end]
+        self.assertIn("p.archiveSeason!=='2025/26'",archival)
+        self.assertIn('p.archiveProduction=90*(Number(row.goals)+Number(row.assists))/Number(row.minutes)',archival)
+        self.assertIn("attackingRoles=new Set(['ST','LW/RW','AM','CM'])",archival)
+        self.assertNotIn('p.rating.score',archival)
+        self.assertNotIn('projectedIndex',archival)
+        self.assertIn('Архивный атакующий сигнал',js)
+
     def test_age_boundaries_and_bad_dates(self):
         self.assertEqual(gems.age_on('2003-11-22', self.TODAY), 23)
         self.assertEqual(gems.age_on('2002-11-21', self.TODAY), 24)
