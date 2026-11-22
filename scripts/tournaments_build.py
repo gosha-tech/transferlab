@@ -12,6 +12,7 @@ from roster_freshness import apply_verified
 from uniform_cards import inject_uniform_cards
 from verified_competitions import add_verified_competitions, CUP_IDS
 from role_calibration import inject_role_calibration
+from verified_club_fixtures import inject as attach_verified_fixtures
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -385,6 +386,9 @@ def embed(html):
     confirmed=json.loads(confirmed_path.read_text(encoding='utf-8')) if confirmed_path.exists() else {}
     verified_totals=add_verified_competitions(original,by_season,confirmed)
     root['verifiedCompetitionImports']=verified_totals
+    # Both 2026 Community Shield squads get a match record, not just Foden.
+    # An unused City/Arsenal player receives an explicit verified 0/0/0.
+    root['verifiedClubFixtures']=attach_verified_fixtures(by_season,original)
     # Feed competition totals into the existing 36-month index only when actual
     # minutes are available; never supply zeroes for unknown metrics.
     index_stats={}
@@ -460,17 +464,6 @@ def embed(html):
     root['historicalStartsCoverage']=starts_cache.get('matched_player_seasons',0)
     root['liveCompetitionCatalog']=[{'id':cid,'name':name} for cid,name in COMPETITIONS]
     add_choices(root)
-    # Verified 2026 Community Shield appearance: Foden started and played 59 min.
-    # This only fills a missing row, never overrides an authenticated feed.
-    for p in original:
-        if norm(p.get('name'))=='philfoden' and norm(p.get('team')) in ('manchestercity','mancity'):
-            entry=by_season.setdefault('2026/27',{}).setdefault(str(p['id']),[])
-            if not any(str(r.get('id'))=='eng-community-shield' for r in entry):
-                entry.append({'id':'eng-community-shield','name':'FA Community Shield',
-                  'source':'externally_verified_competition_total',
-                  'source_url':'https://fbref.com/en/players/ed1e53f3/matchlogs/2026-2027/c602/Phil-Foden-Match-Logs',
-                  'team_verified':True,'is_complete':True,'last_match_date':'2026-08-16',
-                  'stats':{'matches':1,'goals':0,'assists':0,'minutes':59}})
     # Every *verified* official cup appearance automatically makes that cup
     # selectable, without listing unrelated leagues. This also works for new
     # super cups discovered by PitchAPI on a subsequent daily update.
