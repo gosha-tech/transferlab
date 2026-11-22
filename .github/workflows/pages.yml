@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, feature/hidden-gems-1-0]
     paths:
       - .github/workflows/pages.yml
       - scripts/**
@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 0
           # A scheduled import may have committed a fresher data snapshot while
           # this build was queued. Always build the latest main, not stale event SHA.
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
       - name: Validate API-Football data parser
         run: |
           python scripts/sync_api.py --self-test
@@ -263,7 +263,7 @@ jobs:
           path: _site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
