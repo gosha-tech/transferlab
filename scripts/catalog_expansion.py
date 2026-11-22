@@ -256,7 +256,7 @@ def download():
     print('SOURCE ELIGIBLE:',len(data['players']),'previous-only candidates:',data['possible_previous_season_only'],
           'league counts:',data['included_by_league'])
     if base_size+len(data['players'])<10000:
-        raise RuntimeError('Verified source-backed candidates below 10000 target: '
+        raise RuntimeError('Verified source-backed candidates below 10000 target: '+
             str(base_size+len(data['players']))+
             '; do not publish a fabricated 10k catalogue')
     data['built_at_utc']=datetime.now(timezone.utc).isoformat(timespec='seconds')
