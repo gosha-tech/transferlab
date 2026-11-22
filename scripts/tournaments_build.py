@@ -715,6 +715,9 @@ def embed(html):
     html=patch(html,
       "    const manualFloor=0;\n    const estimate=rawEstimate;",
       """    const manualFloor=0;
+    // A recent independently observed valuation anchors uncertain beta-model
+    // projections more strongly (80% maximum versus 65%). The prior decays
+    // with age and is never silently relabeled as a current market quote.
     // An observed, precisely dated market valuation is a valuable weak prior,
     // not a claim that the same price still holds months later. Use it only
     // when genuine match data support a personalized index. This is applied
@@ -727,7 +730,7 @@ def embed(html):
     const hasReliableIndex=!idx.proxy&&evidenceMinutes>=450&&idx.coverage>=40;
     const marketPriorWeight=hasReliableIndex&&marketPriorValue>0&&
       marketAgeDays>=0&&marketAgeDays<=365?
-      0.65*Math.max(0.15,Math.min(1,(365-marketAgeDays)/190))*(carriedElitePerformance?0.45:1):0;
+      0.80*Math.max(0.15,Math.min(1,(365-marketAgeDays)/190))*(carriedElitePerformance?0.45:1):0;
     const estimate=clamp(rawEstimate*(1-marketPriorWeight)+
        (marketPriorValue||0)*marketPriorWeight,0.4,260);""")
     html=patch(html,
