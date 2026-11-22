@@ -52,6 +52,19 @@ def embed(html):
     snapshot=json.loads(DATA_PATH.read_text(encoding='utf-8')) if DATA_PATH.exists() else {}
     hist_path=ROOT/'data'/'historical_stats.json'
     historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
+    # Expanded archival players have their own exact Transfermarkt-ID match history.
+    # It is not a current-season record and must not change existing player rows.
+    expansion_path=ROOT/'data'/'catalog_expansion.json'
+    expansion=json.loads(expansion_path.read_text(encoding='utf-8')) if expansion_path.exists() else {}
+    expanded_ids={str(p.get('id')) for p in root.get('players',[]) if
+                  p.get('origin')=='transfermarkt_archived_2026'}
+    for season,extra_players in (expansion.get('by_season') or {}).items():
+        target=historical.setdefault('by_season',{}).setdefault(season,{})
+        for pid,rows in extra_players.items():
+            if str(pid) in expanded_ids and str(pid) not in target:
+                target[str(pid)]=rows
+    historical['covered_players']=len({p for y in
+        (historical.get('by_season') or {}).values() for p in y})
     starts_path=ROOT/'data'/'historical_starts.json'
     starts_cache=json.loads(starts_path.read_text(encoding='utf-8')) if starts_path.exists() else {}
     archived_lineups=starts_cache.get('by_season') or {}
