@@ -14,7 +14,7 @@ for player in ('Nuno Mendes','Achraf Hakimi'):
         if x:print('RATING SEASON',player,year,json.dumps(
             {k:x.get(k) for k in ('minutes','matches','goals','assists','xg','xa','recoveries',
               'tackles','interceptions','source','advancedPartial')},ensure_ascii=False))
-script=html[html.find('</script>',m.end()):]
+script=html[m.end():]
 for phrase in ('function calcDraftIndex(', 'function projectedIndex(', 'function monetaryModel(',
                'const MONETARY_MODEL=', 'function buildFormula('):
     i=script.find(phrase)
