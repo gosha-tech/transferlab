@@ -291,7 +291,7 @@ def selftest():
      {'player_id':'2','game_id':'200','date':'2025-11-08',
       'competition_id':'NL1','minutes_played':'30'}]
     data=build([one,test_profile(2)],appearances)
-    assert len(data['players'])==1
+    assert len(data['players'])==2
     season=data['by_season']['2025/26']['tm-player-1'][0]
     assert season['stats']['minutes']==540
     assert season['stats']['goals']==2
