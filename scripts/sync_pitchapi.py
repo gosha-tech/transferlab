@@ -58,6 +58,20 @@ TARGETS={
  '2. Bundesliga':['2 bundesliga','zweite bundesliga'],
  'Serie B':['italian serie b','serie b italy'],
  'Ligue 2':['french ligue 2','ligue 2'],
+ 'Czech First League':['czech first league','czech liga','chance liga'],
+ 'Ekstraklasa':['ekstraklasa','polish ekstraklasa'],
+ 'Croatian HNL':['hnl','croatian hnl','supersport hnl'],
+ 'Serbian SuperLiga':['serbian superliga','super liga serbia'],
+ 'Romanian SuperLiga':['romanian superliga','superliga romania'],
+ 'Ukrainian Premier League':['ukrainian premier league'],
+ 'Russian Premier League':['russian premier league'],
+ 'Liga MX':['liga mx','liga mx clausura','liga mx apertura'],
+ 'A-League Men':['a league men','a-league men'],
+ 'Argentine Primera División':['argentine primera division','liga profesional argentina','torneo apertura'],
+ 'Eliteserien':['eliteserien','norwegian eliteserien'],
+ 'Allsvenskan':['allsvenskan','swedish allsvenskan'],
+ 'J1 League':['j1 league','j league 1'],
+ 'K League 1':['k league 1','k-league 1'],
 
  'Turkish Cup':['turkish cup','turkiye kupasi','türkiye kupası'],
  'Belgian Cup':['belgian cup','croky cup','coupe de belgique'],
@@ -179,7 +193,9 @@ def discover(catalogue):
         for canonical,variants in TARGETS.items():
             if name not in {norm(x) for x in variants} or not league.get('id'):
                 continue
-            calendar=canonical in ('MLS','Brasileirão','Copa do Brasil')
+            calendar=canonical in ('MLS','Brasileirão','Copa do Brasil',
+                'Argentine Primera División','Eliteserien','Allsvenskan',
+                'J1 League','K League 1')
             requested=('2026','2025','2024') if calendar else (
                 '2026/2027','2025/2026','2024/2025')
             seasons=set(str(x) for x in (league.get('seasons') or []))
