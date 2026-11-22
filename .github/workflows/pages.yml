@@ -199,6 +199,10 @@ jobs:
           if [ -f data/pitchapi.json ]; then cp data/pitchapi.json _site/data/; fi
       - name: Audit every league and three-season data coverage
         run: python scripts/audit_coverage.py
+      - name: Verify player appearance and minute consistency across all tournaments
+        run: |
+          python scripts/audit_match_consistency.py --self-test
+          python scripts/audit_match_consistency.py
       - name: Validate player registry and JavaScript
         run: |
           python - <<'PY'
