@@ -22,10 +22,9 @@
       "scoutRole": "LW/RW",
       "displayPosition": "RW",
       "foot": "left",
-      "contractUntil": "2028-06-30",
       "source": "https://www.skysports.com/football/news/13570282/mohamed-salah-former-liverpool-forward-joins-turkish-club-trabzonspor-on-free-transfer-after-leaving-anfield",
       "source_as_of": "2026-08-06",
-      "contract_precision": "derived from two-year contract, official exact end date not independently published"
+      "contractThrough": "2028"
     },
     "Abdülkadir Ömür": {
       "club": "Hull City",
