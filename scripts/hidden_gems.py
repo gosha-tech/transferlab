@@ -79,12 +79,19 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
         const liveSeason=calendar?'2026':'2026/27';
         const archiveSeason=calendar?'2025':'2025/26';
         const current=ROOT.liveIndexStats?.[liveSeason]?.[id]||null;
-        const historic=ROOT.liveIndexStats?.[archiveSeason]?.[id]||null;
+        // Preserve real historical seasons when a footballer transfers between
+        // calendar-year and July–June leagues.
+        const alternativeSeason=calendar?'2025/26':'2025';
+        const firstHistoric=ROOT.liveIndexStats?.[archiveSeason]?.[id]||null;
+        const secondHistoric=ROOT.liveIndexStats?.[alternativeSeason]?.[id]||null;
+        const useAlternative=Number(secondHistoric?.minutes||0)>Number(firstHistoric?.minutes||0);
+        const historic=useAlternative?secondHistoric:firstHistoric;
+        const historicSeason=useAlternative?alternativeSeason:archiveSeason;
         const hasMinutes=row=>row&&Number.isFinite(Number(row.minutes))&&Number(row.minutes)>=450;
         // Calendar 2026 snapshots may themselves be frozen historical reports.
         const liveVerified=hasMinutes(current)&&current.source!=='transfermarkt_historical'&&
           current.source!=='historical_appearances';
-        const season=liveVerified?liveSeason:archiveSeason;
+        const season=liveVerified?liveSeason:historicSeason;
         const stats=liveVerified?current:historic;
         const minutes=stats?.minutes==null?null:Number(stats.minutes);
         const archive=ROOT.marketHistory5Y?.[id];
