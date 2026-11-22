@@ -642,14 +642,15 @@ def embed(html):
     html=patch(html,
       "const elitePremium=(!idx.proxy && eliteLeagues.has(p.league))",
       "const elitePremium=(!idx.proxy && (eliteLeagues.has(p.league)||carriedElitePerformance))")
-    # Fullback index: historical beta over-relied on tackle/recovery counts
-    # (45%) while ignoring the attacking contribution of modern wing-backs.
-    # Defensive feeds are incomplete for some competitions. Balance all 100
-    # role points across observed creation, finishing, availability and
-    # defensive activity; this is a GLOBAL LB/RB calibration, not a player edit.
+    # Fullback index measures on-pitch quality rather than turning total
+    # appearances into a second transfer valuation. Minutes are still a
+    # positive quality/reliability input, but reduce their role weight from
+    # 25 to 12, reallocating to creation, shot quality and defensive events.
+    # Price retains age, usage, contract and data-coverage factors separately.
+    # Same weights for ALL left and right fullbacks; no player overrides.
     html=patch(html,
       '"LB/RB":{"goals":3,"xg":6,"creation":21,"minutes":25,"defense":45}',
-      '"LB/RB":{"goals":6,"xg":8,"creation":31,"minutes":25,"defense":30}')
+      '"LB/RB":{"goals":9,"xg":10,"creation":37,"minutes":12,"defense":32}')
     # The beta monetary model initially priced the world's best fullbacks
     # using a positional base 36% below a striker. Recalibrate every role
     # without naming or overriding any particular footballer.
