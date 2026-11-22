@@ -5,10 +5,10 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const money = n => '€' + (Number(n) / 1000000).toLocaleString('ru-RU', {maximumFractionDigits:2}) + ' млн';
-  const fmt = n => Number(n).toLocaleString('ru-RU');
+  const fmt = n => n===null || n===undefined || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('ru-RU');
   const YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
   const marketMaxAgeDays = 120;
-  let bridge, data = null, activeTab = 'confirmed', shown = 30, observer = null;
+  let bridge, data = null, activeTab = 'confirmed', shown = 30, observer = null, firstRender = true;
 
   function asDate(s) {
     if (typeof s !== 'string' || !YYYYMMDD.test(s)) return null;
@@ -54,7 +54,7 @@
       return {...p, age, reliable, market: fresh ? p.market : null,
         marketStale: !fresh && !!p.market, score: null, peers: 0, gap: null,
         performancePercentile: null, pricePercentile: null, quality: 'C'};
-    }).filter(p => p.age !== null && p.age >= 16 && p.age <= 35);
+    }).filter(p => p.age !== null && p.age >= 0 && p.age <= 35);
     const known = data.filter(p => p.reliable && p.market && p.market.value_eur > 0);
     for (const candidate of known) {
       const peers = known.filter(p => p.rating.role === candidate.rating.role &&
@@ -158,9 +158,10 @@
     const choices=filtered();
     byId('gemsConfirmedCount').textContent=fmt(choices.confirmed.length);
     byId('gemsPreviewCount').textContent=fmt(choices.preliminary.length);
-    if (!choices.confirmed.length && activeTab==='confirmed' && choices.preliminary.length) {
+    if (firstRender && !choices.confirmed.length && activeTab==='confirmed' && choices.preliminary.length) {
       activeTab='preview';
     }
+    firstRender=false;
     for (const [tab,id] of [['confirmed','gemsConfirmedTab'],['preview','gemsPreviewTab']]) {
       byId(id).classList.toggle('active',activeTab===tab);
       byId(id).setAttribute('aria-pressed',String(activeTab===tab));
