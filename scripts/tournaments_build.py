@@ -546,6 +546,17 @@ def embed(html):
       "const adjusted=competitionAdjustedIndex(actual.score,p.league||'Premier League',p);")
     # If no archive exists, keep the original beta model without a fabricated
     # price observation.
+    html=patch(html,
+      "factor:setting.factor,ceiling:setting.ceiling",
+      "factor:leagueFactor,ceiling:setting.ceiling")
+    html=html.replace(" · вес стареет каждый день"," · полный вес матча 36 месяцев")
+    html=html.replace(" · daily decay"," · each match counts for 36 months")
+    html=patch(html,
+      "source.textContent=ru?'История рынка ↗':'Market history ↗';",
+      """source.textContent=hist.source===ROOT.marketHistorySource?
+        (ru?'Рыночные оценки до ':'Market observations through ')+
+          (ROOT.marketHistoryLastObserved||'2026-06')+' ↗':
+        (ru?'История рынка ↗':'Market history ↗');""")
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
