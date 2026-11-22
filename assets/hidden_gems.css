@@ -98,3 +98,9 @@
 .gems-beta-link{margin:0 0 14px;font-size:12px}
 .gems-beta-link a{color:#65e4d4;text-decoration:underline;text-underline-offset:3px}
 .gems-beta-link a:focus-visible{outline:2px solid #65e4d4;outline-offset:4px;border-radius:3px}
+
+/* Research-only sporting strength: visibly distinct from price/value gaps. */
+.gems-scout-score{display:block;margin:8px 0;padding:9px 11px;
+border:1px solid rgba(56,205,181,.36);border-radius:8px;
+background:rgba(15,78,78,.26);color:#d1f7ed;font-size:12px;
+font-weight:600;line-height:1.5;overflow-wrap:anywhere}
