@@ -312,7 +312,16 @@
     nav.removeAttribute('data-view');
     nav.removeAttribute('onclick');
     nav.classList.remove('active');
-    nav.textContent='✦ Hidden Gems';
+    // The original navigation uses a separate icon column. A raw text node
+    // changed the button's alignment and made the sidebar look uneven.
+    const sym=document.createElement('span');
+    sym.className='sym';
+    sym.setAttribute('aria-hidden','true');
+    sym.textContent='✦';
+    const label=document.createElement('span');
+    label.className='nav-label';
+    label.textContent='Hidden Gems';
+    nav.replaceChildren(sym,label);
     nav.setAttribute('aria-current','false');
     nav.setAttribute('aria-label','Hidden Gems — недооценённые игроки');
     catalogue.insertAdjacentElement('afterend',nav);
