@@ -42,6 +42,7 @@
   }
   function prepare() {
     const stamp = asOf();
+    const verification = new Map((bridge.verification()?.players||[]).map(row=>[row.player_id,row]));
     data = bridge.list().map(p => {
       const age = ageAt(p.birth, stamp);
       const r = p.rating;
@@ -57,6 +58,7 @@
       const ageDays = marketDate ? (asDate(stamp) - marketDate) / 86400000 : NaN;
       const fresh = !!marketDate && ageDays >= 0 && ageDays <= marketMaxAgeDays;
       return {...p, age, eligible, rated, reliable, market:fresh?p.market:null,
+        verification:verification.get(String(p.id))||null,
         marketStale:!fresh && !!p.market,
         score:null, archiveScore:null, peers:0, archivePeers:0,
         gap:null, archiveGap:null, performancePercentile:null,
@@ -181,6 +183,23 @@
       ' · архив '+esc(p.contractArchivedAt||'2026-07') :
       'Контракт: нет подтверждения';
     const index=p.rated?(p.rating.exact?'':'≈')+p.rating.score+'/100':'—';
+    // Source audit says what can actually be verified. An archived valuation
+    // or a proprietary model estimate never passes as a licensed current quote.
+    const status=p.verification;
+    const checks=status?[
+      status.current_stats_verified,status.current_club_verified,
+      status.fresh_value_verified].filter(Boolean).length:null;
+    const missingLabels={
+      current_matches:'свежие матчи',
+      current_club:'актуальный клуб',
+      licensed_fresh_market_value:'актуальная подтверждённая цена'};
+    const auditLine=status?
+      '<span class="gems-evidence">'+
+      'Проверка источников: '+checks+'/3 · '+
+      (status.missing.length?
+        'Нужно подтвердить: '+status.missing.map(k=>missingLabels[k]||k).join(', '):
+        'все данные для рыночного сравнения собраны')+
+      '</span>':'';
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
     const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
@@ -198,7 +217,7 @@
       '<span class="gems-meta">'+esc(period)+' · '+esc(p.statsSource||'источник не указан')+
       ' · срез '+esc(p.statsAsOf||'не указан')+'</span>'+
       '<span class="gems-price">'+price+'</span>'+
-      '<span class="gems-contract">'+contract+'</span>'+
+      '<span class="gems-contract">'+contract+'</span>'+auditLine+
       '<span class="gems-explain">'+esc(explanation)+'</span>'+tag+'</span>'+
       '<span class="gems-card-stats"><span class="gems-stat-label">TransferLab Index</span>'+
       '<strong>'+index+'</strong><span class="gems-stat-label">Hidden Gem Score</span>'+
@@ -252,7 +271,14 @@
       'Нет подтверждённых находок по выбранным фильтрам. Для расчёта нужны свежие оценки (не старше 120 дней) и минимум 25 аналогов по роли и возрасту.') :
       (rows.length ? 'Предварительная подборка: спортивные показатели подтверждены, но актуальная стоимость или достаточная группа сравнения отсутствует. Архивные цены не означают соответствие бюджету сегодня.' :
       'Нет кандидатов с достаточным количеством подтверждённых минут. Попробуйте изменить фильтры.');
-    byId('gemsInfo').textContent=note;
+    const check=bridge.verification()?.coverage||{};
+    const reviewCount=Number(check.review_candidates||0);
+    const auditSummary=reviewCount?
+      ' · Аудит базы: '+Number(check.verified_current_matches||0)+' со свежими матчами, '+
+      Number(check.verified_current_club||0)+' с подтверждённым клубом, '+
+      Number(check.licensed_current_values||0)+' с разрешённой актуальной ценой '+
+      'из '+reviewCount+' кандидатов.':'';
+    byId('gemsInfo').textContent=note+auditSummary;
   }
   function show() {
     if (!bridge) return;
