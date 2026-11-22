@@ -36,6 +36,21 @@ def main():
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=1353, ('Unexpected shrinkage of player registry',count)
         assert page.locator('.player-index').count()>0,'Catalog indices must be shown'
+        # Every card (not just cards with goals or contracts) has the same
+        # ordered content: current season G/A, contract, tournament and index.
+        for el in page.locator('#catalogGrid .player-card').all():
+            assert el.locator('.card-body-uniform').count()==1
+            assert el.locator('.card-fixed-stats').count()==1
+            assert el.locator('.card-fixed-contract').count()==1
+            assert el.locator('.card-fixed-bottom .league-tag').count()==1
+            assert el.locator('.card-fixed-bottom .player-index').count()==1
+            assert el.locator('.card-fixed-stats').inner_text().startswith(('Голы:', 'Goals:'))
+            assert el.locator('.card-fixed-contract').inner_text().startswith(('Контракт', 'Contract'))
+            assert el.locator('.card-fixed-stats').bounding_box()['y'] < el.locator('.card-fixed-contract').bounding_box()['y']
+            assert el.locator('.card-fixed-contract').bounding_box()['y'] < el.locator('.card-fixed-bottom').bounding_box()['y']
+        # An absent statistic is not a zero, and contract never replaces G/A.
+        unknown=page.locator('#catalogGrid .card-fixed-stats')
+        assert unknown.count()==page.locator('#catalogGrid .card-fixed-contract').count()
         cards=page.locator('.card-name').all_text_contents()
         assert cards,'Catalog has no cards'
         assert page.evaluate("""() => {
