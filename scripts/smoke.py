@@ -97,6 +97,13 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Hakimi' in page.locator('#pName').inner_text()
         assert page.locator('#pPosition').inner_text()=='RB','Achraf Hakimi must be right-back'
+        # Regressive role-only price underestimate (28m before the dated
+        # market-prior calibration) is no longer acceptable for this
+        # well-documented elite RB. This checks the model, not a hard-coded
+        # player-specific price override.
+        assert page.locator('[data-value-kind="market"]').count()>=10, 'Five-year historic value points missing for Hakimi'
+        hakimi_eur=int(''.join(ch for ch in page.locator('#valueMain').inner_text().split('млн')[0] if ch.isdigit()))
+        assert hakimi_eur>=50,('Elite RB valuation is still implausibly depressed',hakimi_eur)
         print('HAKIMI DIAGNOSTIC:',page.locator('#valueMain').inner_text(),
               page.locator('#playerIndexBadge').inner_text(),
               'quality:',page.locator('#modelQuality').inner_text(),
