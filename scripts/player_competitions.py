@@ -19,7 +19,17 @@ DOMESTIC={
  'Saudi Pro League':[('307','Саудовская Про-лига'),('cup-saudi','Кубок короля Саудовской Аравии')],
  'MLS':[('253','MLS')],
  'Brasileirão':[('br-league','Бразилейран'),('cup-brazil','Кубок Бразилии')],
- 'Eredivisie':[('nl-league','Эредивизи'),('cup-netherlands','Кубок Нидерландов')]
+ 'Eredivisie':[('nl-league','Эредивизи'),('cup-netherlands','Кубок Нидерландов')],
+ 'Austrian Bundesliga':[('at-league','Бундеслига Австрии')],
+ 'Danish Superliga':[('dk-league','Суперлига Дании')],
+ 'Swiss Super League':[('ch-league','Суперлига Швейцарии')],
+ 'Greek Super League':[('gr-league','Чемпионат Греции')],
+ 'Scottish Premiership':[('sco-league','Премьершип Шотландии')],
+ 'EFL Championship':[('eng-2','Чемпионшип')],
+ 'Segunda División':[('es-2','Сегунда')],
+ '2. Bundesliga':[('de-2','Вторая Бундеслига')],
+ 'Serie B':[('it-2','Серия B')],
+ 'Ligue 2':[('fr-2','Лига 2')]
 }
 # UEFA official league-phase participants (as of 14 Nov 2026).
 # https://www.uefa.com/uefachampionsleague/news/02a8-2171a88881a0-c70193b972c6-1000--meet-the-2026-27-champions-league-what-are-the-teams-/
@@ -49,6 +59,10 @@ UCL={norm(s) for s in UCL_NAMES}
 UEL={norm(s) for s in UEL_NAMES}
 
 def choices_for(p):
+    if (p.get('origin')=='transfermarkt_archived_2026' and
+        not p.get('clubSource')):
+        # July archive cannot assert this club participates in 2026/27.
+        return []
     league=p.get('league') or ''
     club=norm(p.get('team'))
     items=[]
