@@ -39,6 +39,8 @@ jobs:
           python scripts/prepare.py
           python scripts/enrich_profiles.py
           python scripts/tournaments_build.py _site/index.html
+      - name: Audit actual current club evidence, starts and position mappings
+        run: python scripts/audit_roster_freshness.py
       - name: Check tournament merging and source coverage
         run: |
           python scripts/test_tournaments.py
