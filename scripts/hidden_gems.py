@@ -62,7 +62,7 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
       const market=ROOT.hiddenGemsMarket||{};
       return players.map(p=>{
         const id=String(p.id);
-        const calendar=['MLS','Brasileirão'].includes(p.league);
+        const calendar=['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league);
         const liveSeason=calendar?'2026':'2026/27';
         const archiveSeason=calendar?'2025':'2025/26';
         const current=ROOT.liveIndexStats?.[liveSeason]?.[id]||null;
@@ -204,7 +204,7 @@ def summarize(root, today, rejected):
     historical_value_under_15m = []
     history = root.get('marketHistory5Y') or {}
     for p in youths:
-        is_calendar = p.get('league') in ('MLS','Brasileirão')
+        is_calendar = p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1')
         current = '2026' if is_calendar else '2026/27'
         previous = '2025' if is_calendar else '2025/26'
         pid = str(p.get('id'))
