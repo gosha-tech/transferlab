@@ -105,6 +105,37 @@ def summarize(root):
     any_current=len(current_year['2026/27']|current_year['2026'])
     any_last_two=len(current_year['2026/27']|current_year['2026']|
                      previous_year['2025/26']|previous_year['2025'])
+    # Explicit role/contract/stat coverage: an archived observation is not
+    # proof of a current-season appearance, current team or current contract.
+    new=[p for p in players if p.get('origin')=='transfermarkt_archived_2026']
+    def index_minutes(p,seasons):
+        pid=str(p['id'])
+        return sum(max(0,float((index.get(season) or {}).get(pid,{}).get('minutes') or 0))
+                   for season in seasons)
+    current_seasons=lambda p: ('2026',) if p.get('league') in ('MLS','Brasileirão') else ('2026/27',)
+    archive_seasons=lambda p: ('2025',) if p.get('league') in ('MLS','Brasileirão') else ('2025/26',)
+    previous_index={str(p['id']) for p in players if
+                    index_minutes(p,archive_seasons(p))>=450}
+    current_index={str(p['id']) for p in players if
+                   index_minutes(p,current_seasons(p))>=450}
+    archives={str(p['id']) for p in players if p.get('contractUntilArchive')}
+    current_contracts={str(p['id']) for p in players if
+        p.get('contractUntilCurrent') or p.get('contractThroughYear')}
+    with_market={str(p['id']) for p in players if
+                 p.get('marketValueArchiveEUR') is not None or
+                 (market.get(str(p['id'])) or [])}
+    age_today=datetime.now(timezone.utc).date()
+    def valid_youth(p):
+        try:
+            birth=datetime.strptime(str(p['birth']), '%Y-%m-%d').date()
+            age=age_today.year-birth.year-((age_today.month,age_today.day)<
+                 (birth.month,birth.day))
+            return 16<=age<=23
+        except (ValueError,KeyError,TypeError):
+            return False
+    archive_candidates=[p for p in new if valid_youth(p) and
+        str(p['id']) in previous_index and p.get('marketValueArchiveEUR') is not None and
+        0<float(p['marketValueArchiveEUR'])<=15_000_000]
     result={
       'built_at_utc':datetime.now(timezone.utc).isoformat(timespec='seconds'),
       'source':'TransferLab built site: embedded, provider-backed player statistics',
@@ -113,6 +144,35 @@ def summarize(root):
       'leagues':{key:{'players':v['players'],'seasons':dict(v['seasons'])}
                  for key,v in sorted(leagues.items())},
       'profiles':profile,
+      'expansion':{
+          'archived_profiles_added':len(new),
+          'new_profiles_with_previous_index_minutes_450':
+             sum(str(p['id']) in previous_index for p in new),
+          'new_profiles_with_current_index_minutes_450':
+             sum(str(p['id']) in current_index for p in new),
+          'new_profiles_with_archived_contract_date':
+             sum(str(p['id']) in archives for p in new),
+          'new_profiles_with_current_contract_evidence':
+             sum(str(p['id']) in current_contracts for p in new),
+          'new_profiles_with_market_archive':
+             sum(str(p['id']) in with_market for p in new),
+          'young_players_with_archived_market_under_15m_and_450_minutes':
+             len(archive_candidates),
+          'season_and_contract_note':'Archive 2025/26 does not verify November 2026 price, club, contract or current form'
+      },
+      'index_inputs':{
+         'players_with_450_min_current':len(current_index),
+         'players_with_450_min_previous':len(previous_index),
+         'players_with_450_min_in_either':len(current_index|previous_index),
+         'all_models_require_quality_check':'Minute evidence alone does not guarantee a non-proxy index'
+      },
+      'contract_evidence':{
+         'players_with_current_verified_contract':len(current_contracts),
+         'players_with_only_archived_contract':
+              len(archives-current_contracts),
+         'players_without_record':len(expected-(archives|current_contracts)),
+         'archived_expiries_are_not_current_verification':True
+      },
       'photo_candidate_coverage':{
         'candidates_by_provider':photo_candidates,
         'players_with_id_backed_candidates':any_photo_candidate,
@@ -153,6 +213,12 @@ def main():
     print('Three-season player coverage:',{s:(v['with_verified_player_stats'],
           v['with_minutes_for_index']) for s,v in report['seasons'].items()})
     print('Coverage report:',output)
+    print('ADDED LEAGUES / PLAYER COUNTS:')
+    for league,metrics in sorted(report['leagues'].items()):
+        print('  '+league+': '+str(metrics['players']))
+    print('EXPANSION AUDIT:',json.dumps(report['expansion'],ensure_ascii=False))
+    print('CONTRACT AUDIT:',json.dumps(report['contract_evidence'],ensure_ascii=False))
+    print('INDEX INPUT AUDIT:',json.dumps(report['index_inputs'],ensure_ascii=False))
 
 if __name__=='__main__':
     main()
