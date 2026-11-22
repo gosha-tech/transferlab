@@ -112,6 +112,16 @@ def read_players():
     for p in players:
         info=enrichment.get(str(p.get('id'))) or {}
         if not p.get('birth') and info.get('birth'):p['birth']=info['birth']
+    # New archived players also have verified date-of-birth + immutable TM ID.
+    # Wikimedia still requires an independent Wikidata identity and open license.
+    try:
+        expanded=json.loads((ROOT/'data'/'catalog_expansion.json').read_text(encoding='utf-8'))
+        names={norm(p.get('name')) for p in players}
+        for p in expanded.get('players') or []:
+            if p.get('name') and norm(p['name']) not in names:
+                players.append(p);names.add(norm(p['name']))
+    except (OSError,ValueError):
+        pass
     return players
 def lookup(p):
     name=p.get('name') or ''
