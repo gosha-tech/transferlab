@@ -84,6 +84,30 @@ def main():
         assert measured['youthWithVerifiedCurrentValueGap']==0 or (
             measured['youthWithVerifiedCurrentValueGap']>0)
         print('HIDDEN GEMS COVERAGE:',measured)
+        # Diagnose a concrete outlier using sourced rows, not a manual score override.
+        zonneveld=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const p=root.players.find(p=>String(p.name).toLowerCase()==='milan zonneveld');
+          if(!p)return null;
+          const id=String(p.id);
+          const stats=Object.fromEntries(['2024/25','2025/26','2026/27'].map(
+             season=>[season,{aggregate:root.liveIndexStats?.[season]?.[id]||null,
+                              tournaments:root.liveTournamentStats?.[season]?.[id]||[]}]));
+          const r=window.TransferLabGemsBridge.list().find(x=>x.id===id);
+          return {id,name:p.name,role:p.scoutRole,club:p.team,league:p.league,
+                  marketValueArchiveEUR:p.marketValueArchiveEUR,
+                  rating:r?.rating,stats,archive:r?.archive};
+        }""")
+        print('MILAN ZONNEVELD INDEX DIAGNOSIS:',str(zonneveld)[:14000])
+        assert zonneveld and zonneveld['rating'], 'Zonneveld archival index absent'
+        assert zonneveld['rating']['provisional'] is True
+        assert zonneveld['rating']['exact'] is False
+        assert zonneveld['rating']['score']<80,(
+            'One-season archival-only score cannot be presented as elite',
+            zonneveld['rating'])
+        assert zonneveld['rating']['evidenceFactor']<1
+
+
 
         for card in page.locator('.gems-card').all()[:5]:
             assert card.locator('.gems-player').inner_text().strip()

@@ -9,7 +9,46 @@ def inject_role_calibration(html):
     start="  function projectedIndex(p,_unused){"
     if html.count(start)!=1:
         raise RuntimeError('Unique projectedIndex not found')
-    calibration=r"""  const peerIndexCalibration={};
+    calibration=r"""  // Empirical shrinkage for archived-only, limited-metric 36-month profiles.
+  // A small historic sample can have extreme goals/90 (particularly in cups)
+  // without proving the same ability in a current full league campaign.
+  // Never use market value or player identity to modify sporting ability.
+  function indexEvidenceConfidence(p,actual,calibrated){
+    const id=String(p.id),calendar=['MLS','Brasileirão'].includes(p.league);
+    const seasons=calendar?['2024','2025','2026']:
+      ['2023/24','2024/25','2025/26','2026/27'];
+    const liveSeason=calendar?'2026':'2026/27';
+    const records=seasons.map(season=>({
+      season,stat:ROOT.liveIndexStats?.[season]?.[id]||null
+    }));
+    const trustedCurrent=records.some(({season,stat})=>season===liveSeason&&
+      stat&&Number(stat.minutes)>=180&&
+      !['transfermarkt_historical','historical_appearances'].includes(stat.source));
+    const archiveRecords=records.filter(({stat})=>stat&&
+      stat.source==='transfermarkt_historical'&&Number(stat.minutes)>0);
+    const archivedOnly=!trustedCurrent&&archiveRecords.length>0&&
+      records.filter(({stat})=>stat&&Number(stat.minutes)>0)
+        .every(({stat})=>stat.source==='transfermarkt_historical');
+    if(!archivedOnly)return {score:calibrated.score,
+      provisional:false,confidence:1,sampleMinutes:Number(actual.rolling?.weightedMinutes||0)};
+    const sampleMinutes=Number(actual.rolling?.weightedMinutes||0);
+    const coverage=Math.max(0,Math.min(100,Number(actual.coverage||0)));
+    // The neutral 50-point prior is a heuristic conservative shrinkage,
+    // NOT a probability of player quality and not invented match statistics.
+    const seasonCount=archiveRecords.filter(({stat})=>Number(stat.minutes)>=180).length;
+    const minuteConfidence=Math.min(1,Math.sqrt(Math.max(0,sampleMinutes)/2600));
+    const metricConfidence=Math.max(.35,Math.min(1,coverage/95));
+    const historyConfidence=seasonCount<=1?.90:seasonCount===2?.97:1;
+    const confidence=Math.max(.3,Math.min(1,
+      minuteConfidence*metricConfidence*historyConfidence));
+    const neutral=50;
+    return {score:Math.round(neutral+(calibrated.score-neutral)*confidence),
+      provisional:true,confidence:Math.round(confidence*100)/100,
+      baseline:calibrated.score,sampleMinutes,
+      reasons:['archived only','partial metric coverage','sample uncertainty'],
+      seasonCount,coverage};
+  }
+  const peerIndexCalibration={};
   function peerNormalizedIndex(p,actual,adjusted){
     const original=adjusted.score;
     // Low-sample records cannot justify a rank-based bonus.
@@ -64,8 +103,10 @@ def inject_role_calibration(html):
     html=html.replace(start,calibration+start,1)
     old="return {...actual,rawScore:actual.score,score:adjusted.score,"
     new="""const calibrated=peerNormalizedIndex(p,actual,adjusted);
-       return {...actual,rawScore:actual.score,score:calibrated.score,
-         roleCalibration:calibrated,"""
+       const confidence=indexEvidenceConfidence(p,actual,calibrated);
+       return {...actual,rawScore:actual.score,score:confidence.score,
+         exact:confidence.provisional?false:actual.exact,
+         indexConfidence:confidence,roleCalibration:calibrated,"""
     if html.count(old)!=1:
         raise RuntimeError('Unique projectedIndex return marker not found')
     html=html.replace(old,new,1)
@@ -74,11 +115,20 @@ def inject_role_calibration(html):
     if html.count(marker)!=1:
         raise RuntimeError('Profile role-rank disclosure marker not found')
     html=html.replace(marker, """    const roleIndex=projectedIndex(p);
+    if(roleIndex.indexConfidence?.provisional){
+      const confidence=roleIndex.indexConfidence;
+      facts.push(label('Архивный индекс (предварительно): ',
+                       'Provisional archived index: ')+
+        confidence.baseline+' → '+roleIndex.score+'/100 · '+
+        '×'+confidence.confidence.toFixed(2)+
+        label(' коэффициент консервативной поправки; нет текущих подтверждённых матчей',
+              ' conservative shrinkage factor; no verified current-season matches'));
+    }
     if(roleIndex.roleCalibration?.enabled)
       facts.push(label('Поправка сопоставимости позиций (β): ',
                        'Cross-position index calibration (beta): ')+
         roleIndex.roleCalibration.baseline+' → '+
-        roleIndex.score+' / 100 · '+roleIndex.roleCalibration.peerCount+
+        roleIndex.roleCalibration.score+' / 100 · '+roleIndex.roleCalibration.peerCount+
         label(' игроков этой позиции',' players in same role'));
 """ + marker,1)
     return html

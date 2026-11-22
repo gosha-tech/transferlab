@@ -184,8 +184,10 @@
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
     const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
-    const quality=p.score!==null?'Данные '+p.quality:
-      p.rated?'Спорт: частичное покрытие':'Спорт: индекс недоступен';
+    const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
+      p.rated&&p.rating.provisional?'Data Confidence: C · только архивный индекс':
+      p.rated?'Data Confidence: B · частичная статистика':
+      'Data Confidence: C · индекс недоступен';
     return '<article class="gems-card"><button class="gems-card-open" type="button" data-gem-open="'+esc(p.id)+'">'+
       '<span class="gems-avatar"><span class="gems-avatar-fallback" data-gem-fallback="'+esc(p.id)+'">'+
       esc(p.name.split(/\s+/).slice(0,2).map(s=>s[0]||'').join(''))+'</span>'+
