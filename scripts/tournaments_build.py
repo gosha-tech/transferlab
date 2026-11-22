@@ -36,6 +36,20 @@ def embed(html):
     snapshot=json.loads(DATA_PATH.read_text(encoding='utf-8')) if DATA_PATH.exists() else {}
     hist_path=ROOT/'data'/'historical_stats.json'
     historical=json.loads(hist_path.read_text(encoding='utf-8')) if hist_path.exists() else {}
+    starts_path=ROOT/'data'/'historical_starts.json'
+    starts_cache=json.loads(starts_path.read_text(encoding='utf-8')) if starts_path.exists() else {}
+    archived_lineups=starts_cache.get('by_season') or {}
+    for season,players_starts in archived_lineups.items():
+        for pid,competition_starts in players_starts.items():
+            for record in (historical.get('by_season') or {}).get(season,{}).get(pid,[]):
+                verified=competition_starts.get(str(record.get('id')))
+                if not verified:continue
+                # Starts in the frozen archive are complete only when a lineup
+                # is recorded for every player appearance in that competition.
+                for key in ('starts','starts_min','starts_verified_matches'):
+                    if verified.get(key) is not None:
+                        record.setdefault('stats',{})[key]=verified[key]
+                record['starts_source']=verified.get('starts_source')
     free_path=ROOT/'data'/'free_sources.json'
     free=json.loads(free_path.read_text(encoding='utf-8')) if free_path.exists() else {}
     pl_path=ROOT/'data'/'pl_current.json'
@@ -402,6 +416,7 @@ def embed(html):
     root['liveStatus']=snapshot.get('status','awaiting_api_key')
     root['historicalThrough']=historical.get('as_of')
     root['historicalCoveragePlayers']=historical.get('covered_players',0)
+    root['historicalStartsCoverage']=starts_cache.get('matched_player_seasons',0)
     root['liveCompetitionCatalog']=[{'id':cid,'name':name} for cid,name in COMPETITIONS]
     add_choices(root)
     root['leagueCatalog']=list(dict.fromkeys(root.get('leagueCatalog',[])+[p.get('league') for p in original if p.get('league')]))
