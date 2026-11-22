@@ -31,6 +31,9 @@ jobs:
           python scripts/player_competitions.py
           python scripts/sync_pl.py --self-test
           python scripts/sync_pitchapi.py --self-test
+          python scripts/sync_lineups.py --self-test
+          python scripts/roster_freshness.py
+          python scripts/import_historical_starts.py --self-test
           python scripts/enrich_profiles.py --self-test
           python scripts/import_historical_appearances.py --self-test
           python scripts/commons_photos.py --self-test
