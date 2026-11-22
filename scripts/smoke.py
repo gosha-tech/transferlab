@@ -44,7 +44,7 @@ def main():
             assert el.locator('.card-fixed-contract').count()==1
             assert el.locator('.card-fixed-bottom .league-tag').count()==1
             assert el.locator('.card-fixed-bottom .player-index').count()==1
-            assert el.locator('.card-fixed-stats').inner_text().startswith(('Голы:', 'Goals:'))
+            assert el.locator('.card-fixed-stats').inner_text().startswith(('Матчи:', 'Matches:'))
             assert el.locator('.card-fixed-contract').inner_text().startswith(('Контракт', 'Contract'))
             assert el.locator('.card-fixed-stats').bounding_box()['y'] < el.locator('.card-fixed-contract').bounding_box()['y']
             assert el.locator('.card-fixed-contract').bounding_box()['y'] < el.locator('.card-fixed-bottom').bounding_box()['y']
