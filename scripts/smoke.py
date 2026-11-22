@@ -122,7 +122,8 @@ def main():
             shown=page.locator('#statStarts').inner_text().strip()
             assert shown==expected,('Hakimi appearances by competition incorrect',comp,shown,expected)
         picker.select_option('all')
-        assert page.locator('#statMinutes').inner_text().replace(' ','')=='1157'
+        total_mins=''.join(c for c in page.locator('#statMinutes').inner_text() if c.isdigit())
+        assert total_mins=='1157',('Hakimi total verified minutes',total_mins)
         assert page.locator('#statGoals').inner_text().strip()=='3'
         assert page.locator('#statAssists').inner_text().strip()=='4'
         assert 'Матчи' in page.locator('#viewProfile').inner_text(), 'Starts heading must be Match appearances'
