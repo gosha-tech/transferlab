@@ -133,6 +133,11 @@ def main():
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
         assert 'eligibleRows(p,state.season)' in result
         assert 'verifiedProfileMeta' in result
+        # The 8-role index must not equate a fullback's quality with only
+        # the availability of tackle/recovery event feeds. All 100 weight
+        # points remain normalized for every player at LB/RB.
+        assert '"LB/RB":{"goals":6,"xg":8,"creation":31,"minutes":25,"defense":30}' in result
+        assert 6+8+31+25+30==100
         assert 'const factor=share;' in result, 'Tennis-style: season gets full in-window weight'
         assert 'const sampleStrength=Math.min(1,Math.sqrt(sample/180));' in result
         assert 'return Math.max(0,Math.min(1,(dt-start)/(end-start)));' not in result
