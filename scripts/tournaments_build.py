@@ -1133,7 +1133,7 @@ def embed(html):
       const athlete=players.find(x=>String(x.id)===String(id));
       const calendar=athlete&&['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(athlete.league);
       const archivedSeed=athlete?.origin==='transfermarkt_archived_2026';
-      state.season=archivedSeed?(calendar?'2025':'2025/26'):(calendar?'2026':'2026/27');""")
+      state.season=archivedSeed?(athlete?.archiveReferenceSeason||athlete?.season||(calendar?'2025':'2025/26')):(calendar?'2026':'2026/27');""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;
