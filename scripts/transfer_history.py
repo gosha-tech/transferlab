@@ -72,6 +72,13 @@ def attach(players,transfers,history,profiles,now=None):
         name=str(item.get('player_name') or '')
         tm=str(item.get('tm_player_id') or '')
         candidates=by_tm.get(tm,[]) if tm else by_name.get(norm(name),[])
+        # Imported archive IDs may differ from the live roster ID. An exact
+        # unique name AND independently verified destination club is a safe
+        # fallback; never match merely on a player's surname.
+        if not candidates and tm:
+            named=by_name.get(norm(name),[])
+            if len(named)==1 and team_norm(named[0].get('team'))==team_norm(item.get('to_club')):
+                candidates=named
         if len(candidates)!=1 or norm(candidates[0].get('name'))!=norm(name):
             rejected+=1;continue
         player=candidates[0]
