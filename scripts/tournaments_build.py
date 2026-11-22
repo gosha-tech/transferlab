@@ -637,7 +637,39 @@ def embed(html):
   }""")
     html=patch(html,"const urls=[];\n    const custom=storedPhoto(code);",
                "const urls=[];\n    if(p.apiPhoto)urls.push({url:p.apiPhoto,source:'API-Football / ID'});\n    if(p.commonsPhoto)urls.push({url:p.commonsPhoto,source:'Wikimedia Commons',artist:p.commonsArtist,licence:p.commonsLicense,licence_url:p.commonsLicenseUrl,file_page:p.commonsSourcePage});\n    const custom=storedPhoto(code);")
-    controls=r"""  function renderTournamentSelector(p){
+    controls=r"""  function localizeComp(id,name,ru){
+    const code=String(id);
+    const rus={
+      '39':'АПЛ','140':'Ла Лига','78':'Бундеслига','135':'Серия А',
+      '61':'Лига 1','94':'Чемпионат Португалии','144':'Чемпионат Бельгии',
+      '203':'Суперлига Турции','307':'Саудовская Про-лига','253':'MLS',
+      'nl-league':'Эредивизи','br-league':'Бразилейран',
+      '2':'Лига чемпионов','3':'Лига Европы','848':'Лига конференций',
+      '45':'Кубок Англии','48':'Кубок английской лиги',
+      '143':'Кубок Испании','137':'Кубок Италии',
+      '81':'Кубок Германии','66':'Кубок Франции',
+      'cup-turkey':'Кубок Турции','cup-portugal':'Кубок Португалии',
+      'cup-belgium':'Кубок Бельгии','cup-saudi':'Кубок короля Саудовской Аравии',
+      'cup-brazil':'Кубок Бразилии','cup-netherlands':'Кубок Нидерландов'};
+    const eng={
+      '2':'UEFA Champions League','3':'UEFA Europa League','848':'UEFA Conference League',
+      'cup-turkey':'Turkish Cup','cup-portugal':'Portuguese Cup',
+      'cup-belgium':'Belgian Cup','cup-saudi':"King's Cup",
+      'cup-brazil':'Copa do Brasil','cup-netherlands':'KNVB Cup',
+      '45':'FA Cup','48':'EFL Cup','143':'Copa del Rey',
+      '137':'Coppa Italia','81':'DFB Pokal','66':'Coupe de France'};
+    if(ru && rus[code])return rus[code];
+    if(!ru && eng[code])return eng[code];
+    if(ru){
+      const n=String(name||'').toLowerCase();
+      if(/conference league|лига конференц/.test(n))return 'Лига конференций';
+      if(/turkish cup|turkiye kup|türkiye kup|кубок турц/.test(n))return 'Кубок Турции';
+      if(/champions league/.test(n))return 'Лига чемпионов';
+      if(/europa league/.test(n))return 'Лига Европы';
+    }
+    return name;
+  }
+  function renderTournamentSelector(p){
     const ru=state.language==='ru';
     const select=$('competitionSelect');
     const rows=eligibleRows(p,state.season);
@@ -656,12 +688,12 @@ def embed(html):
         (updated?' · PitchAPI '+(ru?'проверен ':'checked ')+updated:'');
     }
     const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
-    const allNames=new Map(choices.map(x=>[String(x.id),x.name]));
+    const allNames=new Map(choices.map(x=>[String(x.id),localizeComp(x.id,x.name,ru)]));
     // Older season: show only recorded competitions. Current season: domestic
     // competitions and verified UEFA clubs, never unrelated countries' cups.
     for(const x of rows){
       const key=String(x.id);
-      if(!allNames.has(key) && (!current || x.source!=='historical_appearances'))allNames.set(key,x.name);
+      if(!allNames.has(key) && (!current || x.source!=='historical_appearances'))allNames.set(key,localizeComp(x.id,x.name,ru));
     }
     if(!current && !allNames.size && statsBySeason[state.season]?.[p.id]){
       const leagues={'Premier League':'39','La Liga':'140','Bundesliga':'78',
