@@ -192,7 +192,7 @@ def build_roster_lookup(roster):
 
 def indexed_fullname_match(name,lookup):
     fullname=str(name or '').strip()
-    if len(fullname.split())<2 or re.search(r'(^|\\s)[A-Za-zÀ-ÿ]\\.',fullname):
+    if len(fullname.split())<2 or re.search(r'(^|\s)[A-Za-zÀ-ÿ]\.',fullname):
         return None
     return lookup['by_full'].get(norm(fullname))
 
@@ -250,7 +250,7 @@ def safe_fullname_match(fullname,roster):
     Abbreviated names and duplicated names are deliberately rejected.
     """
     name=str(fullname or '').strip()
-    if len(name.split())<2 or re.search(r'(^|\\s)[A-Za-zÀ-ÿ]\\.',name):
+    if len(name.split())<2 or re.search(r'(^|\s)[A-Za-zÀ-ÿ]\.',name):
         return None
     matches=[p for p in roster if norm(p.get('name'))==norm(name)]
     return matches[0] if len(matches)==1 else None
@@ -512,6 +512,7 @@ def test():
     assert canonical_season('2025')=='2025'
     assert safe_fullname_match('Erling Haaland',roster) is None
     assert safe_fullname_match('K. De Bruyne',roster) is None
+    assert indexed_fullname_match('K. De Bruyne',build_roster_lookup(roster)) is None
     assert safe_fullname_match('Phil Foden',roster)['id']=='10'
     lookup=build_roster_lookup(roster)
     assert indexed_fullname_match('Phil Foden',lookup)['id']=='10'
