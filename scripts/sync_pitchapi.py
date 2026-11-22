@@ -340,7 +340,7 @@ def sync():
         raise RuntimeError('No provider-supported target seasons found; keeping cache')
     # Fair-use guard, not a billed API quota. Incrementally backfill all 3
     # seasons across every league while revisiting newer games daily.
-    budget=max(50,min(int(os.getenv('PITCHAPI_REQUEST_BUDGET','1600')),5000))
+    budget=max(50,min(int(os.getenv('PITCHAPI_REQUEST_BUDGET','2400')),5000))
     detail_budget=max(0,min(int(os.getenv('PITCHAPI_DETAIL_BUDGET','160')),1000))
     max_report_size=max(50,min(int(os.getenv('PITCHAPI_MAX_CACHE_MATCHES','50000')),100000))
     requests=1
