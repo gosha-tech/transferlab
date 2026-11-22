@@ -1152,6 +1152,9 @@ def embed(html):
     const ru=state.language==='ru';
     const label=(r,e)=>ru?r:e;
     const facts=[];
+    if(p.origin==='transfermarkt_archived_2026')
+      facts.push(label('Клуб из архивной базы (июль 2026), текущий клуб не подтверждён',
+                       'Club from July 2026 archive; current roster unverified'));
     if(p.displayPosition)facts.push(label('Амплуа: ','Role: ')+p.displayPosition+
       (p.positionAsOf?' ('+p.positionAsOf+')':''));
     if(p.foot)facts.push(label('Рабочая нога: ','Foot: ')+
