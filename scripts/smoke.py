@@ -35,7 +35,7 @@ def main():
         page.locator('#navCatalog').click()
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
-        assert count>=1353, ('Unexpected shrinkage of player registry',count)
+        assert count>=7000, ('Requested 7000-player catalogue has not been built',count)
         # Expansion entries are archive-only, have a source identity and real
         # 2025/26 stats. Their previous-season totals must open in the profile.
         expanded = page.evaluate("""() => {
@@ -46,8 +46,24 @@ def main():
                   player:row?.name||null};
         }""")
         assert expanded['total']==count
-        assert expanded['expanded']>=1000, expanded
+        assert expanded['expanded']>=5600, expanded
         assert expanded['player'], 'No expanded profile with sourced 2025/26 minutes'
+        # A short-match archival profile retains true stats, never a made-up index.
+        audit=page.evaluate('''() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const young=root.players.filter(p=>p.origin==='transfermarkt_archived_2026');
+          return {added:young.length,zeroMinutes:young.filter(p=>
+            !Number.isFinite(Number(p.archiveLastSeasonMinutes))||
+            Number(p.archiveLastSeasonMinutes)<=0).length,
+            noEvidence:young.filter(p=>!p.archiveStatEvidence).length,
+            noSource:young.filter(p=>!p.originSource).length,
+            withContract:young.filter(p=>!!p.contractUntilArchive).length};
+        }''')
+        assert audit['added']>=5600,audit
+        assert audit['zeroMinutes']==0,audit
+        assert audit['noEvidence']==0,audit
+        assert audit['noSource']==0,audit
+        print('7000+ verified profiles audit:',audit)
         page.locator('#search').fill(expanded['player'])
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
