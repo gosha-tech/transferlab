@@ -136,8 +136,7 @@ def main():
         assert sum(x['stats']['matches'] for x in hakimi)==15,hakimi
         assert sum(x['stats']['minutes'] for x in hakimi)==1157,hakimi
         assert {str(x['id']) for x in hakimi if x['stats']['matches']==1}=={'uefa-super-cup','fr-super-cup'}
-        assert {str(x['id']) for x in d['currentCompetitionByPlayer'][hakimi_id]}>=
-          {'61','2','uefa-super-cup','fr-super-cup'}
+        assert {str(x['id']) for x in d['currentCompetitionByPlayer'][hakimi_id]} >= {'61','2','uefa-super-cup','fr-super-cup'}
         assert "$('statStarts').textContent=nf(s?.matches)" in result
         assert "'uefa-super-cup':'Суперкубок УЕФА'" in result
         assert "'fr-super-cup':'Суперкубок Франции'" in result
