@@ -185,7 +185,7 @@
       'Архивный сезон '+p.statPeriod;
     const club=esc(p.club)+(p.clubArchived?' · клуб по архиву июля 2026':'')+' · '+esc(p.league);
     const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
-      p.rated&&p.rating.provisional?'Data Confidence: C · только архивный индекс':
+      p.rated&&p.rating.provisional?'Data Confidence: C · предварительный индекс':
       p.rated?'Data Confidence: B · частичная статистика':
       'Data Confidence: C · индекс недоступен';
     return '<article class="gems-card"><button class="gems-card-open" type="button" data-gem-open="'+esc(p.id)+'">'+
