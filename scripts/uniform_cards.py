@@ -6,7 +6,16 @@ def inject_uniform_cards(html):
         raise RuntimeError('Cannot locate unique player-card code')
     a=html.index(begin)
     b=html.index(end,a)
-    renderer=r"""  function cardCurrentSeason(p){
+    renderer=r"""  const cardObserver=window.IntersectionObserver?new IntersectionObserver(entries=>{
+    for(const x of entries){
+      if(!x.isIntersecting)continue;
+      const avatar=x.target;cardObserver.unobserve(avatar);
+      const img=avatar.querySelector('[data-photo]');
+      const fb=avatar.querySelector('[data-pfallback]');
+      if(img&&fb)attachPhoto(img,fb,img.dataset.photo);
+    }
+  },{rootMargin:'140px'}):null;
+  function cardCurrentSeason(p){
     return ['MLS','Brasileirão'].includes(p.league)?'2026':'2026/27';
   }
   function cardStatEvidence(p){
