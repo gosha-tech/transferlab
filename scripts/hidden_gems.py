@@ -268,7 +268,7 @@ def inject(html, today=None):
     # next to it during BUILD, rather than waiting for HTML parsing and the
     # deferred Hidden Gems script to finish executing in the browser.
     catalog_nav = re.search(
-        r'<button\\b(?=[^>]*\\bid=["\\\']navCatalog["\\\'])[^>]*>.*?</button>',
+        r'<button(?=[^>]*id=["\\\']navCatalog["\\\'])[^>]*>.*?</button>',
         html, re.S | re.I)
     if not catalog_nav:
         raise RuntimeError('Cannot locate navCatalog for first-paint Hidden Gems tab')
