@@ -562,7 +562,10 @@ def embed(html):
       "    const contractInfo=contract(p);let contractFactor=1;",
       """    if(carriedElitePerformance&&age!=null&&age>=33&&age<=35)
       ageFactor=Math.min(.88,ageFactor+.28);
-    const contractInfo=contract(p);let contractFactor=1;""")
+    const contractInfo=p.contractUntilCurrent?
+      {year:Number(String(p.contractUntilCurrent).slice(0,4))}:
+      p.contractThroughYear?{year:Number(p.contractThroughYear)}:contract(p);
+    let contractFactor=1;""")
     html=patch(html,
       "const elitePremium=(!idx.proxy && eliteLeagues.has(p.league))",
       "const elitePremium=(!idx.proxy && (eliteLeagues.has(p.league)||carriedElitePerformance))")
