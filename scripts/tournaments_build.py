@@ -12,6 +12,7 @@ from roster_freshness import apply_verified
 from uniform_cards import inject_uniform_cards
 from verified_competitions import add_verified_competitions, CUP_IDS
 from role_calibration import inject_role_calibration
+from european_exposure import inject_competition_exposure
 from verified_club_fixtures import inject as attach_verified_fixtures
 from verified_current_contracts import apply as attach_current_contracts
 
@@ -1179,6 +1180,7 @@ def embed(html):
     html=patch(html,"$('pHeight').textContent=meta.height?meta.height+' '+(ru?'см':'cm'):'—';",
                "$('pHeight').textContent=(meta.height||p.height)?String(meta.height||p.height).replace(/[^0-9]/g,'')+' '+(ru?'см':'cm'):'—';")
     html=inject_uniform_cards(html)
+    html=inject_competition_exposure(html)
     html=inject_role_calibration(html)
     return html
 
