@@ -158,7 +158,7 @@ def inject_role_calibration(html):
         facts.push(label('Сравнение крайних защитников предварительное: история защитных и прогрессивных событий неполная',
                          'Fullback comparisons remain provisional: defensive and progressive-event history is incomplete'));
     }
-    const standing=relativeRoleRank(p);"""
+"""
     if html.count(marker)!=1:
         raise RuntimeError('Profile role-rank disclosure marker not found')
     html=html.replace(marker, """    const roleIndex=projectedIndex(p);
