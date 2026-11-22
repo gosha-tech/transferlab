@@ -104,6 +104,8 @@ def main():
         assert page.locator('[data-value-kind="market"]').count()>=10, 'Five-year historic value points missing for Hakimi'
         hakimi_eur=int(''.join(ch for ch in page.locator('#valueMain').inner_text().split('млн')[0] if ch.isdigit()))
         assert hakimi_eur>=50,('Elite RB valuation is still implausibly depressed',hakimi_eur)
+        print('INDEX CONTRIBUTIONS HAKIMI:',
+              page.locator('#formulaBreakdown').inner_text().replace('\\n',' / ')[:2800])
         print('HAKIMI DIAGNOSTIC:',page.locator('#valueMain').inner_text(),
               page.locator('#playerIndexBadge').inner_text(),
               'quality:',page.locator('#modelQuality').inner_text(),
@@ -118,6 +120,8 @@ def main():
         assert 'Atlético' in page.locator('#pClub').inner_text(), 'Lookman club must be Atlético Madrid'
         assert picker.locator('option[value="140"]').count()==1, 'Lookman must have La Liga eligibility'
         assert page.locator('#statMinutes').inner_text().strip() not in ('—','0',''), 'Lookman current minutes missing'
+        print('INDEX CONTRIBUTIONS LOOKMAN:',
+              page.locator('#formulaBreakdown').inner_text().replace('\\n',' / ')[:2800])
         print('LOOKMAN DIAGNOSTIC:',page.locator('#pClub').inner_text(),
               page.locator('#valueMain').inner_text(),page.locator('#playerIndexBadge').inner_text(),
               'current mins:',page.locator('#statMinutes').inner_text(),
