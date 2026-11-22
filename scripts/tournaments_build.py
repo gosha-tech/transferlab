@@ -315,7 +315,10 @@ def embed(html):
                           'progressive_passes','progressive_carries','yellow_cards','red_cards'):
                 valid=[item['stats'][field] for item in events
                        if item.get('stats',{}).get(field) is not None
-                       and not (field in ('xg','xa','npxg')
+                       and not (field in ('xg','xa','npxg','shots','shots_on_target',
+                                         'key_passes','passes','tackles','interceptions',
+                                         'dribbles','recoveries','clearances','blocks',
+                                         'progressive_passes','progressive_carries')
                                 and item.get('advanced_partial_source'))]
                 if valid:collected[field]=sum(valid)
             if collected.get('minutes',0)<180:continue
