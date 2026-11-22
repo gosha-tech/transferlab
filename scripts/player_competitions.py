@@ -68,7 +68,7 @@ def choices_for(p):
     if league=='Premier League' and club in {norm('Arsenal'),norm('Manchester City'),norm('Man City')}:
         items.append({'id':'eng-community-shield','name':'Суперкубок Англии',
              'reason':'официальный матч 16.08.2026, участие клуба подтверждено',
-             'source':'https://www.thefa.com/news/2026/aug/16/fa-community-shield-2026-report-16082026',
+             'source':'https://www.mancity.com/news/mens/arsenal-manchester-city-community-shield-match-report-63922483',
              'data_available':True,'club_fixture_completed':True})
     # PSG took part in both 2026/27 super cups, confirmed by official
     # UEFA and PSG fixtures, not from general UCL qualification.
