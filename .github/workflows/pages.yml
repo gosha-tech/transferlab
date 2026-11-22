@@ -21,7 +21,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: transferlab-pages-${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
+  group: transferlab-pages-v2-${{ github.event_name == 'pull_request' && github.head_ref || 'main' }}
   # Code releases cancel obsolete builds, including long-running provider
   # backfills. Scheduled/manual refreshes can continue when no release occurs.
   cancel-in-progress: ${{ github.event_name == 'push' && !contains(github.event.head_commit.message, '[refresh-pitch]') && !contains(github.event.head_commit.message, '[refresh-lineups]') }}
