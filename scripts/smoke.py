@@ -152,6 +152,28 @@ def main():
               'market dots:',page.locator('[data-value-kind=market]').count(),
               'chart:',page.locator('#chartSubtitle').inner_text())
 
+        # Cross-player model diagnostics: both PSG wing-backs share the same
+        # role and dated archive, so any large discrepancy needs attribution.
+        page.locator('#search').fill('Nuno Mendes')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        print('NUNO DIAGNOSTIC:',page.locator('#pPosition').inner_text(),
+              'index',page.locator('#playerIndexBadge').inner_text(),
+              'value',page.locator('#valueMain').inner_text(),
+              'quality',page.locator('#modelQuality').inner_text())
+        print('NUNO BREAKDOWN:',page.locator('#formulaBreakdown').inner_text().replace('\\n',' / ')[:2100])
+        print('NUNO PROFILE:',page.locator('#verifiedProfileMeta').inner_text()[:1200])
+        print('NUNO EVIDENCE:',page.evaluate("""() => {
+            const root=JSON.parse(document.querySelector('#embeddedData').textContent);
+            const p=root.players.find(x=>x.name==='Nuno Mendes');
+            if(!p)return 'missing player';
+            return JSON.stringify({id:p.id,role:p.scoutRole,archiveEUR:p.marketValueArchiveEUR,
+              source:p.position_source,contract:p.contractUntilCurrent||p.contractThroughYear||p.contractUntilArchive,
+              index2026:root.liveIndexStats?.['2026/27']?.[p.id],
+              index2025:root.liveIndexStats?.['2025/26']?.[p.id],
+              tournaments2026:root.liveTournamentStats?.['2026/27']?.[p.id],
+              market:root.marketHistory5Y?.[p.id]});
+          }""")[:2900])
         # Club corrections must restore Lookman's current La Liga metrics,
         # instead of attaching his 2026/27 appearances to Atalanta.
         page.locator('#search').fill('Ademola Lookman')
