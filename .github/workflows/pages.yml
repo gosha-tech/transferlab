@@ -101,7 +101,7 @@ jobs:
         env:
           PITCHAPI_KEY: ${{ secrets.PITCHAPI_KEY }}
           PITCHAPI_REQUEST_BUDGET: ${{ vars.PITCHAPI_REQUEST_BUDGET || '2400' }}
-          PITCHAPI_DETAIL_BUDGET: ${{ vars.PITCHAPI_DETAIL_BUDGET || '150' }}
+          PITCHAPI_DETAIL_BUDGET: ${{ vars.PITCHAPI_DETAIL_BUDGET || '350' }}
           PITCHAPI_PAUSE: '0.18'
           PITCHAPI_REQUIRED: '1'
         run: python scripts/sync_pitchapi.py
