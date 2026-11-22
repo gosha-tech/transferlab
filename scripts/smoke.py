@@ -98,6 +98,13 @@ def main():
         assert 'T10:' not in page.locator('#currentSeasonBanner').inner_text()
         assert len(page.locator('#currentSeasonBanner').inner_text())<170
         assert len(page.locator('#advancedCoverageNote').inner_text())<170
+        long_blurbs=page.evaluate("""() => [...document.querySelectorAll(
+          '#viewProfile p,#viewProfile span,#viewProfile small,#viewProfile div,#viewProfile h4,#viewProfile h5')]
+          .filter(e=>e.children.length===0&&e.textContent.trim().length>90&&
+            getComputedStyle(e).display!=='none')
+          .slice(0,14).map(e=>({id:e.id,className:typeof e.className==='string'?e.className:'',
+            text:e.textContent.trim().slice(0,240)}))""")
+        print('PROFILE TECHNICAL BLURBS:',long_blurbs)
         print('WIRTZ PROFILE PASS:',matches_display,'matches,',
               minutes_text,'minutes; correctly categorized as AM/Midfielder')
 
