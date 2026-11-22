@@ -49,7 +49,7 @@ def main():
         (root/'data'/'pl_current.json').write_text(json.dumps({
             'published_at':'2026-11-10T10:00:00',
             'players':{other_pid:{'name':pl_other['name'],'team':pl_other['team'],
-                'as_of':'2026-11-10T10:00:00','stats':{'minutes':200,'goals':2,'assists':1}}}
+                'as_of':'2026-11-10T10:00:00','stats':{'minutes':200,'starts':2,'goals':2,'assists':1}}}
         }),encoding='utf-8')
         (root/'data'/'pitchapi.json').write_text(json.dumps({
             'key_configured':True,'updated_at':'2026-11-17T19:00:00Z',
@@ -58,7 +58,12 @@ def main():
                   'season':'2026/27','league':'Premier League','league_id':'l_PL1',
                   'competition_id':39,
                   'players':[{'player_id':other_pid,'pitch_id':'p_Xy1abc','team':pl_other['team'],
-                              'stats':{'minutes':90,'goals':1,'assists':0}}]},
+                              'stats':{'minutes':90,'starts':1,'goals':1,'assists':0}}]},
+                'm_H3jK4l':{'id':'m_H3jK4l','date':'2026-11-18',
+                  'season':'2026/27','league':'Premier League','league_id':'l_PL1',
+                  'competition_id':39,
+                  'players':[{'player_id':other_pid,'pitch_id':'p_Xy1abc','team':pl_other['team'],
+                              'stats':{'minutes':35,'goals':0,'assists':0}}]},
                 'm_C8pQ7r':{'id':'m_C8pQ7r','date':'2026-11-05',
                   'season':'2026/27','league':'Premier League','league_id':'l_PL1',
                   'competition_id':39,
@@ -117,9 +122,12 @@ def main():
         assert next(x for x in madrid if x['id']==140)['stats']['goals']==2
         pl_after=next(x for x in d['liveTournamentStats']['2026/27'][other_pid] if x['id']==39)
         assert pl_after['source']=='pl_catalogue_plus_pitch'
-        assert pl_after['stats']['minutes']==290,pl_after
+        assert pl_after['stats']['minutes']==325,pl_after
         assert pl_after['stats']['goals']==3,pl_after
-        assert pl_after['matches_loaded']==1
+        assert pl_after['matches_loaded']==2
+        assert pl_after['stats'].get('starts') is None,pl_after
+        assert pl_after['stats']['starts_min']==3,pl_after
+        assert 'localizeComp(id,name,ru)' in result
         # Advanced match metrics survive the Python aggregation and JS
         # tournamentSum conversion rather than disappearing from indices.
         assert d['liveIndexStats']['2026/27'][pid]['xg']==0.38
