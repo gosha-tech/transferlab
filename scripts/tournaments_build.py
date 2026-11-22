@@ -906,7 +906,7 @@ def embed(html):
         Number.isFinite(fixtureMin)?fixtureMin:0,
         minutes>0?1:0);
       const exact=n!=null&&Number.isFinite(n)&&n>=lower &&
-        row.is_complete!==false;
+        (row.matches_complete===true||row.is_complete!==false);
       return {lower,exact,source:row.source||'unknown'};
     });
     result.matches=matchBounds.reduce((total,x)=>total+x.lower,0);
