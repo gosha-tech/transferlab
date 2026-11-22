@@ -159,14 +159,22 @@ def select(profiles, totals, limit=MAX_NEW, exclude_tm=None, exclude_names=None)
         reference='2025' if p['league'] in CALENDAR_NAMES else '2025/26'
         minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
                     if season==reference and comp in LEAGUES)
+        older_only=minutes<MIN_MINUTES
+        if older_only:
+            reference='2024' if p['league'] in CALENDAR_NAMES else '2024/25'
+            minutes=sum(v['stats']['minutes'] for (season,comp),v in stats.items()
+                        if season==reference and comp in LEAGUES)
         if minutes<MIN_MINUTES:continue
-        # Prefer actually observed substantial minutes over a very short
-        # substitute appearance. Youth becomes a tiebreaker WITHIN evidence tier.
-        tier=0 if minutes>=450 else 1 if minutes>=180 else 2 if minutes>=90 else 3
+        # 2024/25-only profiles are last in the catalogue priority, and
+        # never passed off as having played in 2025/26 or 2026/27.
+        quality_tier=0 if minutes>=450 else 1 if minutes>=180 else 2 if minutes>=90 else 3
+        tier=4+quality_tier if older_only else quality_tier
         age=2026-int(p['birth'][:4])
+        p['season']=reference
+        p['archiveReferenceSeason']=reference
         p['archiveLastSeasonMinutes']=minutes
-        p['archiveStatEvidence']='regular' if tier==0 else (
-            'limited' if tier<=2 else 'very_limited')
+        p['archiveStatEvidence']='older_archival' if older_only else (
+            'regular' if tier==0 else ('limited' if tier<=2 else 'very_limited'))
         eligible.append((tier,int(age>23),int(age>27),int(not bool(p.get('contractUntilArchive'))),-minutes,tm,p,stats))
     eligible.sort(key=lambda r:r[:6])
     chosen=[]
@@ -343,6 +351,13 @@ def selftest():
     assert len(data_small['players'])==1
     assert data_small['players'][0]['archiveStatEvidence']=='very_limited'
     assert data_small['players'][0]['archiveLastSeasonMinutes']==65
+    prev=build([test_profile(3)],[{'player_id':'3','game_id':'300',
+        'date':'2024-10-07','competition_id':'NL1','minutes_played':'90',
+        'goals':'1','assists':'1'}])
+    assert len(prev['players'])==1
+    assert prev['players'][0]['season']=='2024/25'
+    assert prev['players'][0]['archiveStatEvidence']=='older_archival'
+    assert prev['by_season']['2024/25']['tm-player-3'][0]['stats']['minutes']==90
     data_excluded=build([one,test_profile(2)],appearances,exclude_names={norm(one['name'])})
     assert all(norm(p['name'])!=norm(one['name']) for p in data_excluded['players'])
     assert data['version']==CACHE_VERSION
