@@ -112,6 +112,22 @@ def main():
         page.locator('#suggestions [data-suggest]').first.click()
         assert 'Hakimi' in page.locator('#pName').inner_text()
         assert page.locator('#pPosition').inner_text()=='RB','Achraf Hakimi must be right-back'
+        # Official-source reconciliation as of 2026-11-22. Substitute
+        # appearances count as a match, not only a starting XI.
+        assert picker.locator('option[value="uefa-super-cup"]').count()==1
+        assert picker.locator('option[value="fr-super-cup"]').count()==1
+        for comp,expected in [('all','15'),('61','9'),('2','4'),
+                              ('uefa-super-cup','1'),('fr-super-cup','1')]:
+            picker.select_option(comp)
+            shown=page.locator('#statStarts').inner_text().strip()
+            assert shown==expected,('Hakimi appearances by competition incorrect',comp,shown,expected)
+        picker.select_option('all')
+        assert page.locator('#statMinutes').inner_text().replace(' ','')=='1157'
+        assert page.locator('#statGoals').inner_text().strip()=='3'
+        assert page.locator('#statAssists').inner_text().strip()=='4'
+        assert 'Матчи' in page.locator('#viewProfile').inner_text(), 'Starts heading must be Match appearances'
+        print('HAKIMI MATCHES VERIFIED: 9 Ligue 1 + 4 UCL + 1 UEFA Super Cup + 1 France Super Cup = 15')
+
         # Regressive role-only price underestimate (28m before the dated
         # market-prior calibration) is no longer acceptable for this
         # well-documented elite RB. This checks the model, not a hard-coded
