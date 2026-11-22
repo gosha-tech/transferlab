@@ -380,7 +380,10 @@ def embed(html):
         'total':len(original),
         'with_precise_position':sum(bool(p.get('displayPosition')) for p in original),
         'with_foot':sum(p.get('foot') in ('left','right','both') for p in original),
-        'with_contract':sum(bool(p.get('contractUntilCurrent') or p.get('contractUntilArchive')) for p in original),
+        'with_contract':sum(bool(p.get('contractUntilCurrent') or p.get('contractThroughYear') or p.get('contractUntilArchive')) for p in original),
+        'with_current_verified_contract':sum(bool(p.get('contractUntilCurrent') or p.get('contractThroughYear')) for p in original),
+        'with_archive_only_contract':sum(bool(p.get('contractUntilArchive')) and not (p.get('contractUntilCurrent') or p.get('contractThroughYear')) for p in original),
+        'with_current_club_evidence':sum(bool(p.get('clubSource')) for p in original),
         'with_licensed_commons_photo':sum(bool(p.get('commonsPhoto')) for p in original),
         'with_current_player_stats':len({str(pid) for season in ('2026/27','2026')
                                         for pid,entries in by_season.get(season,{}).items()
