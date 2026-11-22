@@ -76,8 +76,8 @@ def reliable_current_membership(matches,as_of=None):
         newest=max(events,key=lambda row:row[0])
         _,club_norm,club,league=newest
         same=[row for row in events if row[1]==club_norm and row[3]==league]
-        # Two separate matches, not repeated rows for one fixture.
-        if len(same)<2:continue
+        # Two separate match dates; duplicate fixture reports cannot verify a transfer.
+        if len({row[0] for row in same})<2:continue
         if newest[0]<today-dt.timedelta(days=45):continue
         trusted[pid]={'team':club,'league':league,'last_match':newest[0].isoformat(),
                       'games':len(same),'source':'PitchAPI: current domestic match team'}
@@ -163,6 +163,10 @@ def selftest():
     rpl[0]['team']='Archive Club';rpl[0].pop('clubSource',None)
     assert apply_verified(rpl,fixtures,{'players':{}},dt.date(2026,11,22))==0
     assert rpl[0]['team']=='Archive Club'
+    for m in fixtures.values():
+        m['season']='2026/27';m['date']='2026-11-10'
+    assert apply_verified(rpl,fixtures,{'players':{}},dt.date(2026,11,22))==0
+    assert rpl[0]['team']=='Archive Club', 'duplicate match day cannot prove transfer'
 
     print('Verified transfer overrides and recent match-team reconciliation PASS')
 
