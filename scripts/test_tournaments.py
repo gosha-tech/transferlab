@@ -169,6 +169,10 @@ def main():
         assert pl_after['matches_loaded']==2
         assert pl_after['stats'].get('starts') is None,pl_after
         assert pl_after['stats']['starts_min']==3,pl_after
+        assert "function europeanAppearanceEvidence(player)" in result
+        assert "weightedEuropeanMinutes/totalMinutes" in result
+        assert "setting.factor+(1-setting.factor)*evidence.share" in result
+        assert "Math.max(byCompetition[category],minutes)" in result
         assert 'localizeComp(id,name,ru)' in result
         # A missing present-season stat can show a clearly dated previous
         # season, but never a fabricated zero or mislabeled current season.
