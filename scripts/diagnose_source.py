@@ -30,6 +30,11 @@ if out.exists():
             if 'Mbapp' in p.get('name','') or 'Foden' in p.get('name',''):
                 print('BUILT PLAYER',p['name'],p['id'],p.get('team'),built.get('currentCompetitionByPlayer',{}).get(str(p['id'])))
                 print('BUILT 2026/27',built.get('liveTournamentStats',{}).get('2026/27',{}).get(str(p['id'])))
+print("=== market chart implementation ===")
+for name in ('const MARKET_HISTORY=','function marketSeries(', 'function renderValueHistory(', 'function bindValueChart(', 'function renderMonetaryModel(', 'const MONETARY_MODEL='):
+    idx=html.find(name)
+    print("CHART BEGIN",name,idx)
+    if idx>=0:print(html[idx:idx+5200])
 print("=== Source ZIP embedded formula tokens ===")
 m=re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
 root=json.loads(m.group(1))
