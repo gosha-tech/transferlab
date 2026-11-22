@@ -72,6 +72,61 @@ def parse(rows,players,as_of):
               'pl_code':row.get('code')}
         result[key]=info
     return result,skipped
+def reconcile_fixture_appearances(result,gw_rows):
+    """Only fixture-linked PLAYED rows can provide appearance counts.
+
+    A season snapshot may be newer than the per-gameweek export. In that case
+    show a supported lower bound, not the number of UCL games pretending to be
+    the sum of all matches. Deduplicate by real fixture_id.
+    """
+    matched=0;complete=0
+    fixture_rows={}
+    for row in gw_rows:
+        code=str(row.get('code') or '')
+        info=result.get(code)
+        if not info or norm(row.get('team'))!=norm(info.get('team')):continue
+        fixture=str(row.get('fixture_id') or '')
+        mins=number(row.get('minutes'))
+        if not fixture.isdigit() or int(fixture)<=0 or mins is None or mins<=0:continue
+        key=(code,fixture)
+        if key in fixture_rows:
+            # Duplicated fixture events are not independent appearances.
+            if fixture_rows[key]!=mins:continue
+        else:fixture_rows[key]=mins
+    grouped={}
+    for (code,fixture),mins in fixture_rows.items():
+        grouped.setdefault(code,[]).append(mins)
+    for code,mins in grouped.items():
+        info=result[code]
+        metrics=info['stats']
+        appearances=len(mins)
+        starts=metrics.get('starts')
+        lower=max(appearances,int(starts or 0))
+        if lower<=0:continue
+        matched+=1
+        recorded=metrics.get('minutes')
+        # A complete fixture match log must account for *all* recorded
+        # season minutes, and no start may be missing from those fixtures.
+        if recorded is not None and abs(float(recorded)-sum(mins))<0.01 and (
+                starts is None or int(starts)<=appearances):
+            metrics['matches']=appearances
+            info['match_coverage']='complete_fixture_logs'
+            complete+=1
+        else:
+            metrics['matches_min']=lower
+            info['match_coverage']='minimum_fixture_and_starts'
+        info['fixture_matches_observed']=appearances
+    # The published season starting XI is itself a defensible minimum.
+    for info in result.values():
+        metrics=info['stats']
+        if metrics.get('matches') is None and metrics.get('starts') is not None:
+            metrics['matches_min']=max(int(metrics.get('matches_min') or 0),
+                                       int(metrics['starts']))
+            info.setdefault('match_coverage','minimum_verified_starts')
+    return {'with_fixture_evidence':matched,'complete_fixture_logs':complete,
+            'with_minimum':sum(i['stats'].get('matches_min') is not None
+                               for i in result.values())}
+
 def read_players():
     import zipfile
     with zipfile.ZipFile(ROOT/'TransferLab_RESTORED_2026-11-16.zip') as z:
@@ -95,10 +150,20 @@ def sync():
     rows=download_csv(BASE+'players.csv')
     players=read_players()
     result,skipped=parse(rows,players,as_of)
+    try:
+        gw=download_csv(BASE+'gws/merged_gw.csv')
+        fixture_coverage=reconcile_fixture_appearances(result,gw)
+    except (OSError,ValueError,RuntimeError) as exc:
+        # Still publish source-backed starts as lower bounds. Do not
+        # backfill missing played games using an arbitrary 90-minute divisor.
+        fixture_coverage=reconcile_fixture_appearances(result,[])
+        print('Player-fixture export unavailable: reported starts only',
+              type(exc).__name__)
     if len(result)<200:raise RuntimeError('Only '+str(len(result))+' player IDs matched; refusing to overwrite last good snapshot')
     obj={'source':SOURCE,'license':'non-commercial, attribution required','published_at':as_of,
          'retrieved_at':dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'),
-         'matched_players':len(result),'excluded_unmatched_rows':skipped,'competition':'Premier League',
+         'matched_players':len(result),'excluded_unmatched_rows':skipped,
+         'appearance_coverage':fixture_coverage,'competition':'Premier League',
          'season':'2026/27','players':result}
     DEST.parent.mkdir(exist_ok=True,parents=True)
     tmp=DEST.with_suffix('.tmp')
@@ -118,7 +183,26 @@ def selftest():
     assert len(o)==1 and sk==1 and o['209244']['stats']['xg']==1.31
     assert 'tackles' not in o['209244']['stats']
     assert o['209244']['stats']['goals']==2
-    print('Premier League current-season ID/name/metrics self-test PASS')
+    coverage=reconcile_fixture_appearances(o,[
+      {'code':'209244','team':'Manchester City','fixture_id':'101',
+       'minutes':'90','starts':'1'},
+      {'code':'209244','team':'Manchester City','fixture_id':'102',
+       'minutes':'90','starts':'1'},
+      {'code':'209244','team':'Manchester City','fixture_id':'102',
+       'minutes':'90','starts':'1'},
+      {'code':'209244','team':'Manchester City','fixture_id':'103',
+       'minutes':'90','starts':'1'},
+      {'code':'3','team':'Manchester City','fixture_id':'104','minutes':'90'}
+    ])
+    assert coverage['with_fixture_evidence']==1 and coverage['complete_fixture_logs']==0
+    assert o['209244']['stats'].get('matches') is None
+    assert o['209244']['stats']['matches_min']==6, o
+    full={'209244':dict(o['209244'],stats=dict(o['209244']['stats'],minutes=270,starts=3))}
+    assert reconcile_fixture_appearances(full,[
+        {'code':'209244','team':'Manchester City','fixture_id':str(i),'minutes':'90'}
+        for i in (101,102,103)])['complete_fixture_logs']==1
+    assert full['209244']['stats']['matches']==3
+    print('Premier League current-season fixture appearances and identity self-test PASS')
 if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser();parser.add_argument('--self-test',action='store_true')
