@@ -110,6 +110,13 @@ def main():
             {'id':'fr-super-cup','name':'Trophée des Champions',
              'stats':{'matches':1,'minutes':90,'goals':0,'assists':0}}
           ]}]}),encoding='utf-8')
+        # Transfer integration fixtures must be present in the isolated build.
+        # Nothing from production is silently available inside this temp root.
+        for filename in ('verified_transfers.json','profile_enrichment.json',
+                         'verified_roster.json'):
+            (root/'data'/filename).write_text(
+                (ROOT/'data'/filename).read_text(encoding='utf-8'),
+                encoding='utf-8')
         old=tournaments_build.DATA_PATH
         old_root=tournaments_build.ROOT
         try:
