@@ -69,6 +69,22 @@ def main():
         # An empty confirmed list is legitimate when no current licensed prices exist.
         page.locator('#gemsPreviewTab').click()
         assert page.locator('#gemsPreviewCount').inner_text().strip().isdigit()
+        preview_count=int(page.locator('#gemsPreviewCount').inner_text().replace(' ',''))
+        assert preview_count>=40,('Archive-backed Hidden Gems did not expand',preview_count)
+        assert page.locator('.gems-card').count()>0
+        assert 'Архивный сезон' in page.locator('.gems-card').first.inner_text() or (
+            'Подтверждённый текущий сезон' in page.locator('.gems-card').first.inner_text())
+        assert 'Контракт' in page.locator('.gems-card').first.inner_text()
+        scored=page.locator('.gems-archival-score').count()
+        print('Hidden Gems preview:',preview_count,'players; archive comparison visible:',scored)
+        measured=page.evaluate('() => window.TransferLabGemsCoverage')
+        assert measured and measured['youthWithSeasonMinutes']>=preview_count
+        assert measured['youthWithMeasuredIndex']>=50, measured
+        assert measured['youthWithArchivedValueGap']>=25, measured
+        assert measured['youthWithVerifiedCurrentValueGap']==0 or (
+            measured['youthWithVerifiedCurrentValueGap']>0)
+        print('HIDDEN GEMS COVERAGE:',measured)
+
         for card in page.locator('.gems-card').all()[:5]:
             assert card.locator('.gems-player').inner_text().strip()
             assert 'Hidden Gem Score' in card.inner_text()

@@ -73,12 +73,17 @@ def apply_verified(players,match_cache,config,as_of=None):
         pid=str(p.get('id'))
         evidence=current.get(pid)
         fields=manual.get(pid)
-        if evidence and not fields and team_norm(evidence['team'])!=team_norm(p.get('team')):
-            p['team']=evidence['team']
-            p['league']=evidence['league']
-            p['clubSource']=evidence['source']
-            p['clubSourceAsOf']=evidence['last_match']
-            count+=1
+        if evidence and not fields:
+            moved=team_norm(evidence['team'])!=team_norm(p.get('team'))
+            # An archive team matching two recent fixtures is now verifiable,
+            # even when the player did not transfer. Never infer from one match.
+            if moved or (p.get('origin')=='transfermarkt_archived_2026' and
+                         not p.get('clubSource')):
+                p['team']=evidence['team']
+                p['league']=evidence['league']
+                p['clubSource']=evidence['source']
+                p['clubSourceAsOf']=evidence['last_match']
+                count+=1
         if not fields:continue
         if fields.get('club'):
             p['team']=fields['club']

@@ -56,7 +56,23 @@ def inject_competition_exposure(html):
       totalMinutes:Math.round(totalMinutes),share};
   }
   function competitionAdjustedIndex(raw,league,player){
-    const setting=COMPETITION_INDEX_MODEL[league]||{factor:.90,ceiling:94};
+    // Preliminary priors for leagues added in November 2026. They are NOT
+    // empirically validated peer equivalences; keep score ceilings conservative
+    // until match/opponent coverage permits actual cross-league calibration.
+    const expandedLeagueBeta={
+      'Eredivisie':{factor:.90,ceiling:91},
+      'Austrian Bundesliga':{factor:.83,ceiling:89},
+      'Danish Superliga':{factor:.82,ceiling:88},
+      'Swiss Super League':{factor:.83,ceiling:88},
+      'Greek Super League':{factor:.81,ceiling:88},
+      'Scottish Premiership':{factor:.81,ceiling:88},
+      'EFL Championship':{factor:.79,ceiling:87},
+      'Segunda División':{factor:.76,ceiling:86},
+      '2. Bundesliga':{factor:.77,ceiling:86},
+      'Serie B':{factor:.75,ceiling:85},
+      'Ligue 2':{factor:.73,ceiling:85}};
+    const setting=COMPETITION_INDEX_MODEL[league]||expandedLeagueBeta[league]||
+      {factor:.70,ceiling:85};
     const evidence=europeanAppearanceEvidence(player);
     // Apply the domestic penalty only to the domestic-proxy share of minutes.
     // Verified European player minutes relieve part of it; same club, same
@@ -106,6 +122,8 @@ def inject_competition_exposure(html):
 def selftest():
     sample="  function competitionAdjustedIndex(raw,league,player){\n    return raw;\n  }\n  function projectedIndex(p,_unused){\n  }\n    const standing=relativeRoleRank(p);"
     result=inject_competition_exposure(sample)
+    assert "'Eredivisie':{factor:.90,ceiling:91}" in result
+    assert "'Ligue 2':{factor:.73,ceiling:85}" in result
     assert 'europeanAppearanceEvidence(player)' in result
     assert 'Math.max(byCompetition[category],minutes)' in result
     assert "['2024/25','2025/26','2026/27']" in result

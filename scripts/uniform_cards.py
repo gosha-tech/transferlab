@@ -47,6 +47,11 @@ def inject_uniform_cards(html):
     if(future(p.contractUntilArchive)&&(!transfer||transfer<=archiveAsOf))
       return {text:(ru?'Контракт до ':'Contract until ')+String(p.contractUntilArchive).slice(0,4),
               status:'archived',hint:ru?'архив · июль 2026':'archived · July 2026'};
+    if(p.contractUntilArchive)
+      return {text:(ru?'Архив: договор до ':'Archived contract until ')+
+                String(p.contractUntilArchive).slice(0,4),
+              status:'archived',hint:ru?'истёк или клуб изменился; текущий не подтверждён':
+                                     'expired or moved; current unverified'};
     const legacy=contract(p);
     if(legacy&&Number(legacy.year)>=Number(today.slice(0,4))&&(!transfer||transfer<=archiveAsOf))
       return {text:(ru?'Контракт до ':'Contract until ')+legacy.year,
