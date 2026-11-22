@@ -105,7 +105,7 @@ def selftest():
     assert report['historical_only']==1 and report['no_measured_minutes']==1
     ru=next(x for x in report['by_league'] if x['league']=='Russian Premier League')
     assert ru['provider_lists_current_season'] is False
-    assert report['missing_player_records'][0]['status'] in ('historical_only','current_partial','no_measured_minutes')
+    assert report['missing_player_records'][0]['status']=='archival_only'
     print('All-player verified and historical-stat audit PASS')
 
 def main():
