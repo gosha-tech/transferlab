@@ -6,6 +6,12 @@ import re,json,collections
 
 ROOT=Path(__file__).resolve().parents[1]
 html=ZipFile(ROOT/'TransferLab_RESTORED_2026-11-16.zip').read('index.html').decode('utf-8')
+print("=== SOURCE STARTS RENDERING ===")
+for term in ("'starts'","\"starts\"","id=\"statStarts\"","id=\"sStarts\"","id=\"pStarts\"","starts ??","stat.starts","'Старты'"):
+  offsets=[m.start() for m in re.finditer(re.escape(term),html)]
+  print("START TERM",term,"occurrences",len(offsets))
+  for pos in offsets[:5]:
+    print("START NEAR",repr(html[max(0,pos-230):pos+220]))
 print("=== Original rolling/index/value formula fragments ===")
 for match in re.finditer(r'(?i)(function\s+(?:projectedIndex|rolling\w*|\w*[Vv]alu\w*|compute\w*|model\w*|\w*index\w*)\s*\(|const FORMULA_DRAFT|rolling36|seasonWeights|0\.5\s*\*|\*\s*0\.5|2026/27)',html):
     word=match.group(0)
