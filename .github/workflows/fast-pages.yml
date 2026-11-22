@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - scripts/tournaments_build.py
+      - scripts/uniform_cards.py
       - assets/site.css
       - assets/site.js
       - .github/workflows/fast-pages.yml
