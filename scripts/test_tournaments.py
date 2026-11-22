@@ -162,7 +162,10 @@ def main():
         assert sum(x['stats']['minutes'] for x in hakimi)==1157,hakimi
         assert {str(x['id']) for x in hakimi if x['stats']['matches']==1}=={'uefa-super-cup','fr-super-cup'}
         assert {str(x['id']) for x in d['currentCompetitionByPlayer'][hakimi_id]} >= {'61','2','uefa-super-cup','fr-super-cup'}
-        assert "$('statStarts').textContent=nf(s?.matches)" in result
+        assert "$('statStarts').textContent=s?.matchesExact===false" in result
+        assert "const matchBounds=rows.map(row=>" in result
+        assert "result.matchesPartialSources=" in result
+        assert 'profileEvidenceLabel' in result
         assert "'uefa-super-cup':'Суперкубок УЕФА'" in result
         assert "'fr-super-cup':'Суперкубок Франции'" in result
         madrid=d['liveTournamentStats']['2026/27'][mbappe_id]
