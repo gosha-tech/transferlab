@@ -14,6 +14,7 @@ from pathlib import Path
 import json,os,sys
 from audit_coverage import load_site
 from forecast_backtest import evaluate as backtest
+from gem_history import load as load_gem_snapshots
 
 ROOT=Path(__file__).resolve().parents[1]
 SITE=ROOT/'_site'
@@ -90,6 +91,12 @@ def assess(root,market_report,history,as_of):
     back=backtest(root.get('verifiedTransfersByPlayer') or {})
     verification=(root.get('gemsVerification') or {}).get('coverage') or {}
     ready_gems=int(verification.get('all_three_data_checks') or 0)
+    # Only same-day browser-verified discoveries count as actual bargains.
+    # Data-complete candidates without an observed value gap are not 'finds'.
+    gem_history=load_gem_snapshots()
+    live_snapshot=next((v for v in reversed(gem_history.get('snapshots') or [])
+        if isinstance(v,dict) and v.get('as_of')==as_of.isoformat()), {})
+    verified_bargains=len(live_snapshot.get('discoveries') or {})
     quality_days=count_consecutive_days(history,as_of)
     known_contracts=sum(bool(p.get('contractUntilCurrent') or p.get('contractThroughYear')) for p in players)
     archival_contracts=sum(bool(p.get('contractUntilArchive')) and
@@ -100,7 +107,7 @@ def assess(root,market_report,history,as_of):
     model_ok=back['eligible_pre_deal_predictions']>=100 and (
        back['median_absolute_percentage_error'] is not None and
        back['median_absolute_percentage_error']<=THRESHOLDS['max_median_transfer_error_pct'])
-    gems_ok=ready_gems>=30 and int(market_report.get('fresh_rights_reviewed_market_values') or 0)>=30
+    gems_ok=verified_bargains>=30 and ready_gems>=30 and int(market_report.get('fresh_rights_reviewed_market_values') or 0)>=30
     qa_ok=quality_days>=7
     gates=[
       {'key':'catalog','label':'10 000+ unique real player profiles',
@@ -112,9 +119,9 @@ def assess(root,market_report,history,as_of):
       {'key':'valuation_backtest','label':'100 genuinely pre-transfer forecast evaluations, median absolute percentage error ≤40%',
        'value':back['eligible_pre_deal_predictions'],'target':100,
        'passed':model_ok,'notes':'No hindsight from prices computed after deals; actual transfer fees are not fair values'},
-      {'key':'hidden_gems','label':'30 source-complete Hidden Gems candidates',
-       'value':ready_gems,'target':30,'passed':gems_ok,
-       'notes':'Requires authorized fresh market prices, verified clubs and current matches; candidate is not automatically a bargain'},
+      {'key':'hidden_gems','label':'30 verified undervalued Hidden Gems in the live browser model',
+       'value':verified_bargains,'target':30,'passed':gems_ok,
+       'notes':'Same-day dated discoveries, verified clubs and matches, licensed prices, 25 role peers and meaningful price gap'},
       {'key':'seven_day_qa','label':'Seven consecutive days of successful automated builds',
        'value':quality_days,'target':7,'passed':qa_ok,
        'notes':'Daily QA checks only; external availability monitoring is not yet measured'}]
@@ -129,6 +136,8 @@ def assess(root,market_report,history,as_of):
                   'contract_missing':len(players)-known_contracts-archival_contracts},
        'priority_statistics':priority,'transfer_backtest':back,
        'hidden_gems':{'candidate_checks':verification,
+           'source_complete_candidates':ready_gems,
+           'same_day_verified_bargains':verified_bargains,
            'market_provider_approved_values':market_report.get('fresh_rights_reviewed_market_values') or 0,
            'note':'No past market price is relabeled as fresh; no current market values are invented'},
        'stability':{'consecutive_qa_days':quality_days,
@@ -178,7 +187,8 @@ footer{margin-top:24px;color:#9fb8c5;font-size:13px}
 <a href="data/player_data_gaps.json">пробелах статистики для всей базы</a>,
 <a href="data/priority_refresh_queue.json">очереди обновления игроков</a>,
 <a href="data/source_health.json">состоянии источников</a>,
-<a href="data/hidden_gems_verification.json">очереди Hidden Gems</a> и
+<a href="data/hidden_gems_verification.json">очереди Hidden Gems</a>,
+<a href="data/gem_history.json">истории проверенных находок и трансферов</a> и
 <a href="data/forecast_backtest.json">оценке прошлых прогнозов</a>.</footer>
 </main></body></html>"""
 
