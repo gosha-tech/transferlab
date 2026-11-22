@@ -209,6 +209,14 @@ def main():
         assert 'return Math.max(0,Math.min(1,(dt-start)/(end-start)));' not in result
         assert '[100,100,100,0].map((n,i)=>' in result
 
+        assert 'transferComparison' in result
+        assert 'window.transferLabForecastExport=function()' in result
+        assert d['transferEvidenceCoverage']['accepted']>=1
+        summerville=next(p for p in d['players'] if p.get('name')=='Crysencio Summerville')
+        moves=d['verifiedTransfersByPlayer'][str(summerville['id'])]
+        assert moves[0]['reported_fee_eur_m']==70
+        assert moves[0]['pre_transfer_prediction'] is None
+        assert moves[0]['date']=='2026-07-24'
         assert d['profileCoverage']['with_current_player_stats']>=1
         assert 'advancedCoverageNote' in result and 'advanced_metric_coverage' in result
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
