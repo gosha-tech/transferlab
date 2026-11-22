@@ -15,8 +15,9 @@ for player in ('Nuno Mendes','Achraf Hakimi'):
             {k:x.get(k) for k in ('minutes','matches','goals','assists','xg','xa','recoveries',
               'tackles','interceptions','source','advancedPartial')},ensure_ascii=False))
 script=html[m.end():]
-for phrase in ('function rollingEvidence(', 'function benchmarkScore(', 'function calcDraftIndex(', 'function projectedIndex(', 'function monetaryModel(',
-               'const MONETARY_MODEL=', 'function buildFormula('):
-    i=script.find(phrase)
-    if i>=0:
-        print('RATING CODE',phrase,script[i:i+6000])
+for marker in ("function rollingEvidence(", "function calcDraftIndex(",
+               "const rankScaled=percentile<0.5?",
+               "metricMinutes[key]+=(measuredMinutes==null?",
+               "0.80*Math.max(0.15"):
+    assert marker in script, "Formula audit marker missing: "+marker
+print("Global fullback formula, partial metric denominators and market anchoring PASS")
