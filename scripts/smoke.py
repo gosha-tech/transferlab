@@ -99,6 +99,14 @@ def main():
                   rating:r?.rating,stats,archive:r?.archive};
         }""")
         print('MILAN ZONNEVELD INDEX DIAGNOSIS:',str(zonneveld)[:14000])
+        assert zonneveld and zonneveld['rating'], 'Zonneveld archival index absent'
+        assert zonneveld['rating']['provisional'] is True
+        assert zonneveld['rating']['exact'] is False
+        assert zonneveld['rating']['score']<80,(
+            'One-season archival-only score cannot be presented as elite',
+            zonneveld['rating'])
+        assert zonneveld['rating']['evidenceFactor']<1
+
 
 
         for card in page.locator('.gems-card').all()[:5]:
