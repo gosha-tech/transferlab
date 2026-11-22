@@ -57,6 +57,8 @@ jobs:
           python scripts/gems_verification.py
           python scripts/forecast_backtest.py --self-test
           python scripts/beta_readiness.py --self-test
+          python scripts/ingest_priority.py
+          python scripts/source_health.py --self-test
           python -m py_compile scripts/sync_api.py scripts/sync_free.py scripts/sync_pl.py scripts/commons_photos.py scripts/sync_pitchapi.py scripts/sync_lineups.py scripts/sync_contracts.py scripts/roster_freshness.py scripts/player_competitions.py scripts/tournaments_build.py scripts/enrich_profiles.py scripts/import_historical_appearances.py scripts/import_historical_starts.py scripts/import_market_history.py scripts/audit_coverage.py scripts/verify_current_sync.py
       - name: Refresh all configured competitions (daily or manual)
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -199,6 +201,8 @@ jobs:
           if [ -f data/pitchapi.json ]; then cp data/pitchapi.json _site/data/; fi
       - name: Audit every league and three-season data coverage
         run: python scripts/audit_coverage.py
+      - name: Audit data provider freshness, match-cache coverage and legal provenance
+        run: python scripts/source_health.py
       - name: Verify player appearance and minute consistency across all tournaments
         run: |
           python scripts/audit_match_consistency.py --self-test
