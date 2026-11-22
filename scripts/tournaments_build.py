@@ -1042,6 +1042,8 @@ def embed(html):
   }
   function renderTournamentSelector(p){
     const ru=state.language==='ru';
+    const competitionLabel=document.querySelector('label[for="competitionSelect"]');
+    if(competitionLabel)competitionLabel.textContent=ru?'Турнир':'Competition';
     const select=$('competitionSelect');
     const rows=eligibleRows(p,state.season);
     const currentSeason=(['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league))?'2026':'2026/27';
