@@ -396,7 +396,9 @@ def main():
         assert page.locator('#statAssists').inner_text().strip()=='0'
         banner=page.locator('#currentSeasonBanner').inner_text()
         assert '2026/27' in banner,('Foden must open current season, not archive',banner)
-        assert 'PitchAPI' in banner,('Current data synchronization date must be visible',banner)
+        assert re.search(r'2026-\\d{2}-\\d{2}',banner),(
+            'Player evidence date must be shown without a technical timestamp',banner)
+        assert 'PitchAPI checked' not in banner,('Banner should not show provider debugging text',banner)
         assert 'Статистика этого игрока ещё не получена' not in banner, ('Foden current data must display',banner)
         assert not any(x in available for x in ['61','66','3','140','135'])
         picker.select_option('45')
