@@ -20,7 +20,14 @@ COMPETITIONS=[
  (140,'Ла Лига'),(143,'Кубок Испании'),(78,'Бундеслига'),(81,'Кубок Германии'),
  (135,'Серия А'),(137,'Кубок Италии'),(61,'Лига 1'),(66,'Кубок Франции'),
  (94,'Португалия'),(144,'Бельгия'),(203,'Турция'),(307,'Саудовская лига'),
- (253,'MLS'),(3,'Лига Европы'),(848,'Лига конференций')
+ (253,'MLS'),(3,'Лига Европы'),(848,'Лига конференций'),
+ ('uefa-super-cup','Суперкубок УЕФА'),('fr-super-cup','Суперкубок Франции'),
+ ('es-super-cup','Суперкубок Испании'),('it-super-cup','Суперкубок Италии'),
+ ('de-super-cup','Суперкубок Германии'),('pt-super-cup','Суперкубок Португалии'),
+ ('tr-super-cup','Суперкубок Турции'),('bel-super-cup','Суперкубок Бельгии'),
+ ('sa-super-cup','Суперкубок Саудовской Аравии'),('nl-super-cup','Суперкубок Нидерландов'),
+ ('fifa-intercontinental','Межконтинентальный кубок ФИФА'),
+ ('fifa-club-world-cup','Клубный чемпионат мира ФИФА')
 ]
 LEAGUES={39:'Premier League',140:'La Liga',78:'Bundesliga',135:'Serie A',61:'Ligue 1',
          94:'Primeira Liga',144:'Belgian Pro League',203:'Süper Lig',
@@ -810,6 +817,13 @@ def embed(html):
       '203':'Суперлига Турции','307':'Саудовская Про-лига','253':'MLS',
       'nl-league':'Эредивизи','br-league':'Бразилейран',
       '2':'Лига чемпионов','3':'Лига Европы','848':'Лига конференций',
+      'uefa-super-cup':'Суперкубок УЕФА','fr-super-cup':'Суперкубок Франции',
+      'es-super-cup':'Суперкубок Испании','it-super-cup':'Суперкубок Италии',
+      'de-super-cup':'Суперкубок Германии','pt-super-cup':'Суперкубок Португалии',
+      'tr-super-cup':'Суперкубок Турции','bel-super-cup':'Суперкубок Бельгии',
+      'sa-super-cup':'Суперкубок Саудовской Аравии','nl-super-cup':'Суперкубок Нидерландов',
+      'fifa-intercontinental':'Межконтинентальный кубок ФИФА',
+      'fifa-club-world-cup':'Клубный чемпионат мира ФИФА',
       '45':'Кубок Англии','48':'Кубок английской лиги',
       '143':'Кубок Испании','137':'Кубок Италии',
       '81':'Кубок Германии','66':'Кубок Франции',
@@ -818,6 +832,13 @@ def embed(html):
       'cup-brazil':'Кубок Бразилии','cup-netherlands':'Кубок Нидерландов'};
     const eng={
       '2':'UEFA Champions League','3':'UEFA Europa League','848':'UEFA Conference League',
+      'uefa-super-cup':'UEFA Super Cup','fr-super-cup':'Trophée des Champions',
+      'es-super-cup':'Supercopa de España','it-super-cup':'Supercoppa Italiana',
+      'de-super-cup':'DFL-Supercup','pt-super-cup':'Supertaça de Portugal',
+      'tr-super-cup':'Turkish Super Cup','bel-super-cup':'Belgian Super Cup',
+      'sa-super-cup':'Saudi Super Cup','nl-super-cup':'Johan Cruyff Shield',
+      'fifa-intercontinental':'FIFA Intercontinental Cup',
+      'fifa-club-world-cup':'FIFA Club World Cup',
       'cup-turkey':'Turkish Cup','cup-portugal':'Portuguese Cup',
       'cup-belgium':'Belgian Cup','cup-saudi':"King's Cup",
       'cup-brazil':'Copa do Brasil','cup-netherlands':'KNVB Cup',
