@@ -35,7 +35,7 @@ def main():
         page.locator('#navCatalog').click()
         page.locator('.player-card').first.wait_for(timeout=15000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
-        assert count>=7000, ('Requested 7000-player catalogue has not been built',count)
+        assert count>=10000, ('Requested 10000-player catalogue has not been built',count)
         # Expansion entries are archive-only, have a source identity and real
         # 2025/26 stats. Their previous-season totals must open in the profile.
         expanded = page.evaluate("""() => {
@@ -46,7 +46,7 @@ def main():
                   player:row?.name||null};
         }""")
         assert expanded['total']==count
-        assert expanded['expanded']>=5600, expanded
+        assert expanded['expanded']>=8600, expanded
         assert expanded['player'], 'No expanded profile with sourced 2025/26 minutes'
         # A short-match archival profile retains true stats, never a made-up index.
         audit=page.evaluate('''() => {
@@ -59,11 +59,24 @@ def main():
             noSource:young.filter(p=>!p.originSource).length,
             withContract:young.filter(p=>!!p.contractUntilArchive).length};
         }''')
-        assert audit['added']>=5600,audit
+        assert audit['added']>=8600,audit
         assert audit['zeroMinutes']==0,audit
         assert audit['noEvidence']==0,audit
         assert audit['noSource']==0,audit
-        print('7000+ verified profiles audit:',audit)
+        rpl=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const russian=root.players.filter(p=>p.league==='Russian Premier League');
+          const withMatches=russian.filter(p=>
+            ['2023/24','2024/25','2025/26'].some(s=>
+              (root.liveTournamentStats?.[s]?.[String(p.id)]||[])
+              .some(x=>x.source==='historical_appearances' && Number(x.stats?.minutes)>0)));
+          return {players:russian.length,withMatches:withMatches.length};
+        }""")
+        assert rpl['players']>=350 and rpl['withMatches']>=300,(
+            'Russian Premier League match-backed coverage too low',rpl)
+        print('RPL coverage:',rpl)
+
+        print('10000+ verified profiles audit:',audit)
 
         samples=page.evaluate("""() => {
           const root=JSON.parse(document.getElementById('embeddedData').textContent);
@@ -118,6 +131,21 @@ def main():
         preview_count=int(page.locator('#gemsPreviewCount').inner_text().replace(' ',''))
         assert preview_count>=40,('Archive-backed Hidden Gems did not expand',preview_count)
         assert page.locator('.gems-card').count()>0
+        layout=page.evaluate("""() => {
+          const card=document.querySelector('.gems-card-open');
+          const details=card?.querySelector('.gems-card-main');
+          const metrics=card?.querySelector('.gems-card-stats');
+          if(!card||!details||!metrics)return null;
+          return {display:getComputedStyle(card).display,
+                  metricsBelow:metrics.getBoundingClientRect().top >= details.getBoundingClientRect().top,
+                  metricsWidth:metrics.getBoundingClientRect().width,
+                  detailsWidth:details.getBoundingClientRect().width,
+                  overflow:document.documentElement.scrollWidth>innerWidth};
+        }""")
+        assert layout and layout['display']=='grid' and layout['metricsBelow'],layout
+        assert layout['metricsWidth']>=layout['detailsWidth'],layout
+        assert not layout['overflow'],('Hidden Gems desktop overflow',layout)
+
         assert 'Архивный сезон' in page.locator('.gems-card').first.inner_text() or (
             'Подтверждённый текущий сезон' in page.locator('.gems-card').first.inner_text())
         assert 'Контракт' in page.locator('.gems-card').first.inner_text()
