@@ -10,6 +10,7 @@ from player_competitions import add_choices,choices_for
 from sync_pitchapi import team_norm, LEAGUE_IDS as PITCH_COMPETITION_IDS
 from roster_freshness import apply_verified
 from uniform_cards import inject_uniform_cards
+from role_calibration import inject_role_calibration
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 DATA_PATH=ROOT/'data'/'live.json'
@@ -974,6 +975,7 @@ def embed(html):
     html=patch(html,"$('pHeight').textContent=meta.height?meta.height+' '+(ru?'см':'cm'):'—';",
                "$('pHeight').textContent=(meta.height||p.height)?String(meta.height||p.height).replace(/[^0-9]/g,'')+' '+(ru?'см':'cm'):'—';")
     html=inject_uniform_cards(html)
+    html=inject_role_calibration(html)
     return html
 
 if __name__=='__main__':
