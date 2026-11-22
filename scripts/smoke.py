@@ -246,6 +246,29 @@ def main():
         }""",timeout=35000)
         gems_ready_ms=round((time.perf_counter()-gems_started)*1000)
         assert page.locator('#viewGems .gems-beta-link a[href="beta.html"]').count()==1
+        # Three status semantics: only current, source-complete bargains are
+        # captured as dated discoveries. No fabricated retrospectives.
+        assert page.locator('#gemsSuccessTab').count()==1
+        assert page.locator('#gemsConfirmedTab').count()==1
+        assert page.locator('#gemsPreviewTab').count()==1
+        gem_capture=page.evaluate('() => window.transferLabGemsSnapshotExport()')
+        assert gem_capture and isinstance(gem_capture.get('discoveries'),dict)
+        confirmed_count=int(page.locator('#gemsConfirmedCount').inner_text().replace(' ',''))
+        assert confirmed_count==len(gem_capture['discoveries']), (
+            'Visible verified finds differ from saved decisions',confirmed_count,len(gem_capture['discoveries']))
+        for discovery in gem_capture['discoveries'].values():
+            assert discovery['gap']>=.20 and discovery['performance_percentile']>=.65
+            assert discovery['source_url'].startswith('https://')
+            assert 0<discovery['market_value_eur']<=15000000
+        page.locator('#gemsSuccessTab').click()
+        confirmed_history=page.evaluate("""() => {
+          const root=JSON.parse(document.querySelector('#embeddedData').textContent);
+          return root.gemHistoryReport||{};
+        }""")
+        assert int(confirmed_history.get('successful_outcomes') or 0)==int(
+            page.locator('#gemsSuccessCount').inner_text().replace(' ',''))
+        if not confirmed_history.get('successes'):
+            assert 'Нет успешных прогнозов' in page.locator('#gemsInfo').inner_text()
         # An empty confirmed list is legitimate when no current licensed prices exist.
         page.locator('#gemsPreviewTab').click()
         assert page.locator('#gemsPreviewCount').inner_text().strip().isdigit()

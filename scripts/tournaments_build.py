@@ -66,8 +66,28 @@ def embed(html):
     for season,extra_players in (expansion.get('by_season') or {}).items():
         target=historical.setdefault('by_season',{}).setdefault(season,{})
         for pid,rows in extra_players.items():
-            if str(pid) in expanded_ids and str(pid) not in target:
-                target[str(pid)]=rows
+            if str(pid) not in expanded_ids:
+                continue
+            # Two independent archival importers can refer to the same player.
+            # A preexisting empty/partial competition record must not erase a
+            # newly verified positive-minute source record from the expansion.
+            old=target.get(str(pid)) or []
+            by_comp={str(row.get('id')):row for row in old if isinstance(row,dict)}
+            for row in rows:
+                if not isinstance(row,dict):
+                    continue
+                comp=str(row.get('id'))
+                prior=by_comp.get(comp)
+                def quality(item):
+                    stats=item.get('stats') or {}
+                    return (int(item.get('source')=='historical_appearances' and
+                                float(stats.get('minutes') or 0)>0 and
+                                float(stats.get('matches') or 0)>0),
+                            float(stats.get('minutes') or 0),
+                            float(stats.get('matches') or 0))
+                if prior is None or quality(row)>quality(prior):
+                    by_comp[comp]=row
+            target[str(pid)]=list(by_comp.values())
     historical['covered_players']=len({p for y in
         (historical.get('by_season') or {}).values() for p in y})
     starts_path=ROOT/'data'/'historical_starts.json'

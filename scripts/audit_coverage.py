@@ -129,7 +129,10 @@ def summarize(root):
     # positive-minute season row with a dated, named provider.
     def recorded_archival_matches(p):
         pid=str(p['id'])
-        years=('2023','2024','2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2023/24','2024/25','2025/26')
+        # Player identity is stable across transfers between calendar-year and
+        # European-season leagues. Their legitimate archived matches may use
+        # either date convention, irrespective of the CURRENT club's league.
+        years=('2023','2024','2025','2026','2023/24','2024/25','2025/26')
         return any(isinstance(r,dict) and
             r.get('source')=='historical_appearances' and
             (r.get('stats') or {}).get('matches',0)>0 and
@@ -139,7 +142,26 @@ def summarize(root):
     source_backed={str(p['id']) for p in new if recorded_archival_matches(p)}
     if len(source_backed)!=len(new):
         bad=[str(p['id']) for p in new if str(p['id']) not in source_backed]
-        raise RuntimeError('Additional profiles missing verified archival match rows: '+str(bad[:10]))
+        # Leave this QA gate strict; explain exactly why the importer lost rows.
+        cache_path=ROOT/'data'/'catalog_expansion.json'
+        try:cache=json.loads(cache_path.read_text(encoding='utf-8'))
+        except (OSError,ValueError):cache={}
+        diagnostics={}
+        for pid in bad[:3]:
+            person=next(p for p in new if str(p['id'])==pid)
+            site_rows={year:[(r.get('source'),(r.get('stats') or {}).get('matches'),
+                              (r.get('stats') or {}).get('minutes')) for r in
+                              (events.get(year) or {}).get(pid,[])] for year in
+                       ('2023/24','2024/25','2025/26','2023','2024','2025')}
+            cached_rows={year:[(r.get('source'),(r.get('stats') or {}).get('matches'),
+                                (r.get('stats') or {}).get('minutes')) for r in
+                                (items or {}).get(pid,[])] for year,items in
+                         (cache.get('by_season') or {}).items() if pid in (items or {})}
+            diagnostics[pid]={'league':person.get('league'),
+                              'ref_season':person.get('archiveReferenceSeason'),
+                              'site':site_rows,'cache':cached_rows}
+        raise RuntimeError('Additional profiles missing verified archival match rows: '+
+                           str(bad[:10])+'; diagnostics='+str(diagnostics))
     evidence_counts=Counter(p.get('archiveStatEvidence') or 'unknown' for p in new)
     contract_labels=Counter('current' if p.get('contractUntilCurrent') or p.get('contractThroughYear')
         else 'archival' if p.get('contractUntilArchive') else 'not_confirmed' for p in players)

@@ -104,3 +104,10 @@
 border:1px solid rgba(56,205,181,.36);border-radius:8px;
 background:rgba(15,78,78,.26);color:#d1f7ed;font-size:12px;
 font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+
+/* Historical evidence cards: distinct from current-value comparisons. */
+.gems-success-card .gems-card-open{display:block;height:auto;padding:18px}
+.gems-success-card .gems-card-main{display:flex;gap:7px}
+.gems-success-sources{margin:0;padding:0 18px 18px;color:#aec3cf;font-size:11px;line-height:1.5}
+.gems-success-sources a{color:#69e4d1;text-decoration:underline;text-underline-offset:2px}
+.gems-success-sources a:focus-visible{outline:2px solid #69e4d1;outline-offset:2px}

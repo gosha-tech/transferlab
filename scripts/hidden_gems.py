@@ -11,6 +11,7 @@ import pathlib
 import re
 import sys
 from gems_verification import evidence as audit_candidates
+from gem_history import assess as assess_gem_history, load as load_gem_history
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MARKET = ROOT / 'data' / 'current_market_values.json'
@@ -27,7 +28,7 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
   <div class="gems-head">
     <div><span class="gems-eyebrow">TRANSFERLAB DISCOVERY</span>
       <h1 id="gemsHeading">Hidden Gems <span>✦</span></h1>
-      <p>Молодые футболисты с интересными показателями. Сопоставляем эффективность, роль и рыночную оценку — без выдуманных цен.</p>
+      <p>Три статуса: кандидаты, проверенные недооценённые игроки и результаты прогнозов после трансферов. Исторические данные не выдаём за текущие.</p>
     </div>
     <div class="gems-head-mark">✦</div>
   </div>
@@ -53,14 +54,15 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
       <option value="minutes">Больше минут</option></select></label>
   </div>
   <div class="gems-tabs" role="group" aria-label="Режим аналитики">
-    <button id="gemsConfirmedTab" type="button" class="gems-tab active" aria-pressed="true">Подтверждённые находки <span id="gemsConfirmedCount">0</span></button>
-    <button id="gemsScoutTab" type="button" class="gems-tab" aria-pressed="false">Лучшие по игре <span id="gemsScoutCount">0</span></button>
-    <button id="gemsPreviewTab" type="button" class="gems-tab" aria-pressed="false">Кандидаты и архив <span id="gemsPreviewCount">0</span></button>
+    <button id="gemsConfirmedTab" type="button" class="gems-tab active" aria-pressed="true">Проверенные Hidden Gems <span id="gemsConfirmedCount">0</span></button>
+    <button id="gemsPreviewTab" type="button" class="gems-tab" aria-pressed="false">Кандидаты <span id="gemsPreviewCount">0</span></button>
+    <button id="gemsSuccessTab" type="button" class="gems-tab" aria-pressed="false">Успешные прогнозы <span id="gemsSuccessCount">0</span></button>
+    <button id="gemsScoutTab" type="button" class="gems-tab" aria-pressed="false">Спортивный рейтинг (не находки) <span id="gemsScoutCount">0</span></button>
   </div>
   <p class="gems-info" id="gemsInfo" role="status">Готовим выборку проверенных игроков…</p>
   <div id="gemsGrid" class="gems-grid"></div>
   <div class="gems-more-wrap"><button id="gemsMore" class="gems-more" type="button" hidden>Показать ещё</button></div>
-  <p class="gems-method">Hidden Gem Score — экспериментальное процентильное сравнение с футболистами той же роли и похожего возраста. Это не прогноз трансферной цены. Исторические наблюдения относятся к июню–июлю 2026 года; архивные кандидаты не подтверждают сегодняшнюю цену €15 млн.</p>
+  <p class="gems-method">Hidden Gem Score сравнивает игроков одной роли и возраста, но не предсказывает трансферную цену. Проверенная находка требует актуальных матчей, клуба, разрешённой рыночной оценки и выраженной недооценённости. Успешный прогноз — только сохранённое ДО трансфера наблюдение, сверенное с последующей сделкой. Архивные цены не считаются текущими.</p>
 </section>
 """
 
@@ -68,6 +70,7 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
   // Never infer current market prices from the archival history or the beta model.
   window.TransferLabGemsBridge = {
     verification(){return ROOT.gemsVerification||null;},
+    outcomeReport(){return ROOT.gemHistoryReport||null;},
     list(){
       const market=ROOT.hiddenGemsMarket||{};
       return players.map(p=>{
@@ -76,12 +79,19 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
         const liveSeason=calendar?'2026':'2026/27';
         const archiveSeason=calendar?'2025':'2025/26';
         const current=ROOT.liveIndexStats?.[liveSeason]?.[id]||null;
-        const historic=ROOT.liveIndexStats?.[archiveSeason]?.[id]||null;
+        // Preserve real historical seasons when a footballer transfers between
+        // calendar-year and July–June leagues.
+        const alternativeSeason=calendar?'2025/26':'2025';
+        const firstHistoric=ROOT.liveIndexStats?.[archiveSeason]?.[id]||null;
+        const secondHistoric=ROOT.liveIndexStats?.[alternativeSeason]?.[id]||null;
+        const useAlternative=Number(secondHistoric?.minutes||0)>Number(firstHistoric?.minutes||0);
+        const historic=useAlternative?secondHistoric:firstHistoric;
+        const historicSeason=useAlternative?alternativeSeason:archiveSeason;
         const hasMinutes=row=>row&&Number.isFinite(Number(row.minutes))&&Number(row.minutes)>=450;
         // Calendar 2026 snapshots may themselves be frozen historical reports.
         const liveVerified=hasMinutes(current)&&current.source!=='transfermarkt_historical'&&
           current.source!=='historical_appearances';
-        const season=liveVerified?liveSeason:archiveSeason;
+        const season=liveVerified?liveSeason:historicSeason;
         const stats=liveVerified?current:historic;
         const minutes=stats?.minutes==null?null:Number(stats.minutes);
         const archive=ROOT.marketHistory5Y?.[id];
@@ -199,6 +209,8 @@ def patch_embedded(html, today):
     root['hiddenGemsModelVersion'] = '1.0-beta'
     root['hiddenGemsMarketAsOf'] = today.isoformat()
     root['gemsVerification'] = audit_candidates(root.get('players') or [], root, today)
+    root['gemHistoryReport'] = assess_gem_history(
+        load_gem_history(), root.get('verifiedTransfersByPlayer') or {}, today)
     payload = json.dumps(root, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     output = html[:match.start(2)] + payload + html[match.end(2):]
     return output, root, rejected + len(values)-len(root['hiddenGemsMarket'])
@@ -257,6 +269,9 @@ def summarize(root, today, rejected):
             for p in eligible_minutes),
         'rejected_market_records': rejected,
         'confirmed_score_calculated_in_browser': True,
+        'discovery_snapshots': (root.get('gemHistoryReport') or {}).get('discovery_snapshots', 0),
+        'historical_gem_successes': (root.get('gemHistoryReport') or {}).get('successful_outcomes', 0),
+        'historical_gem_outcomes_reviewed': (root.get('gemHistoryReport') or {}).get('reviewed_after_transfer', 0),
         'per_player_verification_coverage': (root.get('gemsVerification') or {}).get('coverage',{}),
         'note': 'Market prices are never inferred from archived values or model estimates.'
     }
@@ -294,6 +309,12 @@ def main():
     out = ROOT/'_site'/'data'/'hidden_gems_coverage.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    # Publish successes AND misses to avoid survivorship-biased testimonials.
+    history_report = (json.loads(re.search(
+        r'<script id="embeddedData" type="application/json">(.*?)</script>',
+        html, re.S).group(1)).get('gemHistoryReport') or {})
+    (out.parent/'gem_history.json').write_text(
+        json.dumps(history_report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     # Publish a source-attributed queue covering every default-filter youth.
     # This is a verification checklist, not an assertion of market bargains.
     updated = re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)

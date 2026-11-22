@@ -158,9 +158,13 @@
     const valid=data.filter(p => p.age <= maxAge && p.eligible &&
       p.minutes >= minMinutes && (position==='all'||p.position===position) &&
       (league==='all'||p.league===league));
-    const confirmed=valid.filter(p=>p.score!==null && p.market?.value_eur<=maxPrice);
+    const confirmed=valid.filter(p=>p.score!==null && p.market?.value_eur<=maxPrice &&
+      p.verification?.data_ready_for_market_comparison===true &&
+      p.performancePercentile>=.65 && p.gap>=.20);
     const preliminary=valid.filter(p=>{
-      if (p.score!==null && p.market?.value_eur<=maxPrice) return false;
+      if (p.score!==null && p.market?.value_eur<=maxPrice &&
+        p.verification?.data_ready_for_market_comparison===true &&
+        p.performancePercentile>=.65 && p.gap>=.20) return false;
       // A dated archive valuation is a FILTER ON THE ARCHIVE, not today's price.
       // Players with unknown price stay visible as clearly labelled candidates.
       if (p.archive && Number.isFinite(p.archive.eur) && p.archive.eur>maxPrice) return false;
@@ -186,7 +190,13 @@
       .sort((a,b)=>b.scoutPercentile-a.scoutPercentile ||
         b.rating.score-a.rating.score || a.age-b.age);
     confirmed.sort(sortFn); preliminary.sort(sortFn);
-    return {confirmed,preliminary,scouted};
+    const successes=(bridge.outcomeReport()?.successes||[]).filter(p=>
+      Number(p.age_at_discovery)<=maxAge &&
+      Number(p.market_value_eur)<=maxPrice &&
+      Number(p.minutes_at_discovery)>=minMinutes &&
+      (position==='all'||p.position===position) &&
+      (league==='all'||p.league===league));
+    return {confirmed,preliminary,scouted,successes};
   }
   function renderCard(p) {
     const price=p.market ?
@@ -216,7 +226,8 @@
         '-й · это не общий индекс и не текущая недооценка' :
       p.rated ? 'Нет актуальных оценок или 25 сопоставимых игроков; число недооценённости не рассчитывается' :
       'Спортивный индекс пока не подтверждён по полноте показателей';
-    const tag=p.score!==null && p.performancePercentile>=.65 && p.gap>=.20 ?
+    const tag=p.score!==null && p.verification?.data_ready_for_market_comparison===true &&
+      p.performancePercentile>=.65 && p.gap>=.20 ?
       '<span class="gems-find">Выраженная недооценённость</span>' : '';
     const contract=p.contractCurrent ?
       'Контракт до '+esc(String(p.contractCurrent).slice(0,4))+' · опубликованные данные' :
@@ -245,7 +256,8 @@
     const period=p.currentEvidence?'Подтверждённый текущий сезон '+p.statPeriod:
       'Архивный сезон '+p.statPeriod;
     const club=esc(p.club)+(p.clubArchived?' · клуб по историческим данным, сейчас не подтверждён':'')+' · '+esc(p.league);
-    const quality=p.score!==null?'Data Confidence: '+p.quality+' · актуальная оценка':
+    const quality=p.score!==null?('Data Confidence: '+p.quality+
+      (p.verification?.data_ready_for_market_comparison?' · данные проверены':' · проверка клуба или матчей не завершена')):
       p.rated&&p.rating.provisional?'Data Confidence: C · предварительный индекс':
       p.rated?'Data Confidence: B · частичная статистика':
       'Data Confidence: C · индекс недоступен';
@@ -266,19 +278,44 @@
       ratio+archiveRatio+'<span class="gems-quality">'+esc(quality)+'</span></span>'+
       '</button></article>';
   }
+  function renderSuccessCard(p) {
+    const fee=money(Number(p.reported_fee_eur_m)*1000000);
+    const predicted=money(Number(p.model_forecast_eur_m)*1000000);
+    return '<article class="gems-card gems-success-card">'+
+      '<button class="gems-card-open" type="button" data-gem-open="'+esc(p.player_id)+'">'+
+      '<span class="gems-card-main"><span class="gems-player">'+esc(p.name||p.player_id)+'</span>'+
+      '<span class="gems-meta">Найден '+esc(p.discovered_at)+' · '+esc(p.from_club)+
+      ' → '+esc(p.to_club)+' · трансфер '+esc(p.deal_date)+'</span>'+
+      '<span class="gems-meta">Рыночная оценка при обнаружении: '+money(p.market_value_eur)+
+      ' ('+esc(p.market_as_of)+')</span>'+
+      '<span class="gems-meta">Прогноз TransferLab от '+esc(p.forecast_at)+
+      ': '+predicted+' · сообщённая сумма: '+fee+'</span>'+
+      '<span class="gems-meta">Ошибка прогноза: '+fmt(p.forecast_error_pct)+'% · Hidden Gem Score: '+
+      fmt(p.hidden_gem_score)+'/100</span>'+
+      '<span class="gems-explain">Ретроспективная проверка; цена перехода не равна объективной стоимости.</span>'+
+      '</span></button><p class="gems-success-sources">Источники: <a href="'+esc(p.market_source_url)+
+      '" target="_blank" rel="noopener noreferrer">оценка</a> · <a href="'+esc(p.official_source)+
+      '" target="_blank" rel="noopener noreferrer">клуб</a> · <a href="'+esc(p.fee_source)+
+      '" target="_blank" rel="noopener noreferrer">сумма перехода</a></p></article>';
+  }
   function connectPhotos(host) {
-    if (!('IntersectionObserver' in window)) return;
     if (observer) observer.disconnect();
+    const avatars=[...host.querySelectorAll('.gems-avatar')];
+    const load=el=>{
+      const img=el.querySelector('[data-gem-photo]');
+      const fallback=el.querySelector('[data-gem-fallback]');
+      if(img && fallback) bridge.attachPortrait(img,fallback,img.dataset.gemPhoto);
+    };
+    // Load the first visible portraits immediately; never block on observer events.
+    if (!('IntersectionObserver' in window)) { avatars.forEach(load); return; }
     observer=new IntersectionObserver(entries=>{
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
+      for(const e of entries){
+        if(!e.isIntersecting)continue;
         observer.unobserve(e.target);
-        const img=e.target.querySelector('[data-gem-photo]');
-        const fallback=e.target.querySelector('[data-gem-fallback]');
-        if (img && fallback) bridge.attachPortrait(img,fallback,img.dataset.gemPhoto);
+        load(e.target);
       }
-    },{rootMargin:'100px'});
-    host.querySelectorAll('.gems-avatar').forEach(el=>observer.observe(el));
+    },{rootMargin:'250px'});
+    avatars.forEach((el,i)=>i<8?load(el):observer.observe(el));
   }
   function render(reset=true) {
     if (!data) return;
@@ -287,21 +324,23 @@
     byId('gemsConfirmedCount').textContent=fmt(choices.confirmed.length);
     byId('gemsScoutCount').textContent=fmt(choices.scouted.length);
     byId('gemsPreviewCount').textContent=fmt(choices.preliminary.length);
+    byId('gemsSuccessCount').textContent=fmt(choices.successes.length);
     if (firstRender && !choices.confirmed.length && activeTab==='confirmed') {
       activeTab=choices.scouted.length?'scouted':'preview';
     }
     firstRender=false;
     for (const [tab,id] of [['confirmed','gemsConfirmedTab'],
-      ['scouted','gemsScoutTab'],['preview','gemsPreviewTab']]) {
+      ['scouted','gemsScoutTab'],['preview','gemsPreviewTab'],['success','gemsSuccessTab']]) {
       byId(id).classList.toggle('active',activeTab===tab);
       byId(id).setAttribute('aria-pressed',String(activeTab===tab));
     }
     byId('gemsAgeLabel').textContent=byId('gemsAge').value;
     byId('gemsPriceLabel').textContent='€'+byId('gemsPrice').value+' млн';
     const rows=activeTab==='preview'?choices.preliminary:
-      activeTab==='scouted'?choices.scouted:choices.confirmed;
+      activeTab==='scouted'?choices.scouted:
+      activeTab==='success'?choices.successes:choices.confirmed;
     const host=byId('gemsGrid');
-    host.innerHTML=rows.slice(0,shown).map(renderCard).join('');
+    host.innerHTML=rows.slice(0,shown).map(activeTab==='success'?renderSuccessCard:renderCard).join('');
     for (const button of host.querySelectorAll('[data-gem-open]')) {
       button.addEventListener('click',()=>{
         const id=button.dataset.gemOpen;
@@ -311,13 +350,16 @@
     connectPhotos(host);
     const more=byId('gemsMore');
     more.hidden=rows.length<=shown;
-    const note=activeTab==='scouted' ?
+    const note=activeTab==='success' ?
+      (rows.length ? 'Эти находки сохранены ДО трансферов. Сравниваем исходную цену, датированный прогноз и сообщённую сумму сделки. Это не доказательство причинной связи.' :
+      'Нет успешных прогнозов с подтверждённым обнаружением ДО перехода. Находки задним числом не создаём.') :
+      activeTab==='scouted' ?
       (rows.length?
        'Спортивный срез: индекс за 36 месяцев, минимум 450 минут текущего сезона, ровесники той же роли. Фильтр €15 млн здесь НЕ применяется: свежая цена неизвестна. Это не доказанная недооценка.' :
        'Для выбранных параметров нет 12 сопоставимых футболистов с подтверждёнными текущими матчами.') :
       activeTab==='confirmed' ?
-      (rows.length ? 'Актуальные цены подтверждены. Индекс экспериментальный; дата цены указана в карточке.' :
-      'Нет подтверждённых находок по выбранным фильтрам. Для расчёта нужны свежие оценки (не старше 120 дней) и минимум 25 аналогов по роли и возрасту.') :
+      (rows.length ? 'Все три проверки источников пройдены; выявлен выраженный разрыв между эффективностью и ценой. Будущий дорогой трансфер не гарантирован.' :
+      'Нет проверенных недооценённых игроков: нужны свежие матчи, клуб, разрешённые цены, 25 аналогов и заметный разрыв эффективности и цены.') :
       (rows.length ? 'Исследовательская подборка: текущая спортивная сила сверяется по ровесникам и позиции; архивный атакующий сигнал — отдельно по Г+А/90. Ни один показатель сам по себе не доказывает рыночную недооценку.' :
       'Нет кандидатов с достаточным количеством подтверждённых минут. Попробуйте изменить фильтры.');
     const check=bridge.verification()?.coverage||{};
@@ -329,6 +371,27 @@
       'из '+reviewCount+' кандидатов.':'';
     byId('gemsInfo').textContent=note+auditSummary;
   }
+  // Store real source-complete observations as-of the build date. Never backdate.
+  window.transferLabGemsSnapshotExport=()=>{
+    bridge=bridge||window.TransferLabGemsBridge;
+    if(!bridge)throw Error('Hidden Gems model is unavailable');
+    if(!data)prepare();
+    const eligible=data.filter(p=>p.age<=23 && p.eligible && p.minutes>=450 &&
+      p.score!==null && p.market?.value_eur<=15000000 &&
+      p.verification?.data_ready_for_market_comparison===true &&
+      p.performancePercentile>=.65 && p.gap>=.20);
+    const discoveries={};
+    for(const p of eligible){
+      discoveries[String(p.id)]={
+        name:p.name,club:p.club,league:p.league,position:p.position,age:p.age,
+        minutes:p.minutes,market_value_eur:p.market.value_eur,
+        market_as_of:p.market.as_of,market_source:p.market.source,
+        source_url:p.market.source_url,gap:p.gap,
+        performance_percentile:p.performancePercentile,score:p.score
+      };
+    }
+    return {as_of:asOf(),model_version:'hidden-gems-1.1-beta',discoveries};
+  };
   function show() {
     if (!bridge) return;
     bridge.showCatalog();
@@ -367,6 +430,7 @@
     byId('gemsConfirmedTab').addEventListener('click',()=>{activeTab='confirmed';render();});
     byId('gemsPreviewTab').addEventListener('click',()=>{activeTab='preview';render();});
     byId('gemsScoutTab').addEventListener('click',()=>{activeTab='scouted';render();});
+    byId('gemsSuccessTab').addEventListener('click',()=>{activeTab='success';render();});
     byId('gemsMore').addEventListener('click',()=>{shown+=30;render(false);});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',init);
