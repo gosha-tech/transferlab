@@ -302,6 +302,12 @@ def main():
     out = ROOT/'_site'/'data'/'hidden_gems_coverage.json'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+    # Publish successes AND misses to avoid survivorship-biased testimonials.
+    history_report = (json.loads(re.search(
+        r'<script id="embeddedData" type="application/json">(.*?)</script>',
+        html, re.S).group(1)).get('gemHistoryReport') or {})
+    (out.parent/'gem_history.json').write_text(
+        json.dumps(history_report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     # Publish a source-attributed queue covering every default-filter youth.
     # This is a verification checklist, not an assertion of market bargains.
     updated = re.search(r'<script id="embeddedData" type="application/json">(.*?)</script>',html,re.S)
