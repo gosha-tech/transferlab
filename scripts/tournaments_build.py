@@ -1064,6 +1064,30 @@ def embed(html):
           (ru?'Статистика пока не загружена (не 0)':'No player stats loaded yet (not zero)')):
           (ru?'Архивный сезон':'Archived season'))+
         (dated?' · '+(ru?'срез ':'as of ')+dated:'');
+      // A missing live feed does NOT mean the player has no historical
+      // football record. Offer the latest genuine archived season explicitly
+      // without silently backdating it to 2026/27.
+      if(current&&!rows.some(x=>Number(x.stats?.minutes)>0)){
+        const seasons=currentSeason==='2026'?
+          ['2025','2024']:['2025/26','2024/25','2023/24'];
+        const last=seasons.find(season=>{
+          const record=ROOT.liveIndexStats?.[season]?.[String(p.id)];
+          return record&&Number(record.minutes)>0;
+        });
+        if(last){
+          const button=document.createElement('button');
+          button.type='button';
+          button.className='archive-season-shortcut';
+          button.textContent=ru?'Показать статистику '+last:
+                                'Show '+last+' recorded statistics';
+          button.onclick=()=>{
+            state.season=last;
+            state.competition='all';
+            renderProfile();
+          };
+          banner.append(' · ',button);
+        }
+      }
     }
     const choices=current?(ROOT.currentCompetitionByPlayer?.[p.id]||[]):[];
     const allNames=new Map(choices.map(x=>[String(x.id),localizeComp(x.id,x.name,ru)]));
