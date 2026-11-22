@@ -27,6 +27,18 @@ def main():
         options={'headless':True,'args':['--no-sandbox','--disable-dev-shm-usage']}
         if chrome:options['executable_path']=chrome
         browser=playwright.chromium.launch(**options)
+        # First-paint regression: sidebar entry must exist and be visible even
+        # when the deferred Hidden Gems JS is disabled or never downloads.
+        static_context=browser.new_context(java_script_enabled=False,
+                                           viewport={'width':1440,'height':900})
+        static_page=static_context.new_page()
+        static_page.goto(url,wait_until='domcontentloaded',timeout=25000)
+        assert static_page.locator('#navGems').is_visible(), (
+            'Hidden Gems nav must be in server-rendered HTML, not created by JS')
+        assert static_page.locator('#navGems .nav-label').inner_text()=='Hidden Gems'
+        assert static_page.locator('#navCatalog').is_visible()
+        static_context.close()
+        print('Hidden Gems first paint without JavaScript PASS')
         page=browser.new_page(viewport={'width':1440,'height':900})
         page.on('pageerror',lambda error:errors.append(str(error)))
         page.route('**/*',lambda route: route.abort() if route.request.url.startswith(('https://','http://')) and '127.0.0.1' not in route.request.url else route.continue_())
