@@ -79,17 +79,7 @@ def inject_competition_exposure(html):
   }
 """
     html=html[:a]+replacement+html[b:]
-    meta="    const opponent=competitionEvidence?.opponentEvidence;
-    if(opponent?.matches>0&&Number.isFinite(competitionEvidence.opponentDelta))
-      facts.push(label('Сила соперников в подтверждённых матчах ЛЧ/ЛЕ: ',
-                       'Verified UEFA opponent strength: ')+
-        opponent.average_uefa_coefficient.toFixed(1)+
-        label(' баллов УЕФА · ', ' UEFA coefficient points · ')+
-        opponent.matches+label(' матч(ей), поправка ',
-                               ' matches, index adjustment ')+
-        (competitionEvidence.opponentDelta>0?'+':'')+
-        competitionEvidence.opponentDelta.toFixed(2));
-    const standing=relativeRoleRank(p);"
+    meta="    const standing=relativeRoleRank(p);"
     if html.count(meta)!=1:
         raise RuntimeError("Cannot show European evidence in player profile")
     extra=r"""    const competitionEvidence=projectedIndex(p).leagueAdjustment;
@@ -100,6 +90,16 @@ def inject_competition_exposure(html):
         label(' взвешенных / общих минут',' weighted / total minutes')+
         ' · '+label('коэффициент уровня ','competition factor ')+
         competitionEvidence.factor.toFixed(3));
+    const opponent=competitionEvidence?.opponentEvidence;
+    if(opponent?.matches>0&&Number.isFinite(competitionEvidence.opponentDelta))
+      facts.push(label('Сила соперников в подтверждённых матчах ЛЧ/ЛЕ: ',
+                       'Verified UEFA opponent strength: ')+
+        opponent.average_uefa_coefficient.toFixed(1)+
+        label(' баллов УЕФА · ', ' UEFA coefficient points · ')+
+        opponent.matches+label(' матч(ей), поправка ',
+                               ' matches, index adjustment ')+
+        (competitionEvidence.opponentDelta>0?'+':'')+
+        competitionEvidence.opponentDelta.toFixed(2));
 """
     return html.replace(meta,extra+meta,1)
 
