@@ -43,6 +43,15 @@ def embed(html):
     commons=json.loads(commons_path.read_text(encoding='utf-8')) if commons_path.exists() else {}
     pitch_path=ROOT/'data'/'pitchapi.json'
     pitch=json.loads(pitch_path.read_text(encoding='utf-8')) if pitch_path.exists() else {}
+    market_path=ROOT/'data'/'market_history.json'
+    market=json.loads(market_path.read_text(encoding='utf-8')) if market_path.exists() else {}
+    root['marketHistory5Y']=market.get('series') or {}
+    root['marketHistorySource']=market.get('source')
+    root['marketHistoryWindow']=[market.get('window_start'),market.get('window_end')]
+    root['marketHistoryLastObserved']=market.get('latest_observation')
+    root['marketHistoryCoverage']={
+        'profiles':len(root['marketHistory5Y']),
+        'two_or_more':sum(len(x)>=2 for x in root['marketHistory5Y'].values())}
     original=root['players']
     for p in original:
         photo=(commons.get('photos') or {}).get(str(p.get('id')))
@@ -446,6 +455,41 @@ def embed(html):
                "[100,100,100,0].map((n,i)=>")
     html=html.replace("Recency-weighted minutes","Eligible minutes in rolling window")
     html=html.replace("Эквивалент минут с учётом давности","Минуты в скользящем окне")
+    # Dated observed valuations override hand-curated examples. Preserve
+    # original user-entered history ONLY for players absent from the archive.
+    html=patch(html,
+      "function marketSeries(p){const seeded=HISTORY_REFERENCES[p.id];",
+      """function marketSeries(p){
+      const observed=ROOT.marketHistory5Y?.[String(p.id)];
+      if(Array.isArray(observed)&&observed.length){
+        return {points:observed,source:ROOT.marketHistorySource,
+                label:'Transfermarkt archive, latest '+(ROOT.marketHistoryLastObserved||'2026-06')};
+      }
+      const seeded=HISTORY_REFERENCES[p.id];""")
+    # The time axis should cover the most recent five years, not a fixed
+    # 2022 start that hides November/December 2021 observations.
+    html=patch(html,
+      "const startMs=Date.parse('2022-01-01');const y=v=>",
+      "const now=new Date();const startMs=Date.UTC(now.getUTCFullYear()-5,now.getUTCMonth(),now.getUTCDate());const y=v=>")
+    html=patch(html,
+      "for(const year of ['2022','2023','2024','2025','2026']){",
+      "for(const year of Array.from({length:5},(_,i)=>String(new Date().getFullYear()-4+i))){")
+    html=patch(html,
+      "$('chartHeadline').textContent=ru?'Динамика стоимости':'Value history';",
+      "$('chartHeadline').textContent=ru?'Стоимость за 5 лет':'Five-year value history';")
+    html=patch(html,
+      "    $('chartSubtitle').textContent=hist.points.length>1?",
+      """    $('chartSubtitle').textContent=hist.points.length>1?""")
+    html=html.replace("Жёлтая точка — текущий прогноз, исторические оценки недоступны.",
+                      "Недостаточно наблюдений для исторической линии; жёлтая точка — прогноз TransferLab.")
+    html=html.replace("History unavailable — current forecast only",
+                      "Not enough historical observations — the amber point is a model estimate")
+    html=html.replace("Истории мало — показан текущий прогноз",
+                      "Мало исторических оценок · жёлтый — прогноз")
+    html=html.replace("chartDateString(dayAsOf(),ru)+', €'+asM(modelValue)+'M'",
+                      "chartDateString(dayAsOf(),ru)+', €'+asM(modelValue)+'M'")
+    # The history contains only known observations; do not infer 2026-11
+    # market values from frozen June 2026 data.
     html=patch(html,"const contracts = ROOT.contracts;",r"""const contracts = ROOT.contracts;
   const tournamentRows=ROOT.liveTournamentStats||{};
   // Sourced tournament totals may also improve the rolling index. Existing
