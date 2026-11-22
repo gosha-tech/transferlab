@@ -112,6 +112,25 @@ def embed(html):
     corrected=apply_verified(original,pitch.get('matches') or {},config)
     root['rosterCorrections']=corrected
     root['rosterEvidenceAsOf']=config.get('as_of')
+    # Verified cross-provider contract YEAR only; provider did not supply a
+    # precise expiration date. Do not override an official or published date.
+    secondary_path=ROOT/'data'/'contract_enrichment.json'
+    secondary=json.loads(secondary_path.read_text(encoding='utf-8')) if secondary_path.exists() else {}
+    extended=0
+    for p in original:
+        evidence=(secondary.get('profiles') or {}).get(str(p.get('id'))) or {}
+        if p.get('contractUntilCurrent') or p.get('contractThroughYear'):continue
+        year=str(evidence.get('contractThroughYear') or '')
+        if (re.fullmatch(r'20\\d{2}',year) and
+            int(year)>dt.date.today().year and
+            evidence.get('team') and team_norm(evidence['team'])==team_norm(p.get('team'))):
+            p['contractThroughYear']=year
+            p['contractSource']=evidence.get('source')
+            p['contractSourceAsOf']=evidence.get('as_of')
+            p['contractPrecision']='year_only'
+            extended+=1
+    root['newContractEvidence']=extended
+    root['contractSourceLastChecked']=secondary.get('last_check')
     current_by_id={str(p['id']):p for p in original}
     # Do not assign a fresh Premier League snapshot to footballers who have
     # moved away (Salah to Trabzonspor, etc). Archived EPL years are untouched.
