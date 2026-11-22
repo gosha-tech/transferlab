@@ -18,7 +18,31 @@ LEAGUE_NAMES={
  'Serie A':'Serie A','Ligue 1':'Ligue 1','Primeira Liga':'Primeira Liga',
  'Belgian Pro League':'Belgian Pro League','Süper Lig':'Süper Lig',
  'Saudi Pro League':'Saudi Pro League','MLS':'MLS','Brasileirão':'Brasileirão',
- 'Eredivisie':'Eredivisie'
+ 'Eredivisie':'Eredivisie',
+ 'Russian Premier League':'Russian Premier League',
+ 'Ukrainian Premier League':'Ukrainian Premier League',
+ 'Ekstraklasa':'Ekstraklasa',
+ 'Czech First League':'Czech First League',
+ 'Croatian HNL':'Croatian HNL',
+ 'Serbian SuperLiga':'Serbian SuperLiga',
+ 'Romanian SuperLiga':'Romanian SuperLiga',
+ 'Greek Super League':'Greek Super League',
+ 'Scottish Premiership':'Scottish Premiership',
+ 'Austrian Bundesliga':'Austrian Bundesliga',
+ 'Danish Superliga':'Danish Superliga',
+ 'Swiss Super League':'Swiss Super League',
+ 'EFL Championship':'EFL Championship',
+ 'Segunda División':'Segunda División',
+ '2. Bundesliga':'2. Bundesliga',
+ 'Serie B':'Serie B',
+ 'Ligue 2':'Ligue 2',
+ 'Liga MX':'Liga MX',
+ 'A-League Men':'A-League Men',
+ 'Argentine Primera División':'Argentine Primera División',
+ 'Eliteserien':'Eliteserien',
+ 'Allsvenskan':'Allsvenskan',
+ 'J1 League':'J1 League',
+ 'K League 1':'K League 1'
 }
 ROLE_POS={'GK':'Goalkeeper','CB':'Defender','RB':'Defender','LB':'Defender',
  'AM':'Midfielder','CM':'Midfielder','DM':'Midfielder','RW':'Forward',
@@ -34,7 +58,8 @@ def reliable_current_membership(matches,as_of=None):
         if not isinstance(m,dict) or m.get('league') not in LEAGUE_NAMES:
             continue
         league=m['league']
-        season='2026' if league in ('MLS','Brasileirão') else '2026/27'
+        season='2026' if league in ('MLS','Brasileirão','Argentine Primera División',
+             'Eliteserien','Allsvenskan','J1 League','K League 1') else '2026/27'
         if m.get('season')!=season:continue
         try:
             day=dt.date.fromisoformat(str(m.get('date'))[:10])
@@ -123,6 +148,22 @@ def selftest():
     assert count==2,(count,roster)
     assert roster[0]['team']=='Atlético Madrid' and roster[0]['contractUntilCurrent']=='2030-06-30'
     assert roster[1]['team']=='New Club'
+    # Current RPL appearances should correct a stale archived club, not get
+    # silently discarded because the domestic league was absent from the map.
+    rpl=[{'id':'tm-player-909','name':'Test Russian League Player','team':'Archive Club',
+          'league':'Russian Premier League','origin':'transfermarkt_archived_2026'}]
+    fixtures={}
+    for i,day in enumerate(('2026-10-21','2026-11-10')):
+        fixtures[str(i)]={'season':'2026/27','league':'Russian Premier League',
+            'date':day,'players':[{'player_id':'tm-player-909','team':'Confirmed Team',
+                                   'stats':{'minutes':90}}]}
+    assert apply_verified(rpl,fixtures,{'players':{}},dt.date(2026,11,22))==1
+    assert rpl[0]['team']=='Confirmed Team' and rpl[0]['clubSourceAsOf']=='2026-11-10'
+    for m in fixtures.values():m['season']='2025/26'
+    rpl[0]['team']='Archive Club';rpl[0].pop('clubSource',None)
+    assert apply_verified(rpl,fixtures,{'players':{}},dt.date(2026,11,22))==0
+    assert rpl[0]['team']=='Archive Club'
+
     print('Verified transfer overrides and recent match-team reconciliation PASS')
 
 if __name__=='__main__':selftest()
