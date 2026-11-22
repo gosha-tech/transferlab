@@ -33,8 +33,8 @@ def inject_role_calibration(html):
       provisional:false,confidence:1,sampleMinutes:Number(actual.rolling?.weightedMinutes||0)};
     const sampleMinutes=Number(actual.rolling?.weightedMinutes||0);
     const coverage=Math.max(0,Math.min(100,Number(actual.coverage||0)));
-    // The neutral 50-point prior is a display-calibration prior, not
-    // invented match statistics. This is deliberately conservative.
+    // The neutral 50-point prior is a heuristic conservative shrinkage,
+    // NOT a probability of player quality and not invented match statistics.
     const seasonCount=archiveRecords.filter(({stat})=>Number(stat.minutes)>=180).length;
     const minuteConfidence=Math.min(1,Math.sqrt(Math.max(0,sampleMinutes)/2600));
     const metricConfidence=Math.max(.35,Math.min(1,coverage/95));
@@ -120,15 +120,15 @@ def inject_role_calibration(html):
       facts.push(label('Архивный индекс (предварительно): ',
                        'Provisional archived index: ')+
         confidence.baseline+' → '+roleIndex.score+'/100 · '+
-        Math.round(confidence.confidence*100)+'%'+
-        label(' уверенности модели; без текущих подтверждённых матчей',
-              ' model confidence; no verified current-season matches'));
+        '×'+confidence.confidence.toFixed(2)+
+        label(' коэффициент консервативной поправки; нет текущих подтверждённых матчей',
+              ' conservative shrinkage factor; no verified current-season matches'));
     }
     if(roleIndex.roleCalibration?.enabled)
       facts.push(label('Поправка сопоставимости позиций (β): ',
                        'Cross-position index calibration (beta): ')+
         roleIndex.roleCalibration.baseline+' → '+
-        roleIndex.score+' / 100 · '+roleIndex.roleCalibration.peerCount+
+        roleIndex.roleCalibration.score+' / 100 · '+roleIndex.roleCalibration.peerCount+
         label(' игроков этой позиции',' players in same role'));
 """ + marker,1)
     return html
