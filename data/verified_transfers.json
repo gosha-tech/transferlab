@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-22",
+  "methodology": "Fees from published reports are NOT club-certified accounting prices. Stored valuation snapshots must predate deal to qualify as pre-transfer predictions.",
+  "transfers": [
+    {
+      "id": "summerville-2026-07-24",
+      "player_name": "Crysencio Summerville",
+      "tm_player_id": "474701",
+      "date": "2026-07-24",
+      "from_club": "West Ham United",
+      "to_club": "Al-Hilal",
+      "reported_fee_eur_m": 70,
+      "fee_qualifier": "approximately; media estimate",
+      "original_currency": "GBP",
+      "guaranteed_gbp_m": 55,
+      "maximum_addons_gbp_m": 5,
+      "fee_source": "https://www.lequipe.fr/Football/Actualites/Mercato-crysencio-summerville-quitte-west-ham-et-rejoint-al-hilal-contre-70-m-et-8364/1706846",
+      "fee_structure_source": "https://www.skysports.com/football/news/13565872/crysencio-summerville-transfer-news-al-hilal-complete-60m-signing-of-netherlands-international-from-west-ham",
+      "official_transfer_source": "https://alhilal.com/en/news/al-hilal-signs-crysencio-summerville-for-four-years",
+      "status": "completed",
+      "fee_status": "reported_not_club_disclosed"
+    }
+  ]
+}
