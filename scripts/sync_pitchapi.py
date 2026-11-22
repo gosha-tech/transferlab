@@ -19,6 +19,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict
+from ingest_priority import load_queue,prioritized_tasks,should_retry
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 OUT=ROOT/'data'/'pitchapi.json'
@@ -339,24 +340,11 @@ def sync():
                 if not previous:
                     pending.append(m)
                     continue
-                # Retry an empty player report: match stats sometimes arrive
-                # days after the final whistle. A cached empty result is not
-                # confirmation that every player recorded zero minutes.
-                if (season in ('2026/2027','2026') and
-                    int(previous.get('roster_profiles') or 0)<len(roster) and
-                    str(previous.get('date') or '')[:10]>='2026-08-01'):
+                # Re-query only reports eligible for a source refresh.
+                # A newly expanded 10k archival roster alone must not trigger
+                # a full re-download of every cached current-season game.
+                if should_retry(previous,season,len(roster),now_utc):
                     pending.append(m)
-                    continue
-                if not previous.get('players'):
-                    try:
-                        last_checked_at=dt.datetime.fromisoformat(
-                            str(previous.get('checked_at') or '').replace('Z','+00:00'))
-                        if last_checked_at.tzinfo is None:
-                            last_checked_at=last_checked_at.replace(tzinfo=dt.timezone.utc)
-                    except (TypeError,ValueError):
-                        last_checked_at=now_utc-dt.timedelta(days=15)
-                    if now_utc-last_checked_at>=dt.timedelta(days=14):
-                        pending.append(m)
             # Uncached matches first, then older empty results requiring review.
             pending.sort(key=lambda m:(
                 str(m.get('id')) not in cached,
@@ -372,7 +360,12 @@ def sync():
             errors.append(canonical+' '+season+': '+type(exc).__name__)
     # Interleave leagues and seasons. One long-running league must not use the
     # entire run while other countries receive no data.
-    active=[t for t in tasks if t['pending']]
+    missing_by_league=load_queue()
+    active=prioritized_tasks([t for t in tasks if t['pending']],missing_by_league)
+    print('PitchAPI prioritized:',len(active),'competition-season queues,',
+          sum(int(t.get('indexed_matches') or 0) for t in active),
+          'indexed fixtures; player evidence gaps',
+          sum(missing_by_league.values()))
     denied=False
     pause=max(.08,min(2.0,float(os.getenv('PITCHAPI_PAUSE','0.18'))))
     while active and requests<budget and len(cached)<max_report_size and not denied:
