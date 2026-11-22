@@ -213,6 +213,10 @@ def main():
         assert 'opponentDelta' in result
         assert 'transferComparison' in result
         assert 'window.transferLabForecastExport=function()' in result
+        print('TRANSFER_DIAGNOSTIC',
+              [(p.get('id'),p.get('name'),p.get('team'),p.get('league'))
+               for p in d['players'] if 'summerv' in p.get('name','').lower()],
+              d['transferEvidenceCoverage'])
         assert d['transferEvidenceCoverage']['accepted']>=1
         summerville=next(p for p in d['players'] if p.get('name')=='Crysencio Summerville')
         moves=d['verifiedTransfersByPlayer'][str(summerville['id'])]
