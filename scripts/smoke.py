@@ -99,6 +99,24 @@ def main():
                   rating:r?.rating,stats,archive:r?.archive};
         }""")
         print('MILAN ZONNEVELD INDEX DIAGNOSIS:',str(zonneveld)[:14000])
+        targets=page.evaluate("""() => {
+          const root=JSON.parse(document.getElementById('embeddedData').textContent);
+          const targets=['marc guiu','mika biereth','jhon dur','mohamed-ali cho'];
+          const raw=window.TransferLabGemsBridge.list();
+          return targets.map(needle=>{
+            const p=root.players.find(x=>String(x.name).toLowerCase().includes(needle));
+            if(!p)return {name:needle,missing:true};
+            const x=raw.find(y=>String(y.id)===String(p.id));
+            return {name:p.name,id:p.id,position:p.scoutRole,league:p.league,
+              contract:p.contractUntilArchive,model:x?.rating,
+              seasons:Object.fromEntries(['2023/24','2024/25','2025/26','2026/27']
+                .map(season=>[season,{stats:root.liveIndexStats?.[season]?.[String(p.id)]||null,
+                  tournaments:root.liveTournamentStats?.[season]?.[String(p.id)]||[]}]))};
+          });
+        }""")
+        for target in targets:
+            print('HIGH SCORE GEM DIAGNOSIS:',str(target)[:8000])
+
         assert zonneveld and zonneveld['rating'], 'Zonneveld archival index absent'
         assert zonneveld['rating']['provisional'] is True
         assert zonneveld['rating']['exact'] is False
