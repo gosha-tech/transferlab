@@ -171,3 +171,5 @@ body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .transfer-note a{color:#54dfc6;text-decoration:underline}
 .transfer-gap{font-size:13px;font-weight:600;color:#e7f8f6;margin:12px 0 0}
 @media(max-width:680px){.transfer-values{grid-template-columns:1fr}.transfer-values>div{padding:10px}.transfer-comparison{padding:14px}}
+
+/* Hidden Gems styles are isolated in assets/hidden_gems.css (v1.0). */
