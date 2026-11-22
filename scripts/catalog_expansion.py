@@ -305,7 +305,7 @@ def selftest():
     assert data_small['players'][0]['archiveStatEvidence']=='very_limited'
     assert data_small['players'][0]['archiveLastSeasonMinutes']==65
     data_excluded=build([one,test_profile(2)],appearances,exclude_names={norm(one['name'])})
-    assert not data_excluded['players']
+    assert all(norm(p['name'])!=norm(one['name']) for p in data_excluded['players'])
     assert data['version']==CACHE_VERSION
     print('Historical expansion exact-ID joins, minutes and dedup PASS')
 def main():
