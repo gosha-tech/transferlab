@@ -34,7 +34,7 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
       <option value="Defender">Защитники</option><option value="Midfielder">Полузащитники</option>
       <option value="Forward">Нападающие</option></select></label>
     <label>Чемпионат<select id="gemsLeague"><option value="all">Все лиги</option></select></label>
-    <label>Минуты в текущем сезоне<select id="gemsMinutes">
+    <label>Минуты в сезоне данных<select id="gemsMinutes">
       <option value="450">От 450</option><option value="900">От 900</option>
       <option value="1500">От 1500</option></select></label>
     <label>Сортировка<select id="gemsSort">
@@ -45,13 +45,13 @@ GEMS_SECTION = """<section id="viewGems" class="hidden" aria-labelledby="gemsHea
       <option value="minutes">Больше минут</option></select></label>
   </div>
   <div class="gems-tabs" role="group" aria-label="Достоверность рыночной оценки">
-    <button id="gemsConfirmedTab" type="button" class="gems-tab active" aria-pressed="true">Подтверждённые <span id="gemsConfirmedCount">0</span></button>
-    <button id="gemsPreviewTab" type="button" class="gems-tab" aria-pressed="false">Перспективные кандидаты <span id="gemsPreviewCount">0</span></button>
+    <button id="gemsConfirmedTab" type="button" class="gems-tab active" aria-pressed="true">Подтверждённые находки <span id="gemsConfirmedCount">0</span></button>
+    <button id="gemsPreviewTab" type="button" class="gems-tab" aria-pressed="false">Кандидаты и архив <span id="gemsPreviewCount">0</span></button>
   </div>
   <p class="gems-info" id="gemsInfo" role="status">Готовим выборку проверенных игроков…</p>
   <div id="gemsGrid" class="gems-grid"></div>
   <div class="gems-more-wrap"><button id="gemsMore" class="gems-more" type="button" hidden>Показать ещё</button></div>
-  <p class="gems-method">Hidden Gem Score — экспериментальное процентильное сравнение с футболистами той же роли и похожего возраста. Это не прогноз трансферной цены. Последняя архивная рыночная оценка в старом источнике относится к июню 2026 года.</p>
+  <p class="gems-method">Hidden Gem Score — экспериментальное процентильное сравнение с футболистами той же роли и похожего возраста. Это не прогноз трансферной цены. Исторические наблюдения относятся к июню–июлю 2026 года; архивные кандидаты не подтверждают сегодняшнюю цену €15 млн.</p>
 </section>
 """
 
@@ -62,31 +62,52 @@ BRIDGE = r"""  // Hidden Gems uses the exact same performance model and player o
       const market=ROOT.hiddenGemsMarket||{};
       return players.map(p=>{
         const id=String(p.id);
-        const season=['MLS','Brasileirão'].includes(p.league)?'2026':'2026/27';
-        const current=ROOT.liveIndexStats?.[season]?.[id]||null;
-        const minutes=Number(current?.minutes);
+        const calendar=['MLS','Brasileirão'].includes(p.league);
+        const liveSeason=calendar?'2026':'2026/27';
+        const archiveSeason=calendar?'2025':'2025/26';
+        const current=ROOT.liveIndexStats?.[liveSeason]?.[id]||null;
+        const historic=ROOT.liveIndexStats?.[archiveSeason]?.[id]||null;
+        const hasMinutes=row=>row&&Number.isFinite(Number(row.minutes))&&Number(row.minutes)>=450;
+        // Calendar 2026 snapshots may themselves be frozen historical reports.
+        const liveVerified=hasMinutes(current)&&current.source!=='transfermarkt_historical'&&
+          current.source!=='historical_appearances';
+        const season=liveVerified?liveSeason:archiveSeason;
+        const stats=liveVerified?current:historic;
+        const minutes=stats?.minutes==null?null:Number(stats.minutes);
         const archive=ROOT.marketHistory5Y?.[id];
         const last=Array.isArray(archive)&&archive.length?archive[archive.length-1]:null;
+        const archiveValue=Number(p.marketValueArchiveEUR);
+        const safeArchive=Number.isFinite(archiveValue)&&archiveValue>0&&archiveValue<=500000000?
+          {as_of:p.teamArchiveAsOf||p.archive_as_of||'2026-07',eur:archiveValue,
+           source:'Transfermarkt · архив'}:
+          (last&&last.length>=2&&Number(last[1])>0?
+            {as_of:last[0],eur:Math.round(Number(last[1])*1000000),
+             source:'Transfermarkt · архив'}:null);
         let rating=null;
-        // Compute costly 36-month score only for plausible candidates.
-        if(p.birth&&Number.isFinite(minutes)&&minutes>=450){
+        // Use the exact TransferLab 36-month model with archived match evidence.
+        // Missing advanced metrics remain missing; never synthesize xG or xA.
+        if(p.birth&&hasMinutes(stats)){
           const idx=projectedIndex(p);
           rating={score:idx.score,proxy:!!idx.proxy,role:idx.role||p.scoutRole||p.pos,
             coverage:Number(idx.coverage||0),
             weightedMinutes:Number(idx.rolling?.weightedMinutes||0),
             exact:!!idx.exact};
         }
+        const contractCurrent=p.contractUntilCurrent||p.contractThroughYear||null;
+        const contractArchived=p.contractUntilArchive||null;
         return {id,name:p.name,birth:p.birth||null,club:p.team||'—',
           league:p.league||'—',position:p.pos||'Unknown',
           precisePosition:p.displayPosition||null,role:p.scoutRole||p.pos,
           positionEvidence:!!(p.displayPosition||p.position_source||p.positionVerified),
-          minutes:Number.isFinite(minutes)?minutes:null,
-          matches:current?.matches??null,
-          statsAsOf:current?.as_of||null,
-          statsSource:current?.source||null,
-          statsPartial:!!current?.partial,
-          rating,market:market[id]||null,
-          archive:last&&last.length>=2?{as_of:last[0],eur:Math.round(Number(last[1])*1000000)}:null};
+          clubArchived:!!(p.origin==='transfermarkt_archived_2026'&&!p.clubSource),
+          statPeriod:season,currentEvidence:!!liveVerified,
+          minutes, matches:stats?.matches??null,
+          statsAsOf:stats?.as_of||(liveVerified?null:'2026-06-28'),
+          statsSource:stats?.source||null,
+          statsPartial:!!stats?.partial,
+          rating,market:market[id]||null,archive:safeArchive,
+          contractCurrent,contractArchived,
+          contractArchivedAt:p.contractArchiveAsOf||'2026-07'};
       });
     },
     showCatalog(){showView('catalog');},
