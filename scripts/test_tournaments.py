@@ -236,6 +236,9 @@ def main():
         assert d['profileCoverage']['with_current_player_stats']>=1
         assert 'advancedCoverageNote' in result and 'advanced_metric_coverage' in result
         assert 'competitionSelect' in result and 'renderTournamentSelector' in result
+        assert 'archive-season-shortcut' in result
+        assert "Show '+last+' recorded statistics" in result
+        assert "ROOT.liveIndexStats?.[season]?.[String(p.id)]" in result
         assert 'freeMatchesPanel' in result
         assert d['freeMatchResults']['Premier League'][0]['home_goals']==2
         assert d['freeSourcePlayerStats']==1
