@@ -246,7 +246,9 @@ def embed(html):
             merged=dict(overlapping['stats'])
             for field,value in totals.items():
                 if field=='starts_min':
-                    merged['starts_min']=round(float(merged.get('starts_min') or 0)+value,3)
+                    # The complete published EPL base is included ONCE below.
+                    # An incomplete newer PitchAPI batch contributes its
+                    # verified minimum ONCE, not twice.
                     continue
                 # The published PL base has complete starts only through its
                 # export; if newer games lack confirmed XI then full starts
