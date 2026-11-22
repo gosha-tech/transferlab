@@ -264,7 +264,7 @@ def embed(html):
                 if not cutoff or not played or played<=cutoff:continue
             athlete=verified_players.get(pid)
             if athlete is None:continue
-            current_season='2026' if athlete.get('league') in ('MLS','Brasileirão') else '2026/27'
+            current_season='2026' if athlete.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else '2026/27'
             if season==current_season:
                 # Never let a name-only cross-club match put Foden in
                 # Bundesliga/Ligue 1. The current club is authoritative.
@@ -852,7 +852,7 @@ def embed(html):
     'yellow_cards','red_cards'];
   function eligibleRows(p,season){
     const pool=tournamentRows[season]?.[p.id]||[];
-    const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
+    const currentSeason=(['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league))?'2026':'2026/27';
     if(season!==currentSeason)return pool;
     const permitted=new Set((ROOT.currentCompetitionByPlayer?.[p.id]||[]).map(c=>String(c.id)));
     // An unverified current competition from a community sample must not
@@ -1004,7 +1004,7 @@ def embed(html):
     const ru=state.language==='ru';
     const select=$('competitionSelect');
     const rows=eligibleRows(p,state.season);
-    const currentSeason=(p.league==='MLS'||p.league==='Brasileirão')?'2026':'2026/27';
+    const currentSeason=(['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league))?'2026':'2026/27';
     const current=state.season===currentSeason;
     const banner=$('currentSeasonBanner');
     if(banner){
@@ -1132,9 +1132,9 @@ def embed(html):
       // archive auto-fallback silently switched users to 2025/26 when PitchAPI
       // had goals or assists but no minute count, making 2026/27 look empty.
       const athlete=players.find(x=>String(x.id)===String(id));
-      const calendar=athlete&&['MLS','Brasileirão'].includes(athlete.league);
+      const calendar=athlete&&['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(athlete.league);
       const archivedSeed=athlete?.origin==='transfermarkt_archived_2026';
-      state.season=archivedSeed?(calendar?'2025':'2025/26'):(calendar?'2026':'2026/27');""")
+      state.season=archivedSeed?(athlete?.archiveReferenceSeason||athlete?.season||(calendar?'2025':'2025/26')):(calendar?'2026':'2026/27');""")
     html=patch(html,"    const apply=o=>{",
       """    const showCredit=o=>{
       if(!label)return;label.textContent='Фото: '+o.source;

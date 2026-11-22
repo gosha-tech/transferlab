@@ -53,7 +53,7 @@ def summarize(root):
         pid=str(p['id'])
         league=str(p.get('league') or 'Unknown')
         leagues[league]['players']+=1
-        for season in (CALENDAR_SEASONS if league in ('MLS','Brasileirão') else SEASONS):
+        for season in (CALENDAR_SEASONS if league in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else SEASONS):
             if pid in (events.get(season) or {}) and any(
                  isinstance(r,dict) and r.get('stats') for r in events[season][pid]):
                 leagues[league]['seasons'][season]+=1
@@ -108,12 +108,31 @@ def summarize(root):
     # Explicit role/contract/stat coverage: an archived observation is not
     # proof of a current-season appearance, current team or current contract.
     new=[p for p in players if p.get('origin')=='transfermarkt_archived_2026']
+    # Every additional public profile must contain at least one real,
+    # positive-minute season row with a dated, named provider.
+    def recorded_archival_matches(p):
+        pid=str(p['id'])
+        years=('2025','2026') if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2024/25','2025/26')
+        return any(isinstance(r,dict) and
+            r.get('source')=='historical_appearances' and
+            (r.get('stats') or {}).get('matches',0)>0 and
+            (r.get('stats') or {}).get('minutes',0)>0 and
+            r.get('source_as_of')
+            for yr in years for r in (events.get(yr) or {}).get(pid,[]))
+    source_backed={str(p['id']) for p in new if recorded_archival_matches(p)}
+    if len(source_backed)!=len(new):
+        bad=[str(p['id']) for p in new if str(p['id']) not in source_backed]
+        raise RuntimeError('Additional profiles missing verified archival match rows: '+str(bad[:10]))
+    evidence_counts=Counter(p.get('archiveStatEvidence') or 'unknown' for p in new)
+    contract_labels=Counter('current' if p.get('contractUntilCurrent') or p.get('contractThroughYear')
+        else 'archival' if p.get('contractUntilArchive') else 'not_confirmed' for p in players)
+
     def index_minutes(p,seasons):
         pid=str(p['id'])
         return sum(max(0,float((index.get(season) or {}).get(pid,{}).get('minutes') or 0))
                    for season in seasons)
-    current_seasons=lambda p: ('2026',) if p.get('league') in ('MLS','Brasileirão') else ('2026/27',)
-    archive_seasons=lambda p: ('2025',) if p.get('league') in ('MLS','Brasileirão') else ('2025/26',)
+    current_seasons=lambda p: ('2026',) if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2026/27',)
+    archive_seasons=lambda p: ('2025',) if p.get('league') in ('MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1') else ('2025/26',)
     previous_index={str(p['id']) for p in players if
                     index_minutes(p,archive_seasons(p))>=450}
     current_index={str(p['id']) for p in players if
@@ -146,6 +165,12 @@ def summarize(root):
       'profiles':profile,
       'expansion':{
           'archived_profiles_added':len(new),
+          'all_added_profiles_have_dated_real_match_stats':len(source_backed)==len(new),
+          'added_with_actual_match_stats':len(source_backed),
+          'evidence_tiers':dict(evidence_counts),
+          'added_with_archival_contract':sum(bool(p.get('contractUntilArchive')) for p in new),
+          'added_without_known_contract':sum(not bool(p.get('contractUntilArchive') or
+              p.get('contractUntilCurrent') or p.get('contractThroughYear')) for p in new),
           'new_profiles_with_previous_index_minutes_450':
              sum(str(p['id']) in previous_index for p in new),
           'new_profiles_with_current_index_minutes_450':
@@ -167,6 +192,8 @@ def summarize(root):
          'all_models_require_quality_check':'Minute evidence alone does not guarantee a non-proxy index'
       },
       'contract_evidence':{
+         'per_player_status':dict(contract_labels),
+         'all_profiles_have_explicit_display_state':True,
          'players_with_current_verified_contract':len(current_contracts),
          'players_with_only_archived_contract':
               len(archives-current_contracts),

@@ -16,17 +16,34 @@ def inject_uniform_cards(html):
     }
   },{rootMargin:'140px'}):null;
   function cardCurrentSeason(p){
-    return ['MLS','Brasileirão'].includes(p.league)?'2026':'2026/27';
+    return ['MLS','Brasileirão','Argentine Primera División','Eliteserien','Allsvenskan','J1 League','K League 1'].includes(p.league)?'2026':'2026/27';
   }
   function cardStatEvidence(p){
     const year=cardCurrentSeason(p),id=String(p.id);
     const valid=source=>source&&[source.minutes,source.matches,source.goals,source.assists]
       .some(v=>v!==null&&v!==undefined);
+    if(p.origin==='transfermarkt_archived_2026'){
+      // The index aggregation requires >=180 minutes, but a factual card
+      // remains available for a single verified appearance. Never zero-fill
+      // missing advanced stats or label a 2024/25 match as 2025/26.
+      const candidates=[p.archiveReferenceSeason,p.season,year==='2026'?'2025':'2025/26',
+        year==='2026'?'2024':'2024/25'];
+      for(const season of [...new Set(candidates.filter(Boolean))]){
+        const rows=(ROOT.liveTournamentStats?.[season]?.[id]||[])
+          .filter(r=>r.source==='historical_appearances'&&
+            Number(r.stats?.minutes)>0);
+        if(rows.length){
+          const sum=key=>rows.reduce((n,r)=>n+(Number(r.stats?.[key])||0),0);
+          return {stats:{matches:sum('matches'),minutes:sum('minutes'),
+            goals:sum('goals'),assists:sum('assists')},season,archived:true,
+            source:'transfermarkt_historical',lowSample:sum('minutes')<180};
+        }
+      }
+      return null;
+    }
     const current=ROOT.liveIndexStats?.[year]?.[id]||statsBySeason[year]?.[id]||null;
     if(valid(current))return {stats:current,season:year,archived:false};
     const prior=year==='2026'?'2025':'2025/26';
-    // A historical season is presented with its REAL date, never silently
-    // relabeled as 2026/27, and never treated as zero current production.
     const history=ROOT.liveIndexStats?.[prior]?.[id]||statsBySeason[prior]?.[id]||null;
     if(valid(history))return {stats:history,season:prior,archived:true};
     return null;
@@ -82,7 +99,7 @@ def inject_uniform_cards(html):
   function cardMarkup(p){
     const ru=state.language==='ru';
     const year=p.origin==='transfermarkt_archived_2026'
-      ? (['MLS','Brasileirão'].includes(p.league)?'2025':'2025/26') : cardCurrentSeason(p);
+      ? (p.archiveReferenceSeason||p.season||'2025/26') : cardCurrentSeason(p);
     const stats=cardStatEvidence(p);
     const c=cardContractEvidence(p);
     const idx=projectedIndex(p);
