@@ -110,6 +110,34 @@ def main():
               'market dots:',page.locator('[data-value-kind=market]').count(),
               'chart:',page.locator('#chartSubtitle').inner_text())
 
+        # Club corrections must restore Lookman's current La Liga metrics,
+        # instead of attaching his 2026/27 appearances to Atalanta.
+        page.locator('#search').fill('Ademola Lookman')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert 'Atlético' in page.locator('#pClub').inner_text(), 'Lookman club must be Atlético Madrid'
+        assert picker.locator('option[value="140"]').count()==1, 'Lookman must have La Liga eligibility'
+        assert page.locator('#statMinutes').inner_text().strip() not in ('—','0',''), 'Lookman current minutes missing'
+        print('LOOKMAN DIAGNOSTIC:',page.locator('#pClub').inner_text(),
+              page.locator('#valueMain').inner_text(),page.locator('#playerIndexBadge').inner_text(),
+              'current mins:',page.locator('#statMinutes').inner_text(),
+              'goals:',page.locator('#statGoals').inner_text())
+        page.locator('#search').fill('Mohamed Salah')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert 'Trabzonspor' in page.locator('#pClub').inner_text(), 'Salah moved to Turkish Süper Lig'
+        label=picker.locator('option[value="cup-turkey"]').inner_text()
+        assert label=='Кубок Турции',('Turkish Cup must be Russian in RU mode',label)
+        print('SALAH DIAGNOSTIC:',page.locator('#pClub').inner_text(),
+              page.locator('#valueMain').inner_text(),page.locator('#playerIndexBadge').inner_text(),
+              'season minutes:',page.locator('#statMinutes').inner_text())
+        page.locator('#seasonSelect').select_option('2024/25')
+        assert page.locator('#statGoals').inner_text().strip() not in ('—','0',''), 'Salah 2024/25 history lost'
+        page.locator('#search').fill('Abdülkadir Ömür')
+        page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
+        page.locator('#suggestions [data-suggest]').first.click()
+        assert page.locator('#pPosition').inner_text()=='AM', 'Ömür must be attacking midfielder'
+        print('ÖMÜR role corrected to AM')
         page.locator('#search').fill('Messi')
         page.locator('#suggestions [data-suggest]').first.wait_for(timeout=5000)
         page.locator('#suggestions [data-suggest]').first.click()
