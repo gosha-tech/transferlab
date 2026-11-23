@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>TransferLab Bug Hunt — участие в тестировании</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse 850px 400px at 90% 0%,#0e474c,transparent 75%),#071321;color:#eef8fc;line-height:1.6}
+main{max-width:850px;margin:auto;padding:38px 24px 80px}
+a{color:#6af0d4;text-decoration:underline;text-underline-offset:3px}
+a:focus-visible{outline:3px solid #6af0d4;outline-offset:3px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:50px}
+header strong{letter-spacing:.06em;font-size:18px}
+.pill{display:inline-block;font-size:12px;border:1px solid #238379;border-radius:30px;padding:4px 11px;color:#80eacf}
+h1{font-size:clamp(30px,6vw,54px);line-height:1.09;letter-spacing:-.05em;margin:5px 0 20px}
+h2{font-size:20px;margin:0 0 16px}
+.lead{font-size:17px;color:#b7cbd5;max-width:700px}
+.panel{border:1px solid #244e61;border-radius:18px;background:#10283b;margin-top:24px;padding:25px}
+ul,ol{padding-left:21px}li{margin:11px 0}
+.buttons{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 8px}
+.button{display:inline-flex;justify-content:center;align-items:center;padding:11px 18px;border-radius:10px;background:#17675f;color:white;font-weight:750;text-decoration:none;border:1px solid #34877f}
+.button.secondary{background:transparent;color:#aff4e7}
+.note{color:#a8bfcb;font-size:13px}
+small{color:#91a8b4}
+@media(max-width:570px){main{padding:25px 17px 60px}.panel{padding:18px}header{margin-bottom:32px}.buttons{flex-direction:column}}
+</style>
+</head>
+<body>
+<main>
+<header><strong>TRANSFERLAB</strong><span class="pill">Community Beta · Bug Hunt</span></header>
+<h1>Помогите найти ошибки в футбольной аналитике</h1>
+<p class="lead">Мы приглашаем небольшую группу из 20–30 любителей футбола, скаутов и аналитиков проверить статистику, индексы, фотографии и работу сайта. Это исследовательская Beta, а не готовый профессиональный источник.</p>
+<div class="buttons">
+<a class="button" href="./">Открыть TransferLab</a>
+<a class="button secondary" href="https://github.com/gosha-tech/transferlab/issues" target="_blank" rel="noopener noreferrer">Список найденных ошибок</a>
+</div>
+<section class="panel">
+<h2>Проверка за 10–15 минут</h2>
+<ol>
+<li>Откройте <a href="./">TransferLab</a> и выберите 5 хорошо знакомых вам игроков из разных лиг.</li>
+<li>Сверьте клуб, основную позицию, фото, матчи, минуты, голы и ассисты с источником и датой.</li>
+<li>Проверьте доступные турниры: лига, кубки, еврокубки и суперкубки должны относиться к игроку и сезону.</li>
+<li>Посмотрите индекс и стоимость: непонятные или нелогичные оценки тоже можно отправлять как гипотезу, с объяснением.</li>
+<li>Зайдите в Hidden Gems и проверьте, не выдаётся ли архивная оценка за свежую или кандидат за доказанную находку.</li>
+<li>Для найденной проблемы нажмите <b>«🐞 Нашли ошибку?»</b> — кнопка доступна на сайте. Одна ошибка — одно сообщение.</li>
+</ol>
+</section>
+<section class="panel">
+<h2>Как сообщить об ошибке</h2>
+<p>В форме на сайте выберите тип проблемы, укажите имя игрока, конкретное расхождение и ссылку на источник. Далее нажмите <b>«Открыть отчёт в GitHub»</b>, проверьте содержание и отправьте Issue. GitHub требует вход; сам сайт ничего не отправляет автоматически.</p>
+<p>Нет GitHub? Нажмите <b>«Скопировать отчёт»</b> и передайте текст организатору вашего тестирования удобным способом. При копировании через сайт данные не сохраняются на сервере.</p>
+<p class="note">GitHub Issues публичны. Не включайте частные сведения, номера телефонов, переписки или чужие персональные данные. Для расхождений в статистике приложите ссылку и дату наблюдения, а не только скриншот.</p>
+</section>
+<section class="panel">
+<h2>Что уже известно</h2>
+<ul>
+<li>У части игроков статистика текущего сезона отсутствует или неполная: <b>«нет данных» не означает «0»</b>.</li>
+<li>Архивные клубы, сроки контрактов и рыночные цены не считаются подтверждёнными на сегодняшнюю дату.</li>
+<li>Проверенные Hidden Gems требуют разрешённых свежих цен. Если они отсутствуют, список может быть пустым — так и должно быть.</li>
+<li>Индекс TransferLab — экспериментальная модель, а не официальный рейтинг или трансферная цена.</li>
+</ul>
+<p class="note">Цель теста — реальные воспроизводимые ошибки, а не максимальное число репортов. Мы проверяем источники до исправления.</p>
+<p><a href="beta.html">Посмотреть текущий отчёт готовности к Beta</a></p>
+</section>
+<p class="note" lang="en">English: We are running a small, voluntary football-data Bug Hunt. Test five players, check dated sources and use “Report a bug” on the main site. GitHub requires sign-in; alternatively copy the report. Never include private personal information.</p>
+<p><small>TransferLab · Community testing · 2026</small></p>
+</main>
+</body>
+</html>
