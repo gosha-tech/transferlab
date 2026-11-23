@@ -37,8 +37,8 @@ d['leagueCatalog']=[l for l in ['Premier League','La Liga','Bundesliga','Serie A
 d['site_build']='TransferLab 5.0 — архивная версия'
 s=s[:m.start(1)]+json.dumps(d,ensure_ascii=False,separators=(',',':')).replace('</','<\\/')+s[m.end(1):]
 s=re.sub(r'<title>.*?</title>','<title>TransferLab — футбол и аналитика</title>',s,count=1)
-s=change(s,'</head>','<link rel="stylesheet" href="assets/site.css">\n<meta name="theme-color" content="#071321">\n</head>')
-s=change(s,'</body>','<script src="assets/site.js" defer></script>\n</body>')
+s=change(s,'</head>','<link rel="stylesheet" href="assets/site.css">\n<link rel="stylesheet" href="assets/feedback.css">\n<meta name="theme-color" content="#071321">\n</head>')
+s=change(s,'</body>','<script src="assets/site.js" defer></script>\n<script src="assets/feedback.js" defer></script>\n</body>')
 s=change(s,'<section id="viewCatalog" class="hidden">','<section id="viewCatalog" class="hidden"><div class="quality-note">Архивная база · данные не обновляются в реальном времени · клубы и контракты могут измениться.</div>')
 s=change(s,'<span class="pill" id="visibleCount">0</span>','<select id="sortBy" class="filter" aria-label="Сортировка"><option value="name">По алфавиту</option><option value="position">По позиции</option><option value="minutes">По минутам</option></select><span class="pill" id="visibleCount">0</span>')
 # Describe the actual number of leagues instead of the older five-league scope.
