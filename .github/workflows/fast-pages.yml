@@ -31,8 +31,9 @@ jobs:
           python scripts/enrich_profiles.py
           python scripts/tournaments_build.py _site/index.html
           python scripts/hidden_gems.py _site/index.html
+          python scripts/account_build.py _site/index.html
           mkdir -p _site/assets _site/data
-          cp assets/site.css assets/site.js assets/hidden_gems.js assets/hidden_gems.css _site/assets/
+          cp assets/site.css assets/site.js assets/hidden_gems.js assets/hidden_gems.css assets/account.js assets/account.css _site/assets/
           cp data/live.json data/free_sources.json _site/data/
           for filename in pl_current.json commons_photos.json pitchapi.json; do
             if [ -f "data/$filename" ]; then cp "data/$filename" _site/data/; fi
@@ -40,6 +41,7 @@ jobs:
           python scripts/audit_coverage.py
           python scripts/test_tournaments.py
           python scripts/test_hidden_gems.py
+          python scripts/test_account_build.py
       - name: Validate generated source syntax
         run: |
           python - <<'PY'
@@ -56,6 +58,7 @@ jobs:
           node --check /tmp/transferlab-check.js
           node --check _site/assets/site.js
           node --check _site/assets/hidden_gems.js
+          node --check _site/assets/account.js
       - name: Verify player indices in Chromium
         run: |
           python -m pip install --quiet playwright==1.56.0
