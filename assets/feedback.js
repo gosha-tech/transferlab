@@ -5,7 +5,6 @@
 (() => {
   'use strict';
   const ROOT='https://github.com/gosha-tech/transferlab/issues/new';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const ui={
     ru:{
       trigger:'Нашли ошибку?',title:'Сообщить об ошибке',subtitle:'Помогите проверить TransferLab. Сообщение не отправляется автоматически.',
@@ -121,8 +120,12 @@
     // GitHub's issue creation URL is a native first-party form; no hidden server.
     url.searchParams.set('title',value.title);
     url.searchParams.set('body',value.body);
-    $('tlBugOpen').href=url.toString();
-    $('tlBugOpen').setAttribute('aria-disabled',String(value.observed.length<5));
+    const issueUrl=url.toString();
+    // Do not send oversized reports through a URL: GitHub may return HTTP 414.
+    const tooLong=issueUrl.length>6200;
+    $('tlBugOpen').href=tooLong?ROOT:issueUrl;
+    $('tlBugOpen').dataset.tooLong=String(tooLong);
+    $('tlBugOpen').setAttribute('aria-disabled',String(value.observed.length<5||tooLong));
   }
   function open(){
     language();
@@ -139,6 +142,7 @@
   trigger.addEventListener('click',open);
   $('tlBugClose').addEventListener('click',()=>dialog.close());
   dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+  $('tlBugForm').addEventListener('submit',e=>e.preventDefault());
   $('tlBugForm').addEventListener('input',()=>{status.textContent='';update()});
   $('tlBugForm').addEventListener('change',update);
   function valid(){
@@ -147,7 +151,13 @@
     $('tlBugObserved').focus();
     return false;
   }
-  $('tlBugOpen').addEventListener('click',e=>{if(!valid())e.preventDefault()});
+  $('tlBugOpen').addEventListener('click',e=>{
+    if(!valid()){e.preventDefault();return}
+    if($('tlBugOpen').dataset.tooLong==='true'){
+      status.textContent='Слишком длинный отчёт / Report too long: '+labels().copy+'.';
+      e.preventDefault();
+    }
+  });
   $('tlBugCopy').addEventListener('click',async()=>{
     if(!valid())return;
     const value=report().title+'\n\n'+report().body;
