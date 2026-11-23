@@ -55,6 +55,38 @@ def main():
         card=page.locator('.player-card [data-open]').first
         assert card.count()>0,'No selectable player for account history'
         card.click()
+        # An anonymous Beta tester can prepare a source-backed report without
+        # registering or sending data to a hidden endpoint.
+        selected_player=page.locator('#pName').inner_text().strip()
+        assert page.locator('#tlBugTrigger').is_visible(), 'Missing global bug-report button'
+        page.locator('#tlBugTrigger').click()
+        assert page.locator('#tlBugDialog').is_visible()
+        assert page.locator('#tlBugPlayer').input_value()==selected_player, (
+            'Report must include the player currently open',selected_player)
+        page.locator('#tlBugOpen').click()
+        assert 'Опишите проблему' in page.locator('#tlBugStatus').inner_text()
+        page.locator('#tlBugType').select_option('statistics')
+        page.locator('#tlBugObserved').fill('Матчей указано 4, но должно быть 12')
+        page.locator('#tlBugExpected').fill('12 матчей с учётом кубка')
+        page.locator('#tlBugEvidence').fill('https://example.org/matches')
+        link=page.evaluate("""() => {
+          const url=new URL(document.getElementById('tlBugOpen').href);
+          return {host:url.host,path:url.pathname,title:url.searchParams.get('title'),
+            body:url.searchParams.get('body')};
+        }""")
+        assert link['host']=='github.com' and link['path'].endswith('/issues/new'),link
+        assert selected_player in link['title'] and selected_player in link['body'],link
+        assert 'https://example.org/matches' in link['body']
+        assert '12 матчей' in link['body']
+        page.locator('#tlBugCopy').click()
+        page.wait_for_function("""() => {
+          const v=document.getElementById('tlBugStatus').textContent;
+          return v.includes('скопирован')||v.includes('скопировать автоматически');
+        }""")
+        page.screenshot(path=str(screenshot/'bug-hunt-dialog.png'))
+        page.keyboard.press('Escape')
+        assert not page.locator('#tlBugDialog').is_visible(), (
+            'Escape must close report form')
         page.locator('#navAccount').click()
         assert page.locator('#viewAccount').is_visible()
         assert page.locator('.tl-history-card').count()>=1, (
