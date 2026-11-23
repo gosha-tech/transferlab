@@ -18,7 +18,7 @@
 #tlBugForm label{font-size:12px;font-weight:700;color:#cce5e9;margin-top:5px}
 #tlBugForm input,#tlBugForm textarea,#tlBugForm select,.tl-bug-fallback{box-sizing:border-box;width:100%;
   border:1px solid #356375;background:#0a1e31;color:#ecf9fb;padding:10px 12px;border-radius:9px;
-  font:14px/1.45 inherit}
+  font:inherit;font-size:14px;line-height:1.45}
 #tlBugForm input,#tlBugForm select{height:42px}
 #tlBugForm textarea{min-height:76px;resize:vertical;max-height:190px}
 #tlBugForm input::placeholder{color:#8caebd}
