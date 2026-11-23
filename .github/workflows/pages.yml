@@ -201,7 +201,8 @@ jobs:
           python scripts/account_build.py _site/index.html
           python scripts/forecast_backtest.py _site/index.html
           mkdir -p _site/assets _site/data
-          cp assets/site.css assets/site.js assets/hidden_gems.css assets/hidden_gems.js assets/account.css assets/account.js _site/assets/
+          cp assets/site.css assets/site.js assets/hidden_gems.css assets/hidden_gems.js assets/account.css assets/account.js assets/feedback.css assets/feedback.js _site/assets/
+          cp assets/bughunt.html _site/bughunt.html
           cp data/live.json data/free_sources.json _site/data/
           if [ -f data/pl_current.json ]; then cp data/pl_current.json _site/data/; fi
           if [ -f data/commons_photos.json ]; then cp data/commons_photos.json _site/data/; fi
@@ -241,6 +242,8 @@ jobs:
           node --check _site/assets/site.js
           node --check _site/assets/hidden_gems.js
           node --check _site/assets/account.js
+          node --check _site/assets/feedback.js
+          test -f _site/bughunt.html
           python -m py_compile scripts/account_build.py scripts/test_account_build.py scripts/hidden_gems.py scripts/test_hidden_gems.py scripts/catalog_expansion.py scripts/gems_verification.py scripts/gem_history.py scripts/capture_gems.py
       - name: Validate generated provider-backed site
         run: |
