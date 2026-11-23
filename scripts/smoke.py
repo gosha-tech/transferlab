@@ -39,6 +39,7 @@ def main():
             'Hidden Gems nav must be in server-rendered HTML, not created by JS')
         assert static_page.locator('#navGems .nav-label').inner_text()=='Hidden Gems'
         assert static_page.locator('#navCatalog').is_visible()
+        assert static_page.locator('#navAccount').is_visible(), 'History tab must render without JS'
         static_context.close()
         print('Hidden Gems first paint without JavaScript PASS')
         page=browser.new_page(viewport={'width':1440,'height':900})
@@ -49,6 +50,31 @@ def main():
         page.locator('#pName').wait_for(timeout=15000)
         page.locator('#navCatalog').click()
         page.locator('.player-card').first.wait_for(timeout=15000)
+        # Registration is opt-in; anonymous visitors must still be able to
+        # inspect and clear private, locally saved player history.
+        card=page.locator('.player-card [data-open]').first
+        assert card.count()>0,'No selectable player for account history'
+        card.click()
+        page.locator('#navAccount').click()
+        assert page.locator('#viewAccount').is_visible()
+        assert page.locator('.tl-history-card').count()>=1, (
+          'Opening a player must create a guest history record')
+        assert page.locator('#tlHistoryInfo').is_visible()
+        # Reopen via history, and prove that persistence survives a reload.
+        page.locator('.tl-history-card').first.click()
+        assert page.locator('#pName').is_visible()
+        page.reload(wait_until='domcontentloaded')
+        page.locator('#navAccount').click()
+        assert page.locator('.tl-history-card').count()>=1, (
+          'Anonymous history must survive reloading on the same device')
+        page.once('dialog',lambda dlg:dlg.accept())
+        page.locator('#tlHistoryClear').click()
+        assert page.locator('.tl-history-card').count()==0, (
+          'Clear history must delete local records')
+        assert not page.locator('#tlHistoryClear').is_enabled()
+        page.locator('#navCatalog').click()
+        page.locator('.player-card').first.wait_for(timeout=15000)
+        print('Account history / local persistence / clear without backend PASS')
         catalog_ready_ms=round((time.perf_counter()-started)*1000)
         count=int(page.locator('#kpiPlayers').inner_text().replace(' ',''))
         assert count>=10000, ('Requested 10000-player catalogue has not been built',count)
