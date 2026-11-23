@@ -12,7 +12,7 @@
       "date": "2026-11-23",
       "qa_passed": true,
       "model_verified": false,
-      "priority_coverage_pct": 55.3,
+      "priority_coverage_pct": 55.8,
       "commit": "c756160027ba"
     }
   ]
