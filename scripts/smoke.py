@@ -63,7 +63,10 @@ def main():
         assert page.locator('#tlBugDialog').is_visible()
         assert page.locator('#tlBugPlayer').input_value()==selected_player, (
             'Report must include the player currently open',selected_player)
-        page.locator('#tlBugOpen').click()
+        assert page.locator('#tlBugOpen').get_attribute('aria-disabled')=='true'
+        # The browser correctly disables this link; fire a synthetic click to
+        # verify our validation message without launching an external page.
+        page.locator('#tlBugOpen').evaluate('(a)=>a.click()')
         assert 'Опишите проблему' in page.locator('#tlBugStatus').inner_text()
         page.locator('#tlBugType').select_option('statistics')
         page.locator('#tlBugObserved').fill('Матчей указано 4, но должно быть 12')
