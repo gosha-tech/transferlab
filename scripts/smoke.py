@@ -297,8 +297,9 @@ def main():
             assert 'Нет успешных прогнозов' in page.locator('#gemsInfo').inner_text()
         # An empty confirmed list is legitimate when no current licensed prices exist.
         page.locator('#gemsPreviewTab').click()
-        assert page.locator('#gemsPreviewCount').inner_text().strip().isdigit()
-        preview_count=int(page.locator('#gemsPreviewCount').inner_text().replace(' ',''))
+        preview_text=page.locator('#gemsPreviewCount').inner_text()
+        assert re.fullmatch(r'[\s\d\u00a0\u202f]+',preview_text),preview_text
+        preview_count=int(re.sub(r'\s','',preview_text))
         assert preview_count>=40,('Archive-backed Hidden Gems did not expand',preview_count)
         assert page.locator('.gems-card').count()>0
         layout=page.evaluate("""() => {
