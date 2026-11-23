@@ -1,0 +1,47 @@
+/* TransferLab personal history and registration. Uses existing dark UI palette. */
+.tl-account{max-width:1100px;margin:0 auto;padding:8px 0 36px;color:#ecf6f7}
+.tl-account-header{border:1px solid rgba(56,220,193,.2);border-radius:18px;
+  padding:27px 30px;margin:5px 0 18px;
+  background:linear-gradient(125deg,rgba(14,75,76,.65),rgba(10,28,44,.92))}
+.tl-account-header h1{color:#f7fbfc;font-size:clamp(24px,3.5vw,34px);margin:8px 0}
+.tl-account-header p{font-size:13px;color:#b8ced7;line-height:1.55;margin:0}
+.tl-eyebrow{font-size:10px;letter-spacing:.17em;font-weight:800;color:#62e9cc}
+.tl-account-columns{display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,1.4fr);gap:15px;align-items:start}
+.tl-account-panel{border:1px solid rgba(139,179,190,.22);border-radius:16px;
+  background:linear-gradient(150deg,rgba(20,41,57,.96),rgba(10,28,44,.98));
+  padding:20px;min-width:0}
+.tl-account-panel h2{font-size:17px;color:#f3f8f9;margin:0 0 12px;font-weight:800}
+.tl-account-panel p{font-size:12px;line-height:1.6;margin:8px 0 12px;color:#bfd3db}
+.tl-account-panel form{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+.tl-account-panel form[hidden],.tl-account-panel button[hidden]{display:none}
+.tl-account-panel label{font-size:12px;color:#d8e6eb;font-weight:700}
+.tl-account-panel input{border:1px solid rgba(148,185,198,.33);border-radius:9px;
+  padding:11px 12px;color:#ecfbfa;background:#091c2a;font-size:14px;width:100%;box-sizing:border-box}
+.tl-account-panel button{cursor:pointer;font:inherit}
+.tl-account-panel form button,#tlAccountLogout{border-radius:10px;padding:12px 16px;
+  border:1px solid #319e86;background:#15564d;color:#f1fffa;font-size:12px;font-weight:800}
+.tl-account-panel button:disabled{opacity:.5;cursor:default}
+.tl-account-panel :is(button,input):focus-visible{outline:2px solid #62e9cc;outline-offset:3px}
+.tl-account-caption{color:#99b2c0!important;font-size:11px!important}
+.tl-account-row{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-bottom:12px}
+.tl-account-row h2{margin:0}
+.tl-account-quiet{background:none;border:1px solid rgba(135,174,189,.3);
+  color:#b8d9d6;border-radius:8px;padding:7px 12px;font-size:11px}
+.tl-history-items{display:flex;flex-direction:column;gap:7px}
+.tl-history-card{border:1px solid rgba(140,175,190,.16);border-radius:11px;
+  background:#0e293b;color:#ebf7fa;padding:11px 12px;display:flex;gap:12px;
+  align-items:center;min-width:0;width:100%;text-align:left}
+.tl-history-card:hover{background:#15364a;border-color:rgba(80,223,194,.4)}
+.tl-history-initial{display:flex;align-items:center;justify-content:center;
+  background:#21505a;width:34px;height:34px;flex:0 0 34px;border-radius:9px;
+  font-weight:800;font-size:15px;color:#b6f5e7}
+.tl-history-details{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.tl-history-details strong{font-size:13px;overflow-wrap:anywhere}
+.tl-history-details small{font-size:11px;color:#a8bec9;line-height:1.4;overflow-wrap:anywhere}
+.tl-history-card time{font-size:10px;color:#a2b9c3;text-align:right;max-width:105px}
+@media(max-width:800px){.tl-account-columns{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:520px){
+  .tl-account-header{padding:19px}
+  .tl-account-panel{padding:15px}
+  .tl-history-card time{font-size:9px}
+}
