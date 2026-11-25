@@ -21,6 +21,13 @@
       "model_verified": false,
       "priority_coverage_pct": 55.1,
       "commit": "bcff9b4d4c67"
+    },
+    {
+      "date": "2026-11-25",
+      "qa_passed": true,
+      "model_verified": false,
+      "priority_coverage_pct": 51.6,
+      "commit": "d4dd04f0675c"
     }
   ]
 }
